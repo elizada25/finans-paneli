@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { onAuthStateChanged } from 'firebase/auth';
 import {
   addDoc,
@@ -13,27 +14,40 @@ import {
 import { firebaseAuth, firestoreDb } from '../../lib-firebase';
 
 export default function PortfolioPage() {
+  const router = useRouter();
+
   const [user, setUser] = useState(null);
   const [stocks, setStocks] = useState([]);
+
   const [code, setCode] = useState('');
   const [market, setMarket] = useState('bist');
   const [lot, setLot] = useState('');
   const [cost, setCost] = useState('');
+
   const [status, setStatus] = useState('Kullanıcı kontrol ediliyor…');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    let unsubscribePortfolio = null;
+
     const unsubscribeAuth = onAuthStateChanged(
       firebaseAuth,
       (currentUser) => {
-        setUser(currentUser);
+        if (unsubscribePortfolio) {
+          unsubscribePortfolio();
+          unsubscribePortfolio = null;
+        }
 
         if (!currentUser) {
-          setStatus('Giriş yapılmamış.');
+          setUser(null);
           setStocks([]);
+          setStatus('Giriş ekranına yönlendiriliyor…');
+
+          router.replace('/login?next=/portfolio');
           return;
         }
 
+        setUser(currentUser);
         setStatus('Portföy yükleniyor…');
 
         const portfolioRef = collection(
@@ -43,7 +57,7 @@ export default function PortfolioPage() {
           'portfolio'
         );
 
-        const unsubscribePortfolio = onSnapshot(
+        unsubscribePortfolio = onSnapshot(
           portfolioRef,
           (snapshot) => {
             const items = snapshot.docs.map((stockDocument) => ({
@@ -52,7 +66,7 @@ export default function PortfolioPage() {
             }));
 
             items.sort((a, b) =>
-              String(a.code).localeCompare(String(b.code))
+              String(a.code || '').localeCompare(String(b.code || ''))
             );
 
             setStocks(items);
@@ -63,27 +77,32 @@ export default function PortfolioPage() {
             setStatus(`Portföy yüklenemedi: ${error.message}`);
           }
         );
-
-        return unsubscribePortfolio;
       }
     );
 
-    return unsubscribeAuth;
-  }, []);
+    return () => {
+      unsubscribeAuth();
+
+      if (unsubscribePortfolio) {
+        unsubscribePortfolio();
+      }
+    };
+  }, [router]);
 
   async function addStock(event) {
     event.preventDefault();
 
     if (!user) {
-      setStatus('Önce giriş yapmalısın.');
+      router.replace('/login?next=/portfolio');
       return;
     }
 
+    const normalizedCode = code.trim().toUpperCase();
     const numericLot = Number(lot);
     const numericCost = Number(cost);
 
     if (
-      !code.trim() ||
+      !normalizedCode ||
       !Number.isFinite(numericLot) ||
       numericLot <= 0 ||
       !Number.isFinite(numericCost) ||
@@ -105,7 +124,7 @@ export default function PortfolioPage() {
           'portfolio'
         ),
         {
-          code: code.trim().toUpperCase(),
+          code: normalizedCode,
           market,
           lot: numericLot,
           cost: numericCost,
@@ -117,6 +136,7 @@ export default function PortfolioPage() {
       setCode('');
       setLot('');
       setCost('');
+
       setStatus('✅ Hisse Firestore’a kaydedildi.');
     } catch (error) {
       console.error('Hisse kaydetme hatası:', error);
@@ -126,11 +146,11 @@ export default function PortfolioPage() {
     }
   }
 
-  async function removeStock(stockId) {
+  async function removeStock(stockId, stockCode) {
     if (!user) return;
 
     const confirmed = window.confirm(
-      'Bu hisseyi portföyden silmek istiyor musun?'
+      `${stockCode} hissesini portföyden silmek istiyor musun?`
     );
 
     if (!confirmed) return;
@@ -146,10 +166,10 @@ export default function PortfolioPage() {
         )
       );
 
-      setStatus('Hisse silindi.');
+      setStatus('✅ Hisse silindi.');
     } catch (error) {
       console.error('Silme hatası:', error);
-      setStatus(`Silme hatası: ${error.message}`);
+      setStatus(`❌ Silme hatası: ${error.message}`);
     }
   }
 
@@ -159,6 +179,7 @@ export default function PortfolioPage() {
         <div style={styles.heading}>
           <div>
             <h1 style={styles.title}>Yeni Portföy</h1>
+
             <p style={styles.subtitle}>
               Veriler Firebase Firestore’da saklanır.
             </p>
@@ -172,6 +193,7 @@ export default function PortfolioPage() {
         <form onSubmit={addStock} style={styles.form}>
           <div style={styles.field}>
             <label style={styles.label}>Hisse kodu</label>
+
             <input
               value={code}
               onChange={(event) => setCode(event.target.value)}
@@ -183,6 +205,7 @@ export default function PortfolioPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>Piyasa</label>
+
             <select
               value={market}
               onChange={(event) => setMarket(event.target.value)}
@@ -195,6 +218,7 @@ export default function PortfolioPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>Lot</label>
+
             <input
               type="number"
               min="0"
@@ -209,6 +233,7 @@ export default function PortfolioPage() {
 
           <div style={styles.field}>
             <label style={styles.label}>Maliyet</label>
+
             <input
               type="number"
               min="0"
@@ -224,13 +249,21 @@ export default function PortfolioPage() {
           <button
             type="submit"
             disabled={saving}
-            style={styles.addButton}
+            style={{
+              ...styles.addButton,
+              opacity: saving ? 0.65 : 1,
+              cursor: saving ? 'wait' : 'pointer',
+            }}
           >
             {saving ? 'Kaydediliyor…' : 'Hisse Ekle'}
           </button>
         </form>
 
-        {status && <div style={styles.status}>{status}</div>}
+        {status && (
+          <div style={styles.status}>
+            {status}
+          </div>
+        )}
 
         <div style={styles.tableWrapper}>
           <table style={styles.table}>
@@ -253,38 +286,55 @@ export default function PortfolioPage() {
                   </td>
                 </tr>
               ) : (
-                stocks.map((stock) => (
-                  <tr key={stock.id}>
-                    <td style={styles.td}>
-                      <strong>{stock.code}</strong>
-                    </td>
-                    <td style={styles.td}>
-                      {stock.market === 'bist' ? 'BIST' : 'ABD'}
-                    </td>
-                    <td style={styles.td}>{stock.lot}</td>
-                    <td style={styles.td}>
-                      {Number(stock.cost).toLocaleString('tr-TR', {
-                        maximumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td style={styles.td}>
-                      {(
-                        Number(stock.lot) * Number(stock.cost)
-                      ).toLocaleString('tr-TR', {
-                        maximumFractionDigits: 2,
-                      })}
-                    </td>
-                    <td style={styles.td}>
-                      <button
-                        type="button"
-                        onClick={() => removeStock(stock.id)}
-                        style={styles.deleteButton}
-                      >
-                        Sil
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                stocks.map((stock) => {
+                  const totalCost =
+                    Number(stock.lot) * Number(stock.cost);
+
+                  return (
+                    <tr key={stock.id}>
+                      <td style={styles.td}>
+                        <strong>{stock.code}</strong>
+                      </td>
+
+                      <td style={styles.td}>
+                        {stock.market === 'bist'
+                          ? 'BIST'
+                          : 'ABD'}
+                      </td>
+
+                      <td style={styles.td}>
+                        {stock.lot}
+                      </td>
+
+                      <td style={styles.td}>
+                        {Number(stock.cost).toLocaleString(
+                          'tr-TR',
+                          {
+                            maximumFractionDigits: 2,
+                          }
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        {totalCost.toLocaleString('tr-TR', {
+                          maximumFractionDigits: 2,
+                        })}
+                      </td>
+
+                      <td style={styles.td}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            removeStock(stock.id, stock.code)
+                          }
+                          style={styles.deleteButton}
+                        >
+                          Sil
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -302,11 +352,13 @@ const styles = {
     color: '#e6edf7',
     boxSizing: 'border-box',
   },
+
   container: {
     width: '100%',
     maxWidth: 1200,
     margin: '0 auto',
   },
+
   heading: {
     display: 'flex',
     justifyContent: 'space-between',
@@ -314,14 +366,17 @@ const styles = {
     gap: 16,
     marginBottom: 24,
   },
+
   title: {
     margin: 0,
     fontSize: 30,
   },
+
   subtitle: {
     margin: '6px 0 0',
     color: '#8ba0c0',
   },
+
   backLink: {
     padding: '10px 14px',
     border: '1px solid #33466f',
@@ -329,9 +384,11 @@ const styles = {
     color: '#ffffff',
     textDecoration: 'none',
   },
+
   form: {
     display: 'grid',
-    gridTemplateColumns: '2fr 1.4fr 1fr 1fr auto',
+    gridTemplateColumns:
+      'minmax(150px, 2fr) minmax(130px, 1.4fr) minmax(90px, 1fr) minmax(100px, 1fr) auto',
     gap: 12,
     alignItems: 'end',
     padding: 18,
@@ -339,9 +396,11 @@ const styles = {
     borderRadius: 16,
     background: '#10192c',
   },
+
   field: {
     minWidth: 0,
   },
+
   label: {
     display: 'block',
     marginBottom: 6,
@@ -349,6 +408,7 @@ const styles = {
     fontSize: 12,
     textTransform: 'uppercase',
   },
+
   input: {
     width: '100%',
     boxSizing: 'border-box',
@@ -359,6 +419,7 @@ const styles = {
     color: '#ffffff',
     fontSize: 15,
   },
+
   addButton: {
     padding: '12px 18px',
     border: 0,
@@ -366,8 +427,8 @@ const styles = {
     background: '#2563eb',
     color: '#ffffff',
     fontWeight: 700,
-    cursor: 'pointer',
   },
+
   status: {
     marginTop: 14,
     padding: 12,
@@ -375,17 +436,21 @@ const styles = {
     borderRadius: 10,
     background: '#10192c',
   },
+
   tableWrapper: {
     marginTop: 20,
     overflowX: 'auto',
     border: '1px solid #26365a',
     borderRadius: 16,
   },
+
   table: {
     width: '100%',
+    minWidth: 720,
     borderCollapse: 'collapse',
     background: '#10192c',
   },
+
   th: {
     padding: 14,
     borderBottom: '1px solid #26365a',
@@ -394,15 +459,18 @@ const styles = {
     fontSize: 12,
     textTransform: 'uppercase',
   },
+
   td: {
     padding: 14,
     borderBottom: '1px solid #1d2944',
   },
+
   empty: {
     padding: 30,
     textAlign: 'center',
     color: '#8ba0c0',
   },
+
   deleteButton: {
     padding: '7px 11px',
     border: '1px solid #7f1d1d',
