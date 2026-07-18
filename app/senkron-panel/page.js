@@ -274,6 +274,159 @@ export default function SenkronPanelPage() {
       prices={prices}
       watchlist={watchlist}
     />
+    <section
+  style={{
+    marginTop: 18,
+    marginBottom: 24,
+    padding: 20,
+    border: '1px solid #26364d',
+    borderRadius: 20,
+    background: '#101c2e',
+  }}
+>
+  <div
+    style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      gap: 16,
+      flexWrap: 'wrap',
+    }}
+  >
+    <div>
+      <h2
+        style={{
+          margin: 0,
+          color: '#f8fafc',
+          fontSize: 22,
+        }}
+      >
+        Yeni Hisse Ekle
+      </h2>
+
+      <p
+        style={{
+          margin: '8px 0 0',
+          color: '#94a3b8',
+        }}
+      >
+        BIST veya NASDAQ hissesini portföyüne ekle.
+      </p>
+    </div>
+
+    <button
+      type="button"
+      onClick={async () => {
+        const marketInput = window.prompt(
+          'Piyasa: BIST veya NASDAQ',
+          'BIST'
+        );
+
+        if (marketInput === null) return;
+
+        const marketText = String(marketInput)
+          .trim()
+          .toUpperCase();
+
+        const market =
+          marketText === 'BIST'
+            ? 'bist'
+            : ['NASDAQ', 'ABD', 'US'].includes(marketText)
+              ? 'us'
+              : '';
+
+        if (!market) {
+          window.alert('BIST veya NASDAQ yazmalısın.');
+          return;
+        }
+
+        const codeInput = window.prompt('Hisse kodu:');
+        if (codeInput === null) return;
+
+        const code = String(codeInput)
+          .trim()
+          .toUpperCase();
+
+        if (!code) {
+          window.alert('Hisse kodu boş olamaz.');
+          return;
+        }
+
+        const exists = stocks.some(
+          (stock) =>
+            String(stock.code || '')
+              .trim()
+              .toUpperCase() === code &&
+            stock.market === market
+        );
+
+        if (exists) {
+          window.alert(`${code} zaten portföyde.`);
+          return;
+        }
+
+        const quantityInput = window.prompt('Lot/adet:');
+        if (quantityInput === null) return;
+
+        const quantity = toNumber(quantityInput);
+
+        if (quantity <= 0) {
+          window.alert('Lot/adet sıfırdan büyük olmalı.');
+          return;
+        }
+
+        const costInput = window.prompt('Ortalama maliyet:');
+        if (costInput === null) return;
+
+        const costPrice = toNumber(costInput);
+
+        if (costPrice <= 0) {
+          window.alert('Maliyet sıfırdan büyük olmalı.');
+          return;
+        }
+
+        try {
+          await addDoc(
+            collection(
+              firestoreDb,
+              'users',
+              user.uid,
+              'portfolio'
+            ),
+            {
+              code,
+              market,
+              quantity,
+              costPrice,
+              createdAt: new Date().toISOString(),
+            }
+          );
+
+          window.alert(`${code} portföye eklendi.`);
+        } catch (error) {
+          console.error('Hisse ekleme hatası:', error);
+
+          window.alert(
+            `Hisse eklenemedi: ${
+              error?.message || 'Bilinmeyen hata'
+            }`
+          );
+        }
+      }}
+      style={{
+        border: '1px solid #0ea5e9',
+        borderRadius: 14,
+        padding: '12px 18px',
+        background: '#075985',
+        color: '#f8fafc',
+        fontWeight: 800,
+        cursor: 'pointer',
+      }}
+    >
+      + Hisse Ekle
+    </button>
+  </div>
+</section>
       {status ? <div style={styles.infoBox}>{status}</div> : null}
       <section style={styles.summaryGrid}>
         <SummaryCard
