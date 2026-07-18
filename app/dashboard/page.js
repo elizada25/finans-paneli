@@ -13,9 +13,12 @@ export default function DashboardPage() {
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(firebaseAuth, (currentUser) => {
-      setUser(currentUser);
-    });
+    const unsubscribe = onAuthStateChanged(
+      firebaseAuth,
+      (currentUser) => {
+        setUser(currentUser);
+      }
+    );
 
     return unsubscribe;
   }, []);
@@ -30,7 +33,13 @@ export default function DashboardPage() {
 
     try {
       await setDoc(
-        doc(firestoreDb, 'users', user.uid, 'tests', 'connection'),
+        doc(
+          firestoreDb,
+          'users',
+          user.uid,
+          'tests',
+          'connection'
+        ),
         {
           message: 'Firestore bağlantısı başarılı',
           updatedAt: serverTimestamp(),
@@ -107,6 +116,7 @@ const styles = {
     color: '#e6edf7',
     boxSizing: 'border-box',
   },
+
   header: {
     maxWidth: 1500,
     margin: '0 auto 14px',
@@ -115,15 +125,18 @@ const styles = {
     alignItems: 'center',
     gap: 16,
   },
+
   title: {
     margin: 0,
     fontSize: 24,
   },
+
   subtitle: {
     margin: '4px 0 0',
     color: '#8ba0c0',
     fontSize: 14,
   },
+
   logoutButton: {
     padding: '10px 16px',
     border: '1px solid #33466f',
@@ -133,6 +146,7 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
   },
+
   testBox: {
     maxWidth: 1500,
     margin: '0 auto 14px',
@@ -140,6 +154,7 @@ const styles = {
     alignItems: 'center',
     gap: 14,
   },
+
   testButton: {
     padding: '10px 16px',
     border: 0,
@@ -149,6 +164,7 @@ const styles = {
     fontWeight: 700,
     cursor: 'pointer',
   },
+
   panelContainer: {
     width: '100%',
     maxWidth: 1500,
@@ -159,6 +175,7 @@ const styles = {
     borderRadius: 16,
     background: '#0d1424',
   },
+
   iframe: {
     width: '100%',
     height: '100%',
