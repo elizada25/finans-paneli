@@ -243,39 +243,37 @@ export default function SenkronPanelPage() {
     );
   }
 
-  return (
-    <main style={styles.page}>
-  <header style={styles.header}>
-   ...
-</header>
+ return (
+  <main style={styles.page}>
+    <header style={styles.header}>
+      <div>
+        <p style={styles.smallLabel}>SKY FİNANS</p>
 
-        
-        <div>
-          <p style={styles.smallLabel}>SKY FİNANS</p>
+        <h1 style={styles.pageTitle}>
+          Portföyüm
+        </h1>
 
-          <h1 style={styles.pageTitle}>
-            Portföyüm
-          </h1>
+        <p style={styles.userText}>{user.email}</p>
+      </div>
 
-          <p style={styles.userText}>{user.email}</p>
-        </div>
+      <button
+        type="button"
+        onClick={logout}
+        disabled={loggingOut}
+        style={{
+          ...styles.logoutButton,
+          opacity: loggingOut ? 0.6 : 1,
+        }}
+      >
+        {loggingOut ? 'Çıkış yapılıyor…' : 'Çıkış Yap'}
+      </button>
+    </header>
 
-        <button
-          type="button"
-          onClick={logout}
-          disabled={loggingOut}
-          style={{ ...styles.logoutButton, opacity: loggingOut ? 0.6 : 1 }}
-        >
-          {loggingOut ? 'Çıkış yapılıyor…' : 'Çıkış Yap'}
-        </button>
-       </header>
-
-      <SkyAI
-        stocks={stocks}
-        prices={prices}
-        watchlist={watchlist}
-      />
-
+    <SkyAI
+      stocks={stocks}
+      prices={prices}
+      watchlist={watchlist}
+    />
       {status ? <div style={styles.infoBox}>{status}</div> : null}
       <section style={styles.summaryGrid}>
         <SummaryCard
