@@ -6,7 +6,6 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb } from '../../lib-firebase';
 import TradingViewChart from './TradingViewChart';
-import SkyAI from './components/SkyAI';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -245,11 +244,7 @@ export default function SenkronPanelPage() {
 
   return (
     <main style={styles.page}>
-  <header style={styles.header}>
-   ...
-</header>
-
-        
+      <header style={styles.header}>
         <div>
           <p style={styles.smallLabel}>SKY FİNANS</p>
 
@@ -268,15 +263,10 @@ export default function SenkronPanelPage() {
         >
           {loggingOut ? 'Çıkış yapılıyor…' : 'Çıkış Yap'}
         </button>
-       </header>
-
-      <SkyAI
-        stocks={stocks}
-        prices={prices}
-        watchlist={watchlist}
-      />
+      </header>
 
       {status ? <div style={styles.infoBox}>{status}</div> : null}
+
       <section style={styles.summaryGrid}>
         <SummaryCard
           title="BIST Toplam Değer"
