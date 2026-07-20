@@ -44,7 +44,7 @@ export default function LoginPage() {
       const params = new URLSearchParams(window.location.search);
 const next = params.get('next') || '/senkron-panel';
 
-      router.replace(nextPage);
+      router.replace(next);
       router.refresh();
     } catch (err) {
       console.error('Giriş hatası:', err);

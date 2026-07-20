@@ -23,7 +23,12 @@ export default function SkyAI({
   const stockRows = useMemo(() => {
     return allStocks
       .map((stock) => {
-        const priceData = prices?.[stock.symbol] || {};
+        const code = String(stock.code || stock.symbol || '').trim().toUpperCase();
+        const market = String(stock.market || '').trim().toLowerCase();
+        const priceData =
+          prices?.[`${market}:${code}`] ||
+          prices?.[code] ||
+          {};
         const currentPrice = Number(priceData.price || 0);
         const previousClose = Number(priceData.previousClose || 0);
 
@@ -78,7 +83,7 @@ export default function SkyAI({
     stockRows.forEach((stock) => {
       if (stock.dailyChangePercent >= 4) {
         result.push(
-          `${stock.symbol} bugün %${stock.dailyChangePercent.toFixed(
+          `${stock.code || stock.symbol} bugün %${stock.dailyChangePercent.toFixed(
             2
           )} yükseldi.`
         );
@@ -86,7 +91,7 @@ export default function SkyAI({
 
       if (stock.dailyChangePercent <= -4) {
         result.push(
-          `${stock.symbol} bugün %${Math.abs(
+          `${stock.code || stock.symbol} bugün %${Math.abs(
             stock.dailyChangePercent
           ).toFixed(2)} düştü.`
         );
@@ -94,7 +99,7 @@ export default function SkyAI({
 
       if (stock.profitLossPercent >= 15) {
         result.push(
-          `${stock.symbol}, maliyetinin %${stock.profitLossPercent.toFixed(
+          `${stock.code || stock.symbol}, maliyetinin %${stock.profitLossPercent.toFixed(
             1
           )} üzerinde.`
         );
@@ -102,7 +107,7 @@ export default function SkyAI({
 
       if (stock.profitLossPercent <= -15) {
         result.push(
-          `${stock.symbol}, maliyetinin %${Math.abs(
+          `${stock.code || stock.symbol}, maliyetinin %${Math.abs(
             stock.profitLossPercent
           ).toFixed(1)} altında.`
         );
@@ -140,7 +145,7 @@ export default function SkyAI({
     ) {
       setAnswer(
         strongest
-          ? `Bugünün en güçlü hissesi ${strongest.symbol}. Günlük değişimi %${strongest.dailyChangePercent.toFixed(
+          ? `Bugünün en güçlü hissesi ${strongest.code || strongest.symbol}. Günlük değişimi %${strongest.dailyChangePercent.toFixed(
               2
             )}.`
           : 'Henüz yeterli canlı fiyat verisi yok.'
@@ -155,7 +160,7 @@ export default function SkyAI({
     ) {
       setAnswer(
         weakest
-          ? `Bugünün en zayıf hissesi ${weakest.symbol}. Günlük değişimi %${weakest.dailyChangePercent.toFixed(
+          ? `Bugünün en zayıf hissesi ${weakest.code || weakest.symbol}. Günlük değişimi %${weakest.dailyChangePercent.toFixed(
               2
             )}.`
           : 'Henüz yeterli canlı fiyat verisi yok.'
@@ -233,7 +238,7 @@ export default function SkyAI({
               <span style={styles.label}>Günün Kazananı</span>
               <strong style={styles.positive}>
                 {strongest
-                  ? `${strongest.symbol}  %${strongest.dailyChangePercent.toFixed(
+                  ? `${strongest.code || strongest.symbol}  %${strongest.dailyChangePercent.toFixed(
                       2
                     )}`
                   : 'Veri bekleniyor'}
@@ -244,7 +249,7 @@ export default function SkyAI({
               <span style={styles.label}>Günün Kaybedeni</span>
               <strong style={styles.negative}>
                 {weakest
-                  ? `${weakest.symbol}  %${weakest.dailyChangePercent.toFixed(
+                  ? `${weakest.code || weakest.symbol}  %${weakest.dailyChangePercent.toFixed(
                       2
                     )}`
                   : 'Veri bekleniyor'}

@@ -270,10 +270,11 @@ export default function SenkronPanelPage() {
     </header>
 
     <SkyAI
-      stocks={stocks}
-      prices={prices}
-      watchlist={watchlist}
-    />
+          bistStocks={bistStocks}
+          usStocks={usStocks}
+          prices={prices}
+          watchlist={watchlist}
+        />
     <section
   style={{
     marginTop: 18,
