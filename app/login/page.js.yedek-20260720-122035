@@ -42,7 +42,7 @@ export default function LoginPage() {
       }
 
       const params = new URLSearchParams(window.location.search);
-const next = params.get('next') || '/senkron-panel';
+const next = params.get('next') || '/portfolio';
 
       router.replace(nextPage);
       router.refresh();
