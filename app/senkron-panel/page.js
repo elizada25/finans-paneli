@@ -1296,6 +1296,26 @@ function ClosedPositionsPanel({ positions, userId }) {
     }
   }
 
+  const bistClosedTotal = positions
+    .filter((position) =>
+      String(position.market || '').toLowerCase() === 'bist'
+    )
+    .reduce(
+      (total, position) => total + toNumber(position.profitLoss),
+      0
+    );
+
+  const nasdaqClosedTotal = positions
+    .filter((position) =>
+      ['us', 'nasdaq', 'abd'].includes(
+        String(position.market || '').toLowerCase()
+      )
+    )
+    .reduce(
+      (total, position) => total + toNumber(position.profitLoss),
+      0
+    );
+
   return (
     <article style={styles.panelCard}>
       <div style={styles.panelHeader}>
@@ -1405,10 +1425,65 @@ function ClosedPositionsPanel({ positions, userId }) {
           })
         )}
       </div>
+
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+        gap: 12,
+        marginTop: 18,
+        paddingTop: 18,
+        borderTop: '1px solid #26364d',
+      }}
+    >
+      <div
+        style={{
+          padding: 16,
+          border: '1px solid #334155',
+          borderRadius: 14,
+          background: '#101c2e',
+        }}
+      >
+        <div style={{ color: '#94a3b8', marginBottom: 8 }}>
+          🇹🇷 BIST Toplam K/Z
+        </div>
+
+        <strong
+          style={{
+            fontSize: 22,
+            color: bistClosedTotal >= 0 ? '#22c55e' : '#ef4444',
+          }}
+        >
+          {formatMoney(bistClosedTotal, 'TRY')}
+        </strong>
+      </div>
+
+      <div
+        style={{
+          padding: 16,
+          border: '1px solid #334155',
+          borderRadius: 14,
+          background: '#101c2e',
+        }}
+      >
+        <div style={{ color: '#94a3b8', marginBottom: 8 }}>
+          🇺🇸 NASDAQ Toplam K/Z
+        </div>
+
+        <strong
+          style={{
+            fontSize: 22,
+            color: nasdaqClosedTotal >= 0 ? '#22c55e' : '#ef4444',
+          }}
+        >
+          {formatMoney(nasdaqClosedTotal, 'USD')}
+        </strong>
+      </div>
+    </div>
+
     </article>
   );
 }
-
 function ProfitCell({ hasValue, value, percent, currency }) {
   if (!hasValue) {
     return <div style={styles.waitingText}>Fiyat bekleniyor</div>;
