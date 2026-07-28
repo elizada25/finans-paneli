@@ -122,9 +122,20 @@ export default function SenkronPanelPage() {
             ...item.data(),
           }));
 
-          items.sort((a, b) =>
-            String(a.code || '').localeCompare(String(b.code || ''))
-          );
+          items.sort((a, b) => {
+            const orderA = Number.isFinite(Number(a.order))
+              ? Number(a.order)
+              : Number.MAX_SAFE_INTEGER;
+            const orderB = Number.isFinite(Number(b.order))
+              ? Number(b.order)
+              : Number.MAX_SAFE_INTEGER;
+
+            if (orderA !== orderB) return orderA - orderB;
+
+            return String(a.createdAt || '').localeCompare(
+              String(b.createdAt || '')
+            );
+          });
 
           setWatchlist(items);
         },
@@ -941,6 +952,7 @@ function NewsPanel({ stocks }) {
 
 function WatchlistPanel({ items, prices, userId }) {
   const [processing, setProcessing] = useState(false);
+  const [draggedIndex, setDraggedIndex] = useState(null);
 
   async function addWatchItem() {
     const codeInput = window.prompt(
@@ -1002,6 +1014,17 @@ function WatchlistPanel({ items, prices, userId }) {
         {
           code,
           market,
+          order:
+            items.length > 0
+              ? Math.max(
+                  ...items.map((item, index) => {
+                    const savedOrder = Number(item.order);
+                    return Number.isFinite(savedOrder)
+                      ? savedOrder
+                      : index;
+                  })
+                ) + 1
+              : 0,
           createdAt: new Date().toISOString(),
         }
       );
@@ -1009,6 +1032,56 @@ function WatchlistPanel({ items, prices, userId }) {
       console.error('Takip listesine ekleme hatası:', error);
       window.alert(
         `Hisse eklenemedi: ${error?.message || 'Bilinmeyen hata'}`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function saveWatchlistOrder(fromIndex, toIndex) {
+    if (
+      processing ||
+      !Number.isInteger(fromIndex) ||
+      !Number.isInteger(toIndex) ||
+      fromIndex === toIndex ||
+      fromIndex < 0 ||
+      toIndex < 0 ||
+      fromIndex >= items.length ||
+      toIndex >= items.length
+    ) {
+      return;
+    }
+
+    const reorderedItems = [...items];
+    const [movedItem] = reorderedItems.splice(fromIndex, 1);
+    reorderedItems.splice(toIndex, 0, movedItem);
+
+    setProcessing(true);
+
+    try {
+      await Promise.all(
+        reorderedItems.map((item, order) =>
+          updateDoc(
+            doc(
+              firestoreDb,
+              'users',
+              userId,
+              'watchlist',
+              item.id
+            ),
+            {
+              order,
+              updatedAt: new Date().toISOString(),
+            }
+          )
+        )
+      );
+    } catch (error) {
+      console.error('Takip listesi sıralama hatası:', error);
+      window.alert(
+        `Sıralama kaydedilemedi: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
       );
     } finally {
       setProcessing(false);
@@ -1077,7 +1150,7 @@ function WatchlistPanel({ items, prices, userId }) {
       <div
         style={{
           ...styles.miniTableHeader,
-          gridTemplateColumns: '1.4fr 0.9fr 0.9fr 0.9fr 0.8fr 44px',
+          gridTemplateColumns: '1.4fr 0.9fr 0.9fr 0.9fr 0.8fr 76px 44px',
         }}
       >
         <span>Hisse</span>
@@ -1085,6 +1158,7 @@ function WatchlistPanel({ items, prices, userId }) {
         <span>Düşük</span>
         <span>Yüksek</span>
         <span>% Değişim</span>
+        <span>Taşı</span>
         <span></span>
       </div>
 
@@ -1094,7 +1168,7 @@ function WatchlistPanel({ items, prices, userId }) {
             Takip listesi boş. “+ Ekle” düğmesiyle hisse ekleyebilirsiniz.
           </div>
         ) : (
-          items.map((item) => {
+          items.map((item, index) => {
             const code = String(item.code || '').trim().toUpperCase();
             const data = prices[`${item.market}:${code}`] || {};
             const price = toNumber(data.price);
@@ -1112,10 +1186,35 @@ function WatchlistPanel({ items, prices, userId }) {
             return (
               <div
                 key={item.id}
+                draggable={!processing}
+                onDragStart={(event) => {
+                  setDraggedIndex(index);
+                  event.dataTransfer.effectAllowed = 'move';
+                  event.dataTransfer.setData(
+                    'text/plain',
+                    String(index)
+                  );
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.dataTransfer.dropEffect = 'move';
+                }}
+                onDrop={(event) => {
+                  event.preventDefault();
+
+                  const fromIndex = Number(
+                    event.dataTransfer.getData('text/plain')
+                  );
+
+                  setDraggedIndex(null);
+                  saveWatchlistOrder(fromIndex, index);
+                }}
+                onDragEnd={() => setDraggedIndex(null)}
                 style={{
                   ...styles.watchRow,
+                  opacity: draggedIndex === index ? 0.45 : 1,
                   gridTemplateColumns:
-                    '1.4fr 0.9fr 0.9fr 0.9fr 0.8fr 44px',
+                    '1.4fr 0.9fr 0.9fr 0.9fr 0.8fr 76px 44px',
                 }}
               >
                 <div>
@@ -1144,6 +1243,29 @@ function WatchlistPanel({ items, prices, userId }) {
                 >
                   {previousClose > 0 ? formatPercent(change) : '—'}
                 </strong>
+
+                <div
+                  title="Tut, sürükle ve istediğin yere bırak"
+                  style={{
+                    width: 68,
+                    height: 38,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1px solid #334155',
+                    borderRadius: 9,
+                    background: '#0f172a',
+                    color: '#f8fafc',
+                    cursor: processing ? 'default' : 'grab',
+                    opacity: processing ? 0.45 : 1,
+                    userSelect: 'none',
+                    fontSize: 24,
+                    fontWeight: 900,
+                    letterSpacing: 2,
+                  }}
+                >
+                  ☰
+                </div>
 
                 <button
                   type="button"
