@@ -293,7 +293,7 @@ export default function SenkronPanelPage() {
     padding: 20,
     border: '1px solid #26364d',
     borderRadius: 20,
-    background: '#101c2e',
+    background: '#18140d',
   }}
 >
   <div
@@ -1120,7 +1120,74 @@ function WatchlistPanel({ items, prices, userId }) {
   }
 
   return (
-    <article style={styles.panelCard}>
+    <article style={styles.panelCard} className="sky-watch-card">
+      <style jsx global>{`
+        .sky-watch-header,
+        .sky-watch-row {
+          grid-template-columns:
+            minmax(90px, 1.4fr)
+            minmax(76px, 0.9fr)
+            minmax(76px, 0.9fr)
+            minmax(76px, 0.9fr)
+            minmax(74px, 0.8fr)
+            58px
+            34px !important;
+        }
+
+        .sky-drag-button {
+          width: 52px !important;
+          height: 34px !important;
+          font-size: 20px !important;
+        }
+
+        .sky-remove-button {
+          width: 32px !important;
+          min-width: 32px !important;
+          padding: 0 !important;
+        }
+
+        @media (max-width: 600px) {
+          .sky-watch-card {
+            padding: 14px !important;
+            overflow: hidden;
+          }
+
+          .sky-watch-header,
+          .sky-watch-row {
+            grid-template-columns:
+              minmax(72px, 1.2fr)
+              minmax(68px, 0.9fr)
+              minmax(62px, 0.85fr)
+              38px
+              32px !important;
+            gap: 7px !important;
+          }
+
+          .sky-watch-low,
+          .sky-watch-high {
+            display: none !important;
+          }
+
+          .sky-watch-row {
+            padding: 12px 0 !important;
+          }
+
+          .sky-drag-button {
+            width: 36px !important;
+            height: 32px !important;
+            border-radius: 7px !important;
+            font-size: 18px !important;
+            letter-spacing: 0 !important;
+          }
+
+          .sky-remove-button {
+            width: 30px !important;
+            min-width: 30px !important;
+            height: 30px !important;
+          }
+        }
+      `}</style>
+
       <div style={styles.panelHeader}>
         <h3 style={styles.panelTitle}>Takip Listesi</h3>
 
@@ -1132,10 +1199,10 @@ function WatchlistPanel({ items, prices, userId }) {
             onClick={addWatchItem}
             disabled={processing}
             style={{
-              border: '1px solid #334155',
+              border: '1px solid rgba(212,175,55,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#0f172a',
+              background: '#151109',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -1148,15 +1215,13 @@ function WatchlistPanel({ items, prices, userId }) {
       </div>
 
       <div
-        style={{
-          ...styles.miniTableHeader,
-          gridTemplateColumns: '1.4fr 0.9fr 0.9fr 0.9fr 0.8fr 76px 44px',
-        }}
+        className="sky-watch-header"
+        style={styles.miniTableHeader}
       >
         <span>Hisse</span>
         <span>Son</span>
-        <span>Düşük</span>
-        <span>Yüksek</span>
+        <span className="sky-watch-low">Düşük</span>
+        <span className="sky-watch-high">Yüksek</span>
         <span>% Değişim</span>
         <span>Taşı</span>
         <span></span>
@@ -1210,11 +1275,10 @@ function WatchlistPanel({ items, prices, userId }) {
                   saveWatchlistOrder(fromIndex, index);
                 }}
                 onDragEnd={() => setDraggedIndex(null)}
+                className="sky-watch-row"
                 style={{
                   ...styles.watchRow,
                   opacity: draggedIndex === index ? 0.45 : 1,
-                  gridTemplateColumns:
-                    '1.4fr 0.9fr 0.9fr 0.9fr 0.8fr 76px 44px',
                 }}
               >
                 <div>
@@ -1228,11 +1292,11 @@ function WatchlistPanel({ items, prices, userId }) {
                   {price > 0 ? formatMoney(price, currency) : '—'}
                 </span>
 
-                <span style={styles.watchPrice}>
+                <span className="sky-watch-low" style={styles.watchPrice}>
                   {dayLow > 0 ? formatMoney(dayLow, currency) : '—'}
                 </span>
 
-                <span style={styles.watchPrice}>
+                <span className="sky-watch-high" style={styles.watchPrice}>
                   {dayHigh > 0 ? formatMoney(dayHigh, currency) : '—'}
                 </span>
 
@@ -1245,6 +1309,7 @@ function WatchlistPanel({ items, prices, userId }) {
                 </strong>
 
                 <div
+                  className="sky-drag-button"
                   title="Tut, sürükle ve istediğin yere bırak"
                   style={{
                     width: 68,
@@ -1252,9 +1317,9 @@ function WatchlistPanel({ items, prices, userId }) {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    border: '1px solid #334155',
+                    border: '1px solid rgba(212,175,55,0.42)',
                     borderRadius: 9,
-                    background: '#0f172a',
+                    background: '#151109',
                     color: '#f8fafc',
                     cursor: processing ? 'default' : 'grab',
                     opacity: processing ? 0.45 : 1,
@@ -1268,6 +1333,7 @@ function WatchlistPanel({ items, prices, userId }) {
                 </div>
 
                 <button
+                  className="sky-remove-button"
                   type="button"
                   onClick={() => removeWatchItem(item)}
                   disabled={processing}
@@ -1451,10 +1517,10 @@ function ClosedPositionsPanel({ positions, userId }) {
             onClick={addClosedPosition}
             disabled={processing}
             style={{
-              border: '1px solid #334155',
+              border: '1px solid rgba(212,175,55,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#0f172a',
+              background: '#151109',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -1561,9 +1627,9 @@ function ClosedPositionsPanel({ positions, userId }) {
       <div
         style={{
           padding: 16,
-          border: '1px solid #334155',
+          border: '1px solid rgba(212,175,55,0.42)',
           borderRadius: 14,
-          background: '#101c2e',
+          background: '#18140d',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -1583,9 +1649,9 @@ function ClosedPositionsPanel({ positions, userId }) {
       <div
         style={{
           padding: 16,
-          border: '1px solid #334155',
+          border: '1px solid rgba(212,175,55,0.42)',
           borderRadius: 14,
-          background: '#101c2e',
+          background: '#18140d',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -1873,7 +1939,7 @@ function formatPercent(value) {
 const styles = {
   page: {
     minHeight: '100vh',
-    background: 'linear-gradient(180deg, #07111f 0%, #0b1728 100%)',
+    background: 'radial-gradient(circle at top, #211a0d 0%, #100d08 42%, #080706 100%)',
     color: '#f8fafc',
     padding: '20px',
     fontFamily: 'Arial, Helvetica, sans-serif',
@@ -1883,15 +1949,15 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#07111f',
+    background: '#0d0b07',
     padding: '20px',
     fontFamily: 'Arial, Helvetica, sans-serif',
   },
   loadingCard: {
     width: '100%',
     maxWidth: '420px',
-    background: '#111e31',
-    border: '1px solid rgba(148,163,184,0.18)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.25)',
     borderRadius: '18px',
     padding: '28px',
     textAlign: 'center',
@@ -1919,7 +1985,7 @@ const styles = {
   },
   smallLabel: {
     margin: '0 0 5px',
-    color: '#38bdf8',
+    color: '#d4af37',
     fontSize: '12px',
     fontWeight: 700,
     letterSpacing: '1.5px',
@@ -1947,9 +2013,9 @@ const styles = {
     width: '100%',
     maxWidth: '1600px',
     margin: '0 auto 18px',
-    background: 'rgba(56,189,248,0.10)',
-    border: '1px solid rgba(56,189,248,0.25)',
-    color: '#bae6fd',
+    background: 'rgba(212,175,55,0.08)',
+    border: '1px solid rgba(212,175,55,0.26)',
+    color: '#f0d98a',
     padding: '14px 16px',
     borderRadius: '12px',
   },
@@ -1962,14 +2028,14 @@ const styles = {
     gap: '14px',
   },
   summaryCard: {
-    background: '#111e31',
-    border: '1px solid rgba(148,163,184,0.16)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
     padding: '18px',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.16)',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.28), 0 0 0 1px rgba(212,175,55,0.03)',
   },
   summaryTitle: {
     margin: 0,
@@ -1988,8 +2054,8 @@ const styles = {
     width: '100%',
     maxWidth: '1600px',
     margin: '0 auto 18px',
-    background: '#111e31',
-    border: '1px solid rgba(148,163,184,0.16)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '14px',
     padding: '12px 14px',
     display: 'flex',
@@ -2001,11 +2067,11 @@ const styles = {
     fontSize: '13px',
   },
   refreshButton: {
-    border: '1px solid rgba(56,189,248,0.35)',
+    border: '1px solid rgba(212,175,55,0.38)',
     borderRadius: '10px',
     padding: '10px 14px',
-    background: 'rgba(56,189,248,0.12)',
-    color: '#7dd3fc',
+    background: 'rgba(212,175,55,0.10)',
+    color: '#e6c65c',
     fontWeight: 700,
     cursor: 'pointer',
   },
@@ -2033,7 +2099,7 @@ const styles = {
     fontSize: '12px',
   },
   emptyBox: {
-    background: '#111e31',
+    background: '#17130c',
     border: '1px dashed rgba(148,163,184,0.3)',
     color: '#94a3b8',
     borderRadius: '14px',
@@ -2043,8 +2109,8 @@ const styles = {
   tableWrapper: {
     width: '100%',
     overflowX: 'auto',
-    background: '#111e31',
-    border: '1px solid rgba(148,163,184,0.16)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
   },
   tableHeader: {
@@ -2056,7 +2122,7 @@ const styles = {
     color: '#94a3b8',
     fontSize: '12px',
     fontWeight: 700,
-    borderBottom: '1px solid rgba(148,163,184,0.16)',
+    borderBottom: '1px solid rgba(212,175,55,0.18)',
   },
   stockRow: {
     minWidth: '1040px',
@@ -2065,7 +2131,7 @@ const styles = {
     gap: '14px',
     alignItems: 'center',
     padding: '15px 16px',
-    borderBottom: '1px solid rgba(148,163,184,0.10)',
+    borderBottom: '1px solid rgba(212,175,55,0.10)',
   },
   rowStockCode: {
     display: 'block',
@@ -2099,9 +2165,9 @@ const styles = {
   editButton: {
     padding: '8px 11px',
     borderRadius: '8px',
-    border: '1px solid #38bdf8',
-    background: 'rgba(56,189,248,0.12)',
-    color: '#7dd3fc',
+    border: '1px solid #d4af37',
+    background: 'rgba(212,175,55,0.10)',
+    color: '#e6c65c',
     cursor: 'pointer',
     fontWeight: 700,
   },
@@ -2127,11 +2193,11 @@ const styles = {
   panelCard: {
     minWidth: 0,
     minHeight: '310px',
-    background: '#111e31',
-    border: '1px solid rgba(148,163,184,0.16)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
     padding: '18px',
-    boxShadow: '0 10px 25px rgba(0,0,0,0.14)',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.26), 0 0 22px rgba(212,175,55,0.025)',
   },
   panelHeader: {
     display: 'flex',
@@ -2145,9 +2211,9 @@ const styles = {
     fontSize: '19px',
   },
   panelBadge: {
-    border: '1px solid rgba(56,189,248,0.35)',
-    background: 'rgba(56,189,248,0.12)',
-    color: '#7dd3fc',
+    border: '1px solid rgba(212,175,55,0.38)',
+    background: 'rgba(212,175,55,0.10)',
+    color: '#e6c65c',
     borderRadius: '999px',
     padding: '5px 9px',
     fontSize: '11px',
@@ -2169,7 +2235,7 @@ const styles = {
     alignItems: 'center',
     gap: '12px',
     padding: '12px 0',
-    borderBottom: '1px solid rgba(148,163,184,0.10)',
+    borderBottom: '1px solid rgba(212,175,55,0.10)',
     color: '#f8fafc',
     textDecoration: 'none',
   },
@@ -2185,7 +2251,7 @@ const styles = {
     fontSize: '10px',
   },
   marketChip: {
-    color: '#7dd3fc',
+    color: '#e6c65c',
     fontSize: '10px',
     fontWeight: 700,
   },
@@ -2205,7 +2271,7 @@ const styles = {
     gap: '10px',
     alignItems: 'center',
     padding: '11px 0',
-    borderBottom: '1px solid rgba(148,163,184,0.10)',
+    borderBottom: '1px solid rgba(212,175,55,0.10)',
     fontSize: '12px',
   },
   watchPrice: {
@@ -2228,7 +2294,7 @@ const styles = {
     gap: '8px',
     alignItems: 'center',
     padding: '11px 0',
-    borderBottom: '1px solid rgba(148,163,184,0.10)',
+    borderBottom: '1px solid rgba(212,175,55,0.10)',
     color: '#e2e8f0',
     fontSize: '11px',
   },
@@ -2247,8 +2313,8 @@ const styles = {
   fullChartWrapper: {
     width: '100%',
     height: '560px',
-    background: '#111e31',
-    border: '1px solid rgba(148,163,184,0.16)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
     overflow: 'hidden',
   },
