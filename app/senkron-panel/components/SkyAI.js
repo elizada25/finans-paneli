@@ -319,7 +319,7 @@ export default function SkyAI({
       setFinancialModalLoading(true);
 
       const response = await fetch(
-        `/api/sky-financials?symbol=${encodeURIComponent(symbol)}`,
+        `/api/sky-financials-v2?symbol=${encodeURIComponent(symbol)}`,
         {
           cache: 'no-store',
         }
