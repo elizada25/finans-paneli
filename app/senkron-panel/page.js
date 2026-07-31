@@ -16,6 +16,7 @@ export default function SenkronPanelPage() {
   const [prices, setPrices] = useState({});
   const [status, setStatus] = useState('Portföy yükleniyor…');
   const [priceStatus, setPriceStatus] = useState('');
+  const [usdTry, setUsdTry] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -200,6 +201,36 @@ export default function SenkronPanelPage() {
     return () => clearInterval(timer);
   }, [stocks, watchlist, fetchLivePrices]);
 
+  const fetchUsdTry = useCallback(async () => {
+    try {
+      const response = await fetch('/api/fx', {
+        cache: 'no-store',
+      });
+
+      if (!response.ok) {
+        throw new Error(`USD/TRY servisi: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const rate = Number(data?.rate);
+
+      if (!Number.isFinite(rate) || rate <= 0) {
+        throw new Error('Geçerli USD/TRY kuru alınamadı.');
+      }
+
+      setUsdTry(rate);
+    } catch (error) {
+      console.error('USD/TRY kuru alınamadı:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchUsdTry();
+
+    const timer = setInterval(fetchUsdTry, 60000);
+    return () => clearInterval(timer);
+  }, [fetchUsdTry]);
+
   const bistStocks = useMemo(
     () => stocks.filter((stock) => stock.market === 'bist'),
     [stocks]
@@ -229,6 +260,15 @@ export default function SenkronPanelPage() {
     () => calculateDailySummary(usStocks, prices),
     [usStocks, prices]
   );
+
+  const totalPortfolioProfitLossTry = useMemo(() => {
+    if (!Number.isFinite(usdTry) || usdTry <= 0) return null;
+
+    return (
+      Number(bistSummary.profitLoss || 0) +
+      Number(usSummary.profitLoss || 0) * usdTry
+    );
+  }, [bistSummary.profitLoss, usSummary.profitLoss, usdTry]);
 
   async function logout() {
     setLoggingOut(true);
@@ -474,6 +514,27 @@ export default function SenkronPanelPage() {
           value={formatMoney(usDailySummary.profitLoss, 'USD')}
           subtitle={formatPercent(usDailySummary.profitLossPercent)}
           positive={usDailySummary.profitLoss >= 0}
+        />
+        <SummaryCard
+          title="TOPLAM PORTFÖY K/Z"
+          value={
+            totalPortfolioProfitLossTry === null
+              ? 'Kur bekleniyor…'
+              : formatMoney(totalPortfolioProfitLossTry, 'TRY')
+          }
+          subtitle={
+            usdTry
+              ? `BIST + NASDAQ • USD/TRY ${usdTry.toLocaleString('tr-TR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 4,
+                })}`
+              : 'USD/TRY yükleniyor…'
+          }
+          positive={
+            totalPortfolioProfitLossTry === null
+              ? undefined
+              : totalPortfolioProfitLossTry >= 0
+          }
         />
       </section>
 
