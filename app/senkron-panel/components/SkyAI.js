@@ -18,6 +18,12 @@ export default function SkyAI({
   const [skyEvents, setSkyEvents] = useState([]);
   const [skyEventsLoading, setSkyEventsLoading] = useState(false);
 
+  const [earningsItems, setEarningsItems] = useState([]);
+  const [earningsLoading, setEarningsLoading] = useState(false);
+
+  const [financialModal, setFinancialModal] = useState(null);
+  const [financialModalLoading, setFinancialModalLoading] = useState(false);
+
   const allStocks = useMemo(
     () => [...bistStocks, ...usStocks],
     [bistStocks, usStocks]
@@ -190,6 +196,77 @@ export default function SkyAI({
     };
   }, [allStocks]);
 
+  useEffect(() => {
+    const symbols = [
+      ...new Set(
+        usStocks
+          .map((stock) =>
+            String(stock.code || stock.symbol || '')
+              .trim()
+              .toUpperCase()
+          )
+          .filter(Boolean)
+      ),
+    ];
+
+    if (!symbols.length) {
+      setEarningsItems([]);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadEarningsCalendar() {
+      try {
+        setEarningsLoading(true);
+
+        const params = new URLSearchParams({
+          symbols: symbols.join(','),
+        });
+
+        const response = await fetch(
+          `/api/sky-earnings?${params.toString()}`,
+          {
+            cache: 'no-store',
+            signal: controller.signal,
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error || 'Bilanço takvimi alınamadı.'
+          );
+        }
+
+        setEarningsItems(
+          Array.isArray(data?.items)
+            ? data.items
+            : []
+        );
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          console.error('Sky earnings:', error);
+        }
+      } finally {
+        setEarningsLoading(false);
+      }
+    }
+
+    loadEarningsCalendar();
+
+    const timer = setInterval(
+      loadEarningsCalendar,
+      60 * 60 * 1000
+    );
+
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, [usStocks]);
+
   const totalDailyPercent =
     Number(bistDailySummary?.profitLossPercent || 0) +
     Number(usDailySummary?.profitLossPercent || 0);
@@ -200,6 +277,48 @@ export default function SkyAI({
       : totalDailyPercent < 0
         ? 'Portföyün bugün genel olarak negatif.'
         : 'Portföyün bugün yatay seyrediyor.';
+
+  async function analyzeFinancials(symbol) {
+    try {
+      setFinancialModal({
+        symbol,
+        loading: true,
+      });
+
+      setFinancialModalLoading(true);
+
+      const response = await fetch(
+        `/api/sky-financials?symbol=${encodeURIComponent(symbol)}`,
+        {
+          cache: 'no-store',
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data?.error || 'Bilanço analizi alınamadı.'
+        );
+      }
+
+      setFinancialModal({
+        ...data,
+        symbol,
+        loading: false,
+      });
+    } catch (error) {
+      setFinancialModal({
+        symbol,
+        loading: false,
+        error:
+          error?.message ||
+          'Bilanço analizi yapılamadı.',
+      });
+    } finally {
+      setFinancialModalLoading(false);
+    }
+  }
 
   async function handleAsk(event) {
     event.preventDefault();
@@ -217,6 +336,51 @@ export default function SkyAI({
       Hisse kodunu artık stockRows yerine doğrudan tüm portföyden
       yakalıyoruz. Böylece BIST hisseleri de garanti şekilde bulunur.
     */
+    /*
+      Portföyde olmayan ABD hissesinin bilançosunu
+      da doğrudan analiz edebiliriz.
+
+      Örnek:
+      MU bilançosunu analiz et
+      NVDA bilançosu nasıl?
+      PLTR son bilanço
+    */
+    const financialIntent =
+      normalized.includes('bilanço') ||
+      normalized.includes('bilanco') ||
+      normalized.includes('financial');
+
+    const firstTickerMatch =
+      question
+        .trim()
+        .toUpperCase()
+        .match(/^([A-Z][A-Z0-9.-]{0,9})\b/);
+
+    const externalFinancialSymbol =
+      financialIntent &&
+      firstTickerMatch
+        ? firstTickerMatch[1]
+        : null;
+
+    if (externalFinancialSymbol) {
+      const alreadyInPortfolio = allStocks.some(
+        (stock) =>
+          String(
+            stock.code || stock.symbol || ''
+          )
+            .trim()
+            .toUpperCase() ===
+          externalFinancialSymbol
+      );
+
+      if (!alreadyInPortfolio) {
+        await analyzeFinancials(
+          externalFinancialSymbol
+        );
+        return;
+      }
+    }
+
     const matchedRawStock = allStocks.find((stock) => {
       const code = String(
         stock.code || stock.symbol || ''
@@ -238,6 +402,19 @@ export default function SkyAI({
 
       return tickerRegex.test(normalized);
     });
+
+    if (financialIntent && matchedRawStock) {
+      const financialSymbol = String(
+        matchedRawStock.code ||
+        matchedRawStock.symbol ||
+        ''
+      )
+        .trim()
+        .toUpperCase();
+
+      await analyzeFinancials(financialSymbol);
+      return;
+    }
 
     if (matchedRawStock) {
       const symbol = String(
@@ -383,7 +560,8 @@ export default function SkyAI({
   }
 
   return (
-    <section style={styles.wrapper}>
+    <>
+      <section style={styles.wrapper}>
       <button
         type="button"
         onClick={() => setIsOpen((current) => !current)}
@@ -458,7 +636,7 @@ export default function SkyAI({
                 </div>
               ) : skyEvents.length ? (
                 <div style={{ marginTop: 7 }}>
-                  {skyEvents.slice(0, 8).map((event, index) => (
+                  {skyEvents.filter((event) => event.type !== 'EARNINGS').slice(0, 8).map((event, index) => (
                     <div
                       key={`${event.type}-${event.title}-${index}`}
                       style={{
@@ -500,6 +678,139 @@ export default function SkyAI({
             </div>
           </div>
 
+          <div style={styles.alertBox}>
+            <div
+              style={{
+                ...styles.sectionTitle,
+                color: '#d4af37',
+              }}
+            >
+              Yaklaşan Bilançolar • Otomatik Portföy Takibi
+            </div>
+
+            {earningsLoading && !earningsItems.length ? (
+              <div style={styles.empty}>
+                Portföy bilanço takvimi taranıyor…
+              </div>
+            ) : earningsItems.length ? (
+              earningsItems.map((item) => {
+                const upcoming = item.upcoming;
+                const lastReport = item.lastReport;
+
+                return (
+                  <div
+                    key={`earnings-${item.symbol}`}
+                    style={{
+                      marginTop: 9,
+                      paddingTop: 9,
+                      borderTop:
+                        '1px solid rgba(148,163,184,0.12)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        fontWeight: 800,
+                        color: '#f8fafc',
+                      }}
+                    >
+                      {item.symbol}
+                    </div>
+
+                    {upcoming ? (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 13,
+                          color: '#fbbf24',
+                        }}
+                      >
+                        Yaklaşan bilanço: {upcoming.date}
+                        {' • '}
+                        {upcoming.time}
+                        {upcoming.epsForecast
+                          ? ` • EPS tahmini ${upcoming.epsForecast}`
+                          : ''}
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 12,
+                          color: '#94a3b8',
+                        }}
+                      >
+                        Nasdaq takviminde önümüzdeki 45 gün için
+                        bilanço tarihi bulunamadı.
+                      </div>
+                    )}
+
+                    {lastReport ? (
+                      <div
+                        style={{
+                          marginTop: 4,
+                          fontSize: 12,
+                          color: '#94a3b8',
+                        }}
+                      >
+                        Son SEC raporu: {lastReport.form} •{' '}
+                        {lastReport.date}
+                      </div>
+                    ) : null}
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 7,
+                      }}
+                    >
+                      {upcoming?.yahooUrl ? (
+                        <a
+                          href={upcoming.yahooUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: '#d4af37',
+                            fontSize: 12,
+                            fontWeight: 800,
+                          }}
+                        >
+                          Bilanço Takvimi ↗
+                        </a>
+                      ) : null}
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          analyzeFinancials(item.symbol)
+                        }
+                        style={{
+                          border:
+                            '1px solid rgba(212,175,55,0.35)',
+                          borderRadius: 8,
+                          padding: '5px 9px',
+                          background:
+                            'rgba(212,175,55,0.08)',
+                          color: '#e6c65c',
+                          fontSize: 12,
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Son Bilançoyu İncele
+                      </button>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div style={styles.empty}>
+                ABD portföy hissesi bulunamadı.
+              </div>
+            )}
+          </div>
+
           <form onSubmit={handleAsk} style={styles.form}>
             <input
               value={question}
@@ -516,7 +827,477 @@ export default function SkyAI({
         </div>
       ) : null}
     </section>
+
+      {financialModal && (
+        <div
+          style={styles.modalOverlay}
+          onClick={() => setFinancialModal(null)}
+        >
+          <div
+            style={styles.modalCard}
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div style={styles.modalHeader}>
+              <div>
+                <div style={styles.modalEyebrow}>
+                  SKY AI • BİLANÇO ANALİZİ
+                </div>
+
+                <h2 style={styles.modalTitle}>
+                  {financialModal.symbol}
+                </h2>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setFinancialModal(null)}
+                style={styles.modalClose}
+                aria-label="Kapat"
+              >
+                ×
+              </button>
+            </div>
+
+            {financialModalLoading ||
+            financialModal.loading ? (
+              <div style={styles.modalLoading}>
+                {financialModal.symbol} bilançosu SEC
+                verileriyle inceleniyor…
+              </div>
+            ) : financialModal.error ? (
+              <div style={styles.modalError}>
+                {financialModal.error}
+              </div>
+            ) : (
+              <>
+                <div
+                  style={{
+                    ...styles.verdictBox,
+                    borderColor:
+                      financialModal.verdict === 'OLUMLU'
+                        ? 'rgba(34,197,94,.45)'
+                        : financialModal.verdict === 'RİSKLİ'
+                          ? 'rgba(239,68,68,.45)'
+                          : 'rgba(212,175,55,.45)',
+                  }}
+                >
+                  <div style={styles.verdictLabel}>
+                    GENEL SONUÇ
+                  </div>
+
+                  <strong
+                    style={{
+                      ...styles.verdictText,
+                      color:
+                        financialModal.verdict === 'OLUMLU'
+                          ? '#22c55e'
+                          : financialModal.verdict === 'RİSKLİ'
+                            ? '#ef4444'
+                            : '#e6c65c',
+                    }}
+                  >
+                    {financialModal.verdict || 'NÖTR'}
+                  </strong>
+
+                  <span style={styles.scoreBadge}>
+                    Puan: {financialModal.score ?? '—'}
+                  </span>
+                </div>
+
+                <div style={styles.financialGrid}>
+                  <FinancialMetric
+                    title="Gelir"
+                    value={formatFinancialMoney(
+                      financialModal.metrics?.revenue?.current
+                    )}
+                  />
+
+                  <FinancialMetric
+                    title="Net Kâr / Zarar"
+                    value={formatFinancialMoney(
+                      financialModal.metrics?.netIncome?.current
+                    )}
+                  />
+
+                  <FinancialMetric
+                    title="EPS"
+                    value={formatFinancialNumber(
+                      financialModal.metrics?.eps?.current
+                    )}
+                  />
+
+                  <FinancialMetric
+                    title="Nakit"
+                    value={formatFinancialMoney(
+                      financialModal.metrics?.cash?.current
+                    )}
+                  />
+
+                  <FinancialMetric
+                    title="Operasyonel Nakit Akışı"
+                    value={formatFinancialMoney(
+                      financialModal.metrics
+                        ?.operatingCashFlow?.current
+                    )}
+                  />
+
+                  <FinancialMetric
+                    title="Toplam Varlıklar"
+                    value={formatFinancialMoney(
+                      financialModal.metrics?.assets?.current
+                    )}
+                  />
+
+                  <FinancialMetric
+                    title="Toplam Yükümlülükler"
+                    value={formatFinancialMoney(
+                      financialModal.metrics
+                        ?.liabilities?.current
+                    )}
+                  />
+
+                  <FinancialMetric
+                    title="Son Rapor"
+                    value={
+                      financialModal.filing
+                        ? `${financialModal.filing.form} • ${
+                            financialModal.filing.date || '—'
+                          }`
+                        : '—'
+                    }
+                  />
+                </div>
+
+                <div style={styles.aiCommentBox}>
+                  <div style={styles.aiCommentTitle}>
+                    📊 1 Yıllık Karşılaştırma
+                  </div>
+
+                  {financialModal.yoyAvailable ? (
+                    <>
+                      <div style={styles.yoyGrid}>
+                        <YoYMetric
+                          title="Gelir"
+                          current={
+                            financialModal.metrics
+                              ?.revenue?.current
+                          }
+                          previous={
+                            financialModal.metrics
+                              ?.revenue?.previous
+                          }
+                          percent={
+                            financialModal.metrics
+                              ?.revenue?.yoyPercent
+                          }
+                          money
+                        />
+
+                        <YoYMetric
+                          title="Net Kâr / Zarar"
+                          current={
+                            financialModal.metrics
+                              ?.netIncome?.current
+                          }
+                          previous={
+                            financialModal.metrics
+                              ?.netIncome?.previous
+                          }
+                          percent={
+                            financialModal.metrics
+                              ?.netIncome?.yoyPercent
+                          }
+                          money
+                        />
+
+                        <YoYMetric
+                          title="EPS"
+                          current={
+                            financialModal.metrics
+                              ?.eps?.current
+                          }
+                          previous={
+                            financialModal.metrics
+                              ?.eps?.previous
+                          }
+                          percent={
+                            financialModal.metrics
+                              ?.eps?.yoyPercent
+                          }
+                        />
+
+                        <YoYMetric
+                          title="Nakit"
+                          current={
+                            financialModal.metrics
+                              ?.cash?.current
+                          }
+                          previous={
+                            financialModal.metrics
+                              ?.cash?.previous
+                          }
+                          percent={
+                            financialModal.metrics
+                              ?.cash?.yoyPercent
+                          }
+                          money
+                        />
+
+                        <YoYMetric
+                          title="Operasyonel Nakit"
+                          current={
+                            financialModal.metrics
+                              ?.operatingCashFlow?.current
+                          }
+                          previous={
+                            financialModal.metrics
+                              ?.operatingCashFlow?.previous
+                          }
+                          percent={
+                            financialModal.metrics
+                              ?.operatingCashFlow?.yoyPercent
+                          }
+                          money
+                        />
+
+                        <YoYMetric
+                          title="Yükümlülükler"
+                          current={
+                            financialModal.metrics
+                              ?.liabilities?.current
+                          }
+                          previous={
+                            financialModal.metrics
+                              ?.liabilities?.previous
+                          }
+                          percent={
+                            financialModal.metrics
+                              ?.liabilities?.yoyPercent
+                          }
+                          money
+                        />
+                      </div>
+
+                      <div
+                        style={{
+                          ...styles.aiCommentBody,
+                          marginTop: 12,
+                        }}
+                      >
+                        {(financialModal.yoyComments || [])
+                          .map((comment, index) => (
+                            <div
+                              key={`yoy-${index}`}
+                              style={styles.commentRow}
+                            >
+                              <span
+                                style={
+                                  styles.commentBullet
+                                }
+                              >
+                                •
+                              </span>
+
+                              <span>{comment}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div style={styles.empty}>
+                      Aynı dönem geçen yıl için yeterli
+                      SEC verisi bulunamadı.
+                    </div>
+                  )}
+                </div>
+
+                <div style={styles.aiCommentBox}>
+                  <div style={styles.aiCommentTitle}>
+                    🧠 Sky AI Yorumu
+                  </div>
+
+                  <div style={styles.aiCommentBody}>
+                    {extractFinancialComments(
+                      financialModal.answer
+                    ).map((comment, index) => (
+                      <div
+                        key={`${comment}-${index}`}
+                        style={styles.commentRow}
+                      >
+                        <span style={styles.commentBullet}>
+                          •
+                        </span>
+                        <span>{comment}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={styles.modalNote}>
+                  Bu analiz SEC finansal verilerinden
+                  otomatik oluşturulur. Şirketlerin raporlama
+                  dönemleri farklı olabilir ve sonuç yatırım
+                  tavsiyesi değildir.
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFinancialModal(null)}
+                  style={styles.modalDoneButton}
+                >
+                  Kapat
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
+}
+
+function YoYMetric({
+  title,
+  current,
+  previous,
+  percent,
+  money = false,
+}) {
+  const formatValue = money
+    ? formatFinancialMoney
+    : formatFinancialNumber;
+
+  const hasPercent =
+    Number.isFinite(Number(percent));
+
+  const percentNumber =
+    Number(percent);
+
+  return (
+    <div style={styles.yoyMetric}>
+      <span style={styles.financialMetricTitle}>
+        {title}
+      </span>
+
+      <div style={styles.yoyValues}>
+        <div>
+          <span style={styles.yoySmallLabel}>
+            Şimdi
+          </span>
+          <strong style={styles.yoyValue}>
+            {formatValue(current)}
+          </strong>
+        </div>
+
+        <div>
+          <span style={styles.yoySmallLabel}>
+            Geçen yıl
+          </span>
+          <strong style={styles.yoyValueOld}>
+            {formatValue(previous)}
+          </strong>
+        </div>
+      </div>
+
+      <div
+        style={{
+          ...styles.yoyPercent,
+          color: hasPercent
+            ? percentNumber > 0
+              ? '#22c55e'
+              : percentNumber < 0
+                ? '#ef4444'
+                : '#94a3b8'
+            : '#64748b',
+        }}
+      >
+        {hasPercent
+          ? `${percentNumber >= 0 ? '+' : ''}${percentNumber.toLocaleString(
+              'tr-TR',
+              {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              }
+            )}%`
+          : 'YoY veri yok'}
+      </div>
+    </div>
+  );
+}
+
+function FinancialMetric({ title, value }) {
+  return (
+    <div style={styles.financialMetric}>
+      <span style={styles.financialMetricTitle}>
+        {title}
+      </span>
+
+      <strong style={styles.financialMetricValue}>
+        {value}
+      </strong>
+    </div>
+  );
+}
+
+function formatFinancialMoney(value) {
+  const number = Number(value);
+
+  if (!Number.isFinite(number)) return '—';
+
+  const abs = Math.abs(number);
+
+  if (abs >= 1_000_000_000) {
+    return `$${(number / 1_000_000_000).toLocaleString(
+      'tr-TR',
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    )} milyar`;
+  }
+
+  if (abs >= 1_000_000) {
+    return `$${(number / 1_000_000).toLocaleString(
+      'tr-TR',
+      {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }
+    )} milyon`;
+  }
+
+  return `$${number.toLocaleString('tr-TR', {
+    maximumFractionDigits: 0,
+  })}`;
+}
+
+function formatFinancialNumber(value) {
+  const number = Number(value);
+
+  return Number.isFinite(number)
+    ? number.toLocaleString('tr-TR', {
+        maximumFractionDigits: 3,
+      })
+    : '—';
+}
+
+function extractFinancialComments(answer) {
+  const text = String(answer || '');
+
+  const section =
+    text.split('Sky bilanço değerlendirmesi:')[1] || '';
+
+  const beforeScore =
+    section.split('Bilanço puanı:')[0] || '';
+
+  const comments = beforeScore
+    .split('•')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return comments.length
+    ? comments
+    : ['Bilanço için ek yorum bulunamadı.'];
 }
 
 const styles = {
@@ -676,4 +1457,254 @@ const styles = {
     lineHeight: 1.5,
     color: '#dbeafe',
   },
+  modalOverlay: {
+    position: 'fixed',
+    inset: 0,
+    zIndex: 9999,
+    background: 'rgba(0,0,0,0.78)',
+    backdropFilter: 'blur(8px)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+  },
+
+  modalCard: {
+    width: 'min(920px, 100%)',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    borderRadius: 20,
+    padding: 20,
+    background:
+      'linear-gradient(180deg,#151109 0%,#0d0b07 100%)',
+    border: '1px solid rgba(212,175,55,0.38)',
+    boxShadow:
+      '0 30px 80px rgba(0,0,0,.65)',
+    color: '#f8fafc',
+  },
+
+  modalHeader: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    gap: 20,
+    marginBottom: 16,
+  },
+
+  modalEyebrow: {
+    color: '#d4af37',
+    fontSize: 11,
+    fontWeight: 900,
+    letterSpacing: 1.2,
+  },
+
+  modalTitle: {
+    margin: '5px 0 0',
+    fontSize: 28,
+    lineHeight: 1.1,
+  },
+
+  modalClose: {
+    width: 38,
+    height: 38,
+    flexShrink: 0,
+    borderRadius: 10,
+    border:
+      '1px solid rgba(212,175,55,.30)',
+    background: 'rgba(212,175,55,.08)',
+    color: '#f8fafc',
+    fontSize: 25,
+    cursor: 'pointer',
+  },
+
+  modalLoading: {
+    padding: '32px 4px',
+    color: '#cbd5e1',
+    fontSize: 15,
+  },
+
+  modalError: {
+    padding: 15,
+    borderRadius: 12,
+    border: '1px solid rgba(239,68,68,.35)',
+    background: 'rgba(239,68,68,.08)',
+    color: '#fca5a5',
+  },
+
+  verdictBox: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    flexWrap: 'wrap',
+    padding: 14,
+    borderRadius: 14,
+    border: '1px solid',
+    background: 'rgba(255,255,255,.025)',
+    marginBottom: 14,
+  },
+
+  verdictLabel: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: 800,
+  },
+
+  verdictText: {
+    fontSize: 20,
+    letterSpacing: 0.3,
+  },
+
+  scoreBadge: {
+    marginLeft: 'auto',
+    borderRadius: 999,
+    padding: '5px 10px',
+    background: 'rgba(212,175,55,.10)',
+    color: '#e6c65c',
+    fontSize: 12,
+    fontWeight: 800,
+  },
+
+  financialGrid: {
+    display: 'grid',
+    gridTemplateColumns:
+      'repeat(auto-fit,minmax(180px,1fr))',
+    gap: 10,
+  },
+
+  financialMetric: {
+    minHeight: 82,
+    borderRadius: 13,
+    padding: 12,
+    background: 'rgba(30,41,59,.45)',
+    border:
+      '1px solid rgba(212,175,55,.12)',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 7,
+  },
+
+  financialMetricTitle: {
+    fontSize: 11,
+    color: '#94a3b8',
+    fontWeight: 700,
+  },
+
+  financialMetricValue: {
+    fontSize: 16,
+    lineHeight: 1.25,
+    color: '#f8fafc',
+    wordBreak: 'break-word',
+  },
+
+  aiCommentBox: {
+    marginTop: 14,
+    borderRadius: 14,
+    padding: 14,
+    border:
+      '1px solid rgba(212,175,55,.18)',
+    background: 'rgba(212,175,55,.045)',
+  },
+
+  aiCommentTitle: {
+    fontSize: 14,
+    fontWeight: 900,
+    color: '#e6c65c',
+    marginBottom: 8,
+  },
+
+  aiCommentBody: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 7,
+  },
+
+  commentRow: {
+    display: 'flex',
+    gap: 8,
+    fontSize: 13,
+    lineHeight: 1.5,
+    color: '#e2e8f0',
+  },
+
+  commentBullet: {
+    color: '#d4af37',
+    fontWeight: 900,
+  },
+
+  modalNote: {
+    marginTop: 14,
+    paddingTop: 12,
+    borderTop:
+      '1px solid rgba(148,163,184,.12)',
+    color: '#64748b',
+    fontSize: 11,
+    lineHeight: 1.5,
+  },
+
+  modalDoneButton: {
+    width: '100%',
+    marginTop: 15,
+    height: 42,
+    borderRadius: 11,
+    border:
+      '1px solid rgba(212,175,55,.40)',
+    background: 'rgba(212,175,55,.10)',
+    color: '#e6c65c',
+    fontWeight: 900,
+    cursor: 'pointer',
+  },
+  yoyGrid: {
+    display: 'grid',
+    gridTemplateColumns:
+      'repeat(auto-fit,minmax(210px,1fr))',
+    gap: 9,
+    marginTop: 4,
+  },
+
+  yoyMetric: {
+    borderRadius: 12,
+    padding: 11,
+    border:
+      '1px solid rgba(212,175,55,.13)',
+    background:
+      'rgba(15,23,42,.42)',
+  },
+
+  yoyValues: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: 8,
+    marginTop: 7,
+  },
+
+  yoySmallLabel: {
+    display: 'block',
+    fontSize: 10,
+    color: '#64748b',
+    marginBottom: 3,
+  },
+
+  yoyValue: {
+    display: 'block',
+    fontSize: 13,
+    color: '#f8fafc',
+    wordBreak: 'break-word',
+  },
+
+  yoyValueOld: {
+    display: 'block',
+    fontSize: 13,
+    color: '#94a3b8',
+    wordBreak: 'break-word',
+  },
+
+  yoyPercent: {
+    marginTop: 8,
+    paddingTop: 7,
+    borderTop:
+      '1px solid rgba(148,163,184,.10)',
+    fontSize: 12,
+    fontWeight: 900,
+  },
+
 };
