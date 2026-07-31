@@ -480,10 +480,16 @@ function buildDecision({
 
   let decision = 'BEKLE';
 
-  if (score >= 3) {
+  if (score >= 4) {
+    decision = 'GÜÇLÜ EKLE';
+  } else if (score >= 2) {
     decision = 'KADEMELİ EKLE';
-  } else if (score <= -3) {
-    decision = 'RİSK YÜKSEK — BEKLE';
+  } else if (score >= 0) {
+    decision = 'BEKLE';
+  } else if (score > -3) {
+    decision = 'ZAYIF — BEKLE';
+  } else {
+    decision = 'RİSK YÜKSEK';
   }
 
   const price = formatNumber(currentPrice);

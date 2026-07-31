@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 export default function SkyAI({
   bistStocks = [],
@@ -14,6 +14,9 @@ export default function SkyAI({
   const [answer, setAnswer] = useState(
     'Portföyünle ilgili bir soru sorabilirsin.'
   );
+
+  const [skyEvents, setSkyEvents] = useState([]);
+  const [skyEventsLoading, setSkyEventsLoading] = useState(false);
 
   const allStocks = useMemo(
     () => [...bistStocks, ...usStocks],
@@ -117,6 +120,76 @@ export default function SkyAI({
     return result.slice(0, 4);
   }, [stockRows]);
 
+  useEffect(() => {
+    const symbols = [...new Set(
+      allStocks
+        .map((stock) =>
+          String(stock.code || stock.symbol || '')
+            .trim()
+            .toUpperCase()
+        )
+        .filter(Boolean)
+    )];
+
+    if (!symbols.length) {
+      setSkyEvents([]);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function loadSkyEvents() {
+      try {
+        setSkyEventsLoading(true);
+
+        const params = new URLSearchParams({
+          symbols: symbols.join(','),
+        });
+
+        const response = await fetch(
+          `/api/sky-events?${params.toString()}`,
+          {
+            cache: 'no-store',
+            signal: controller.signal,
+          }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error || 'Takvim servisi yanıt vermedi.'
+          );
+        }
+
+        setSkyEvents(
+          Array.isArray(data?.events)
+            ? data.events
+            : []
+        );
+      } catch (error) {
+        if (error?.name !== 'AbortError') {
+          console.error('Sky Events hatası:', error);
+          setSkyEvents([]);
+        }
+      } finally {
+        setSkyEventsLoading(false);
+      }
+    }
+
+    loadSkyEvents();
+
+    const timer = setInterval(
+      loadSkyEvents,
+      30 * 60 * 1000
+    );
+
+    return () => {
+      controller.abort();
+      clearInterval(timer);
+    };
+  }, [allStocks]);
+
   const totalDailyPercent =
     Number(bistDailySummary?.profitLossPercent || 0) +
     Number(usDailySummary?.profitLossPercent || 0);
@@ -131,65 +204,122 @@ export default function SkyAI({
   async function handleAsk(event) {
     event.preventDefault();
 
-    const normalized = question.trim().toLocaleLowerCase('tr-TR');
+    const normalized = question
+      .trim()
+      .toLocaleLowerCase('tr-TR');
 
     if (!normalized) {
       setAnswer('Önce bir soru yazmalısın.');
       return;
     }
 
-    const matchedStock = stockRows.find((stock) => {
-      const code = String(stock.code || stock.symbol || '')
+    /*
+      Hisse kodunu artık stockRows yerine doğrudan tüm portföyden
+      yakalıyoruz. Böylece BIST hisseleri de garanti şekilde bulunur.
+    */
+    const matchedRawStock = allStocks.find((stock) => {
+      const code = String(
+        stock.code || stock.symbol || ''
+      )
         .trim()
         .toLocaleLowerCase('tr-TR');
 
-      return code && normalized.includes(code);
+      if (!code) return false;
+
+      const escaped = code.replace(
+        /[.*+?^${}()|[\]\\]/g,
+        '\\$&'
+      );
+
+      const tickerRegex = new RegExp(
+        `(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`,
+        'i'
+      );
+
+      return tickerRegex.test(normalized);
     });
 
-    if (matchedStock) {
+    if (matchedRawStock) {
       const symbol = String(
-        matchedStock.code || matchedStock.symbol || ''
-      ).trim().toUpperCase();
+        matchedRawStock.code ||
+        matchedRawStock.symbol ||
+        ''
+      )
+        .trim()
+        .toUpperCase();
 
       const market =
-        String(matchedStock.market || '').toLowerCase() === 'bist'
+        String(matchedRawStock.market || '')
+          .trim()
+          .toLowerCase() === 'bist'
           ? 'bist'
           : 'us';
 
+      const priceData =
+        prices?.[`${market}:${symbol}`] ||
+        prices?.[symbol] ||
+        {};
+
+      const currentPrice =
+        Number(priceData?.price || 0);
+
+      const quantity =
+        Number(
+          matchedRawStock.quantity ||
+          matchedRawStock.lot ||
+          0
+        );
+
+      const cost =
+        Number(
+          matchedRawStock.cost ||
+          matchedRawStock.averageCost ||
+          matchedRawStock.costPrice ||
+          0
+        );
+
       try {
         setAnswer(
-          `${symbol} için teknik göstergeler ve son haberler taranıyor…`
+          `${symbol} için teknik göstergeler, haberler ve portföy pozisyonun analiz ediliyor…`
         );
 
         const params = new URLSearchParams({
           symbol,
           market,
-          cost: String(matchedStock.cost || 0),
-          quantity: String(matchedStock.quantity || 0),
-          current: String(matchedStock.currentPrice || 0),
+          cost: String(cost),
+          quantity: String(quantity),
+          current: String(currentPrice),
         });
 
         const response = await fetch(
           `/api/sky-ai?${params.toString()}`,
-          { cache: 'no-store' }
+          {
+            cache: 'no-store',
+          }
         );
 
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.error || 'Analiz servisi yanıt vermedi.');
+          throw new Error(
+            data?.error ||
+            'Sky AI analiz servisi yanıt vermedi.'
+          );
         }
 
         setAnswer(data.answer);
         return;
       } catch (error) {
-        console.error('Sky AI analiz hatası:', error);
+        console.error(
+          `${symbol} Sky AI analiz hatası:`,
+          error
+        );
 
         setAnswer(
-          `${symbol} analizinde hata oluştu: ${
-            error?.message || 'Bilinmeyen hata'
-          }`
+          `${symbol} için gelişmiş analiz şu anda alınamadı. ` +
+          `Hata: ${error?.message || 'Bilinmeyen hata'}`
         );
+
         return;
       }
     }
@@ -225,6 +355,21 @@ export default function SkyAI({
     }
 
     if (
+      normalized.includes('en büyük pozisyon') ||
+      normalized.includes('en fazla ağırlık')
+    ) {
+      setAnswer(
+        biggestPosition
+          ? `Portföyündeki en büyük pozisyon ${
+              biggestPosition.code ||
+              biggestPosition.symbol
+            }.`
+          : 'Henüz yeterli portföy verisi yok.'
+      );
+      return;
+    }
+
+    if (
       normalized.includes('bugün nasıl') ||
       normalized.includes('portföyüm nasıl')
     ) {
@@ -233,7 +378,7 @@ export default function SkyAI({
     }
 
     setAnswer(
-      'Portföyündeki hisse kodunu kullanarak sor. Örnek: "EOSE’ye ekleme yapmalı mıyım?"'
+      'Portföyündeki hisse kodunu soruda kullan. Örnek: "AKBNK satmalı mıyım?", "PGSUS ekleme için uygun mu?" veya "EOSE beklemeli miyim?"'
     );
   }
 
@@ -303,8 +448,55 @@ export default function SkyAI({
             )}
 
             <div style={styles.futureNote}>
-              Bilanço, temettü, FED ve ekonomik takvim verileri sonraki
-              bağlantıda burada gösterilecek.
+              <strong style={{ color: '#d4af37' }}>
+                Bilanço • FED • ABD Ekonomik Takvim
+              </strong>
+
+              {skyEventsLoading && !skyEvents.length ? (
+                <div style={{ marginTop: 8 }}>
+                  Takvim ve bilanço verileri yükleniyor…
+                </div>
+              ) : skyEvents.length ? (
+                <div style={{ marginTop: 7 }}>
+                  {skyEvents.slice(0, 8).map((event, index) => (
+                    <div
+                      key={`${event.type}-${event.title}-${index}`}
+                      style={{
+                        marginTop: 6,
+                        color:
+                          event.level === 'critical'
+                            ? '#fbbf24'
+                            : '#cbd5e1',
+                      }}
+                    >
+                      •{' '}
+                      {event.url ? (
+                        <a
+                          href={event.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: '#d4af37',
+                            fontWeight: 800,
+                            textDecoration: 'underline',
+                            textUnderlineOffset: 3,
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {event.title}
+                        </a>
+                      ) : (
+                        <strong>{event.title}</strong>
+                      )}
+                      : {event.text}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ marginTop: 8 }}>
+                  Yaklaşan kritik veri bulunamadı.
+                </div>
+              )}
             </div>
           </div>
 
