@@ -128,7 +128,7 @@ export default function SkyAI({
         ? 'Portföyün bugün genel olarak negatif.'
         : 'Portföyün bugün yatay seyrediyor.';
 
-  function handleAsk(event) {
+  async function handleAsk(event) {
     event.preventDefault();
 
     const normalized = question.trim().toLocaleLowerCase('tr-TR');
@@ -138,6 +138,62 @@ export default function SkyAI({
       return;
     }
 
+    const matchedStock = stockRows.find((stock) => {
+      const code = String(stock.code || stock.symbol || '')
+        .trim()
+        .toLocaleLowerCase('tr-TR');
+
+      return code && normalized.includes(code);
+    });
+
+    if (matchedStock) {
+      const symbol = String(
+        matchedStock.code || matchedStock.symbol || ''
+      ).trim().toUpperCase();
+
+      const market =
+        String(matchedStock.market || '').toLowerCase() === 'bist'
+          ? 'bist'
+          : 'us';
+
+      try {
+        setAnswer(
+          `${symbol} için teknik göstergeler ve son haberler taranıyor…`
+        );
+
+        const params = new URLSearchParams({
+          symbol,
+          market,
+          cost: String(matchedStock.cost || 0),
+          quantity: String(matchedStock.quantity || 0),
+          current: String(matchedStock.currentPrice || 0),
+        });
+
+        const response = await fetch(
+          `/api/sky-ai?${params.toString()}`,
+          { cache: 'no-store' }
+        );
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || 'Analiz servisi yanıt vermedi.');
+        }
+
+        setAnswer(data.answer);
+        return;
+      } catch (error) {
+        console.error('Sky AI analiz hatası:', error);
+
+        setAnswer(
+          `${symbol} analizinde hata oluştu: ${
+            error?.message || 'Bilinmeyen hata'
+          }`
+        );
+        return;
+      }
+    }
+
     if (
       normalized.includes('en güçlü') ||
       normalized.includes('en çok yükselen') ||
@@ -145,9 +201,9 @@ export default function SkyAI({
     ) {
       setAnswer(
         strongest
-          ? `Bugünün en güçlü hissesi ${strongest.code || strongest.symbol}. Günlük değişimi %${strongest.dailyChangePercent.toFixed(
-              2
-            )}.`
+          ? `Bugünün en güçlü hissesi ${
+              strongest.code || strongest.symbol
+            }. Günlük değişimi %${strongest.dailyChangePercent.toFixed(2)}.`
           : 'Henüz yeterli canlı fiyat verisi yok.'
       );
       return;
@@ -160,22 +216,10 @@ export default function SkyAI({
     ) {
       setAnswer(
         weakest
-          ? `Bugünün en zayıf hissesi ${weakest.code || weakest.symbol}. Günlük değişimi %${weakest.dailyChangePercent.toFixed(
-              2
-            )}.`
+          ? `Bugünün en zayıf hissesi ${
+              weakest.code || weakest.symbol
+            }. Günlük değişimi %${weakest.dailyChangePercent.toFixed(2)}.`
           : 'Henüz yeterli canlı fiyat verisi yok.'
-      );
-      return;
-    }
-
-    if (
-      normalized.includes('en büyük pozisyon') ||
-      normalized.includes('en fazla ağırlık')
-    ) {
-      setAnswer(
-        biggestPosition
-          ? `Portföyündeki en büyük pozisyon ${biggestPosition.symbol}.`
-          : 'Henüz yeterli portföy verisi yok.'
       );
       return;
     }
@@ -188,23 +232,8 @@ export default function SkyAI({
       return;
     }
 
-    const matchedStock = stockRows.find((stock) =>
-      normalized.includes(String(stock.symbol).toLocaleLowerCase('tr-TR'))
-    );
-
-    if (matchedStock) {
-      setAnswer(
-        `${matchedStock.symbol} şu anda maliyetinin %${Math.abs(
-          matchedStock.profitLossPercent
-        ).toFixed(2)} ${
-          matchedStock.profitLossPercent >= 0 ? 'üzerinde' : 'altında'
-        }. Günlük değişimi %${matchedStock.dailyChangePercent.toFixed(2)}.`
-      );
-      return;
-    }
-
     setAnswer(
-      'Bu ilk sürümde portföy performansı, günlük hareketler, maliyet farkı ve pozisyon büyüklüğü sorularını yanıtlayabiliyorum.'
+      'Portföyündeki hisse kodunu kullanarak sor. Örnek: "EOSE’ye ekleme yapmalı mıyım?"'
     );
   }
 
