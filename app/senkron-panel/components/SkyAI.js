@@ -199,7 +199,18 @@ export default function SkyAI({
   useEffect(() => {
     const symbols = [
       ...new Set(
-        usStocks
+        allStocks
+          .filter((stock) => {
+            const market = String(
+              stock.market || ''
+            ).trim().toLowerCase();
+
+            return (
+              market === 'us' ||
+              market === 'nasdaq' ||
+              market === 'america'
+            );
+          })
           .map((stock) =>
             String(stock.code || stock.symbol || '')
               .trim()
@@ -265,7 +276,7 @@ export default function SkyAI({
       controller.abort();
       clearInterval(timer);
     };
-  }, [usStocks]);
+  }, [allStocks]);
 
   const totalDailyPercent =
     Number(bistDailySummary?.profitLossPercent || 0) +
