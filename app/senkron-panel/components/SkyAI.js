@@ -203,13 +203,33 @@ export default function SkyAI({
           .filter((stock) => {
             const market = String(
               stock.market || ''
-            ).trim().toLowerCase();
+            )
+              .trim()
+              .toLowerCase();
 
-            return (
-              market === 'us' ||
-              market === 'nasdaq' ||
-              market === 'america'
-            );
+            const symbol = String(
+              stock.code || stock.symbol || ''
+            )
+              .trim()
+              .toUpperCase();
+
+            if (!symbol) return false;
+
+            // BIST açıkça belirtilmişse alma.
+            if (
+              market === 'bist' ||
+              market === 'turkey' ||
+              market === 'tr'
+            ) {
+              return false;
+            }
+
+            /*
+              Diğer bütün hisseleri ABD adayı kabul ediyoruz.
+              Böylece market alanı boş/US/NASDAQ/america olsa da
+              EOSE, ONDS, MU vb. kaybolmaz.
+            */
+            return true;
           })
           .map((stock) =>
             String(stock.code || stock.symbol || '')
@@ -817,7 +837,7 @@ export default function SkyAI({
               })
             ) : (
               <div style={styles.empty}>
-                ABD portföy hissesi bulunamadı.
+                Bilanço takibi için uygun ABD hissesi bulunamadı.
               </div>
             )}
           </div>
