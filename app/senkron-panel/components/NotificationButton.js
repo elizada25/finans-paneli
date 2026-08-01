@@ -20,6 +20,10 @@ export default function NotificationButton({ user }) {
       'Notification' in window &&
       Notification.permission === 'granted';
 
+    /*
+      Eğer bu cihazda daha önce bildirimler açıldıysa
+      paneli tamamen gizle.
+    */
     if (localActive || permissionGranted) {
       setStatus('hidden');
     } else {
@@ -53,7 +57,7 @@ export default function NotificationButton({ user }) {
 
       if (!('Notification' in window)) {
         throw new Error(
-          "Bildirim desteği bulunamadı. iPhone'da Sky Finans'ı ana ekrandan açın."
+          'Bildirim desteği bulunamadı.'
         );
       }
 
@@ -65,9 +69,8 @@ export default function NotificationButton({ user }) {
       }
 
       if (permission !== 'granted') {
-        throw new Error(
-          'Bildirim izni verilmedi.'
-        );
+        setStatus('idle');
+        return;
       }
 
       const vapidKey =
@@ -89,14 +92,12 @@ export default function NotificationButton({ user }) {
       const messaging =
         getMessaging(firebaseApp);
 
-      const token = await getToken(
-        messaging,
-        {
+      const token =
+        await getToken(messaging, {
           vapidKey,
           serviceWorkerRegistration:
             registration,
-        }
-      );
+        });
 
       if (!token) {
         throw new Error(
@@ -128,14 +129,15 @@ export default function NotificationButton({ user }) {
         }
       );
 
-      // Bu cihazda bildirim sistemi artık aktif.
-      // Sayfa kapatılıp açılsa bile panel tekrar görünmez.
+      /*
+        Bildirim sistemi başarıyla aktif edildi.
+        Bu cihazda panel artık tamamen gizlenecek.
+      */
       localStorage.setItem(
         STORAGE_KEY,
         'true'
       );
 
-      // Paneli tamamen kaldır.
       setStatus('hidden');
 
     } catch (error) {
@@ -144,11 +146,18 @@ export default function NotificationButton({ user }) {
         error
       );
 
+      /*
+        Hata olursa buton tekrar gösterilir.
+        Başarılı olursa panel tamamen kaybolur.
+      */
       setStatus('idle');
     }
   }
 
-  // Bildirimler daha önce açıldıysa hiçbir şey gösterme.
+  /*
+    Bildirimler daha önce aktif edilmişse
+    ekranda hiçbir şey gösterme.
+  */
   if (
     status === 'hidden' ||
     status === 'checking'
