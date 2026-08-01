@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'crypto';
+import OpenAI from 'openai';
 import {
   cert,
   getApps,
@@ -103,6 +104,16 @@ function getAdminApp() {
 
   return initializeApp({
     credential: cert(serviceAccount),
+  });
+}
+
+function getOpenAIClient() {
+  if (!process.env.OPENAI_API_KEY) {
+    return null;
+  }
+
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
   });
 }
 
@@ -249,8 +260,7 @@ function findMatchedStock(article, stocks) {
 
   for (const stock of stocks) {
     const matched = stock.aliases.some(
-      (alias) =>
-        articleText.includes(alias)
+      (alias) => articleText.includes(alias)
     );
 
     if (matched) {
@@ -275,9 +285,7 @@ function getImportanceScore(article) {
   }
 
   if (
-    /son dakika|breaking|acil|önemli/.test(
-      text
-    )
+    /son dakika|breaking|acil|önemli/.test(text)
   ) {
     score += 2;
   }
@@ -295,6 +303,61 @@ function shorten(value, maxLength = 160) {
   }
 
   return `${text.slice(0, maxLength - 1)}…`;
+}
+
+async function createSkyAiComment({
+  openai,
+  article,
+  stock,
+}) {
+  if (!openai) {
+    return null;
+  }
+
+  try {
+    const response = await openai.responses.create({
+      model:
+        process.env.OPENAI_ALERT_MODEL ||
+        process.env.OPENAI_MODEL ||
+        'gpt-5-mini',
+      store: false,
+      max_output_tokens: 100,
+      instructions: [
+        'Sen Sky Finans haber alarmı asistanısın.',
+        'Yalnızca verilen haber başlığı ve açıklamasını kullan.',
+        'Bilmediğin bilgi ekleme ve kesin yatırım tavsiyesi verme.',
+        'Türkçe, sade ve en fazla 150 karakterlik tek cümle yaz.',
+        'Haberin yatırımcı açısından neden önemli olabileceğini belirt.',
+        'Olumlu, olumsuz veya nötr tonu abartmadan ifade et.',
+        'Başlık yetersizse "Detaylar açıklanmadan etkisi net değil." yaz.',
+      ].join(' '),
+      input: [
+        `Hisse: ${stock.code}`,
+        `Başlık: ${article.title}`,
+        `Açıklama: ${article.description || 'Açıklama yok.'}`,
+        `Kaynak: ${article.source || 'Belirtilmemiş'}`,
+      ].join('\n'),
+    });
+
+    const comment = String(
+      response.output_text || ''
+    )
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!comment) {
+      return null;
+    }
+
+    return shorten(comment, 150);
+  } catch (error) {
+    console.error(
+      `Sky AI yorum hatası (${stock.code}):`,
+      error?.message || error
+    );
+
+    return null;
+  }
 }
 
 async function fetchNews(baseUrl) {
@@ -382,6 +445,7 @@ async function processUser({
   messaging,
   articles,
   baseUrl,
+  openai,
 }) {
   const userRef = userDoc.ref;
 
@@ -412,6 +476,7 @@ async function processUser({
     return {
       matched: 0,
       sent: 0,
+      aiComments: 0,
     };
   }
 
@@ -437,6 +502,7 @@ async function processUser({
 
   let sent = 0;
   let matched = 0;
+  let aiComments = 0;
 
   for (const candidate of candidates) {
     if (sent >= 3) {
@@ -462,10 +528,26 @@ async function processUser({
       continue;
     }
 
+    const aiComment =
+      await createSkyAiComment({
+        openai,
+        article,
+        stock,
+      });
+
+    if (aiComment) {
+      aiComments += 1;
+    }
+
     const title =
       `📰 ${stock.code} önemli haber`;
 
-    const body = shorten(article.title, 170);
+    const body = aiComment
+      ? shorten(
+          `${article.title} — Sky AI: ${aiComment}`,
+          220
+        )
+      : shorten(article.title, 190);
 
     const targetUrl =
       article.link ||
@@ -481,9 +563,10 @@ async function processUser({
         data: {
           url: targetUrl,
           symbol: stock.code,
-          type: 'news',
+          type: 'news-ai',
           newsTitle: article.title,
           newsUrl: article.link,
+          aiComment: aiComment || '',
         },
         webpush: {
           fcmOptions: {
@@ -505,6 +588,15 @@ async function processUser({
       publishedAt:
         article.publishedAt || null,
       importanceScore: candidate.score,
+      aiComment: aiComment || null,
+      aiModel:
+        aiComment
+          ? (
+              process.env.OPENAI_ALERT_MODEL ||
+              process.env.OPENAI_MODEL ||
+              'gpt-5-mini'
+            )
+          : null,
       successCount: result.successCount,
       failureCount: result.failureCount,
       sentAt: new Date().toISOString(),
@@ -516,6 +608,7 @@ async function processUser({
   return {
     matched,
     sent,
+    aiComments,
   };
 }
 
@@ -549,6 +642,7 @@ export async function GET(request) {
 
     const adminDb = getFirestore();
     const messaging = getMessaging();
+    const openai = getOpenAIClient();
 
     const [usersSnapshot, articles] =
       await Promise.all([
@@ -558,6 +652,7 @@ export async function GET(request) {
 
     let totalMatched = 0;
     let totalSent = 0;
+    let totalAiComments = 0;
 
     for (const userDoc of usersSnapshot.docs) {
       const result = await processUser({
@@ -565,22 +660,27 @@ export async function GET(request) {
         messaging,
         articles,
         baseUrl,
+        openai,
       });
 
       totalMatched += result.matched;
       totalSent += result.sent;
+      totalAiComments += result.aiComments;
     }
 
     return NextResponse.json({
       ok: true,
+      version: 'news-alerts-ai-v1',
+      aiEnabled: Boolean(openai),
       users: usersSnapshot.size,
       articles: articles.length,
       matched: totalMatched,
       sent: totalSent,
+      aiComments: totalAiComments,
     });
   } catch (error) {
     console.error(
-      'Haber alarmı hatası:',
+      'Sky AI haber alarmı hatası:',
       error
     );
 
