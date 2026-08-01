@@ -7,7 +7,6 @@ import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'fireb
 import { firebaseAuth, firestoreDb } from '../../lib-firebase';
 import TradingViewChart from './TradingViewChart';
 import SkyAI from './components/SkyAI';
-import NotificationButton from './components/NotificationButton';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -1748,7 +1747,6 @@ function ProfitCell({ hasValue, value, percent, currency }) {
         color: isPositive ? '#22c55e' : '#ef4444',
       }}
     >
-      {user && <NotificationButton user={user} />}
       <strong>{formatMoney(value, currency)}</strong>
       <span>{formatPercent(percent)}</span>
     </div>
