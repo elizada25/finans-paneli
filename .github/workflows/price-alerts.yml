@@ -1,4 +1,4 @@
-name: Sky Finans Fiyat Alarmları
+name: Sky Finans Akıllı Alarmlar
 
 on:
   schedule:
@@ -6,14 +6,22 @@ on:
   workflow_dispatch:
 
 jobs:
-  check-price-alerts:
+  check-smart-alerts:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Sky Finans alarm motorunu çalıştır
+      - name: Fiyat alarmlarını kontrol et
         run: |
           curl --fail-with-body \
             --retry 2 \
             --max-time 120 \
             -H "Authorization: Bearer ${{ secrets.ALERT_CRON_SECRET }}" \
             "https://finans-paneli-amber.vercel.app/api/alerts/check"
+
+      - name: Haber alarmlarını kontrol et
+        run: |
+          curl --fail-with-body \
+            --retry 2 \
+            --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.ALERT_CRON_SECRET }}" \
+            "https://finans-paneli-amber.vercel.app/api/alerts/news"
