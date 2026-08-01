@@ -1,27 +1,35 @@
 import { NextResponse } from 'next/server';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
-import { getFirestore } from 'firebase-admin/firestore';
-import { getMessaging } from 'firebase-admin/messaging';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-function getFirebaseAdmin() {
-  if (getApps().length > 0) return getApps()[0];
+async function getFirebaseAdmin() {
+  const { cert, getApps, initializeApp } = await import('firebase-admin/app');
+  const { getAuth } = await import('firebase-admin/auth');
+  const { getFirestore } = await import('firebase-admin/firestore');
+  const { getMessaging } = await import('firebase-admin/messaging');
 
-  const raw = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+  if (getApps().length === 0) {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
-  if (!raw) {
-    throw new Error('FIREBASE_SERVICE_ACCOUNT_BASE64 bulunamadı.');
+    if (!raw) {
+      throw new Error('FIREBASE_SERVICE_ACCOUNT_BASE64 bulunamadı.');
+    }
+
+    const serviceAccount = JSON.parse(
+      Buffer.from(raw, 'base64').toString('utf8')
+    );
+
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
   }
 
-  const serviceAccount = JSON.parse(
-    Buffer.from(raw, 'base64').toString('utf8')
-  );
-
-  return initializeApp({
-    credential: cert(serviceAccount),
-  });
+  return {
+    auth: getAuth(),
+    db: getFirestore(),
+    messaging: getMessaging(),
+  };
 }
 
 export async function POST(request) {
@@ -36,11 +44,7 @@ export async function POST(request) {
       );
     }
 
-    getFirebaseAdmin();
-
-    const auth = getAuth();
-    const db = getFirestore();
-    const messaging = getMessaging();
+    const { auth, db, messaging } = await getFirebaseAdmin();
 
     let firebaseUser;
 
