@@ -6,6 +6,7 @@ import { onAuthStateChanged, signOut } from 'firebase/auth';
 import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb } from '../../lib-firebase';
 import TradingViewChart from './TradingViewChart';
+import ScannerCenter from './components/ScannerCenter';
 import SkyAI from './components/SkyAI';
 import NotificationButton from './components/NotificationButton';
 export default function SenkronPanelPage() {
@@ -590,6 +591,7 @@ export default function SenkronPanelPage() {
           <TradingViewChart symbol="NASDAQ:EOSE" />
         </div>
       </section>
+          <ScannerCenter />
     </main>
   );
 }
