@@ -1,14 +1,13 @@
 import { NextResponse } from 'next/server';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 
 export const dynamic = 'force-dynamic';
 
 function getFirebaseAdmin() {
-  if (getApps().length > 0) {
-    return getApps()[0];
-  }
+  if (getApps().length > 0) return getApps()[0];
 
   const raw = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
 
@@ -39,45 +38,45 @@ export async function POST(request) {
 
     getFirebaseAdmin();
 
+    const auth = getAuth();
     const db = getFirestore();
     const messaging = getMessaging();
 
-    const usersSnapshot = await db
-      .collection('users')
-      .where('email', '==', email)
-      .limit(1)
-      .get();
+    let firebaseUser;
 
-    if (usersSnapshot.empty) {
+    try {
+      firebaseUser = await auth.getUserByEmail(email);
+    } catch (error) {
       return NextResponse.json({
         ok: false,
-        error: 'Bu email adresine ait Firebase kullanıcısı bulunamadı.',
+        error: 'Firebase Authentication kullanıcısı bulunamadı.',
         email,
+        detail: error?.message || 'Kullanıcı bulunamadı.',
       });
     }
 
-    const userDoc = usersSnapshot.docs[0];
+    const userId = firebaseUser.uid;
 
     const devicesSnapshot = await db
       .collection('users')
-      .doc(userDoc.id)
+      .doc(userId)
       .collection('notificationDevices')
       .where('enabled', '==', true)
       .get();
 
     const devices = devicesSnapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
+      .map((item) => ({
+        id: item.id,
+        ...item.data(),
       }))
       .filter((device) => device.token);
 
     if (devices.length === 0) {
       return NextResponse.json({
         ok: false,
-        error: 'Aktif bildirim cihazı bulunamadı.',
+        error: 'Firebase Auth kullanıcısı bulundu ancak aktif bildirim cihazı bulunamadı.',
         email,
-        userId: userDoc.id,
+        userId,
         devices: 0,
       });
     }
@@ -88,7 +87,7 @@ export async function POST(request) {
       tokens,
       notification: {
         title: '🔔 SKY FİNANS TEST',
-        body: 'Bildirim sistemi başarıyla çalışıyor. Bu gerçek bir test bildirimidir.',
+        body: 'Gerçek test bildirimi başarıyla gönderildi.',
       },
       data: {
         type: 'test',
@@ -98,7 +97,7 @@ export async function POST(request) {
       webpush: {
         notification: {
           title: '🔔 SKY FİNANS TEST',
-          body: 'Bildirim sistemi başarıyla çalışıyor. Bu gerçek bir test bildirimidir.',
+          body: 'Gerçek test bildirimi başarıyla gönderildi.',
           icon: '/icon-192.png',
           badge: '/icon-192.png',
           requireInteraction: true,
@@ -109,44 +108,14 @@ export async function POST(request) {
       },
     });
 
-    let removed = 0;
-
-    for (let i = 0; i < response.responses.length; i++) {
-      const result = response.responses[i];
-
-      if (!result.success) {
-        const code = result.error?.code || '';
-
-        if (
-          code.includes('registration-token-not-registered') ||
-          code.includes('invalid-registration-token')
-        ) {
-          await db
-            .collection('users')
-            .doc(userDoc.id)
-            .collection('notificationDevices')
-            .doc(devices[i].id)
-            .set(
-              {
-                enabled: false,
-                disabledReason: code,
-              },
-              { merge: true }
-            );
-
-          removed++;
-        }
-      }
-    }
-
     return NextResponse.json({
       ok: true,
-      message: 'Gerçek test bildirimi gönderme işlemi tamamlandı.',
+      message: 'Gerçek FCM test bildirimi gönderildi.',
       email,
+      userId,
       devices: devices.length,
       success: response.successCount,
       failed: response.failureCount,
-      disabled: removed,
     });
   } catch (error) {
     console.error('Test notification error:', error);
