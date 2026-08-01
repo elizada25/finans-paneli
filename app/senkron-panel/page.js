@@ -308,6 +308,8 @@ export default function SenkronPanelPage() {
         <p style={styles.userText}>{user.email}</p>
       </div>
 
+      <NotificationButton user={user} />
+
       <button
         type="button"
         onClick={logout}
