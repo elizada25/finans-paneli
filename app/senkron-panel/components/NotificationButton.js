@@ -8,7 +8,7 @@ import { firebaseApp, firestoreDb } from '../../../lib-firebase';
 const STORAGE_KEY = 'sky-finans-bildirimler-acik';
 
 export default function NotificationButton({ user }) {
-  const [status, setStatus] = useState('checking');
+  const [status, setStatus] = useState('idle');
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -20,10 +20,6 @@ export default function NotificationButton({ user }) {
       'Notification' in window &&
       Notification.permission === 'granted';
 
-    /*
-      Eğer bu cihazda daha önce bildirimler açıldıysa
-      paneli tamamen gizle.
-    */
     if (localActive || permissionGranted) {
       setStatus('hidden');
     } else {
@@ -36,39 +32,33 @@ export default function NotificationButton({ user }) {
       setStatus('loading');
 
       if (!user?.uid) {
-        throw new Error(
-          'Önce Sky Finans hesabına giriş yapmalısınız.'
-        );
+        throw new Error('Önce Sky Finans hesabına giriş yapmalısınız.');
+      }
+
+      if (!('Notification' in window)) {
+        throw new Error('Bu tarayıcı bildirim desteği sunmuyor.');
+      }
+
+      if (!('serviceWorker' in navigator)) {
+        throw new Error('Bu tarayıcı Service Worker desteği sunmuyor.');
       }
 
       const supported = await isSupported();
 
       if (!supported) {
-        throw new Error(
-          'Bu cihaz bildirim sistemini desteklemiyor.'
-        );
-      }
-
-      if (!('serviceWorker' in navigator)) {
-        throw new Error(
-          'Bu cihaz Service Worker desteği sunmuyor.'
-        );
-      }
-
-      if (!('Notification' in window)) {
-        throw new Error(
-          'Bildirim desteği bulunamadı.'
-        );
+        throw new Error('Firebase bildirim sistemi bu cihazda desteklenmiyor.');
       }
 
       let permission = Notification.permission;
 
-      if (permission !== 'granted') {
-        permission =
-          await Notification.requestPermission();
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
       }
 
       if (permission !== 'granted') {
+        alert(
+          'Bildirim izni verilmedi. Safari ayarlarından bu site için bildirimlere izin vermeniz gerekiyor.'
+        );
         setStatus('idle');
         return;
       }
@@ -77,9 +67,7 @@ export default function NotificationButton({ user }) {
         process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
 
       if (!vapidKey) {
-        throw new Error(
-          'Firebase VAPID anahtarı bulunamadı.'
-        );
+        throw new Error('Firebase VAPID anahtarı bulunamadı.');
       }
 
       const registration =
@@ -95,14 +83,11 @@ export default function NotificationButton({ user }) {
       const token =
         await getToken(messaging, {
           vapidKey,
-          serviceWorkerRegistration:
-            registration,
+          serviceWorkerRegistration: registration,
         });
 
       if (!token) {
-        throw new Error(
-          'Bildirim anahtarı oluşturulamadı.'
-        );
+        throw new Error('Bildirim anahtarı oluşturulamadı.');
       }
 
       const deviceId =
@@ -129,10 +114,6 @@ export default function NotificationButton({ user }) {
         }
       );
 
-      /*
-        Bildirim sistemi başarıyla aktif edildi.
-        Bu cihazda panel artık tamamen gizlenecek.
-      */
       localStorage.setItem(
         STORAGE_KEY,
         'true'
@@ -140,28 +121,24 @@ export default function NotificationButton({ user }) {
 
       setStatus('hidden');
 
+      alert('✅ Sky Finans bildirimleri başarıyla aktif edildi.');
+
     } catch (error) {
       console.error(
         'Sky bildirim hatası:',
         error
       );
 
-      /*
-        Hata olursa buton tekrar gösterilir.
-        Başarılı olursa panel tamamen kaybolur.
-      */
+      alert(
+        '❌ Bildirimler aktif edilemedi:\n\n' +
+        (error?.message || 'Bilinmeyen hata')
+      );
+
       setStatus('idle');
     }
   }
 
-  /*
-    Bildirimler daha önce aktif edilmişse
-    ekranda hiçbir şey gösterme.
-  */
-  if (
-    status === 'hidden' ||
-    status === 'checking'
-  ) {
+  if (status === 'hidden') {
     return null;
   }
 
@@ -171,10 +148,8 @@ export default function NotificationButton({ user }) {
         padding: '14px',
         marginBottom: '16px',
         borderRadius: '14px',
-        background:
-          'rgba(255,255,255,0.06)',
-        border:
-          '1px solid rgba(212,175,55,0.32)',
+        background: 'rgba(255,255,255,0.06)',
+        border: '1px solid rgba(212,175,55,0.32)',
       }}
     >
       <div
@@ -194,16 +169,13 @@ export default function NotificationButton({ user }) {
           marginBottom: '11px',
         }}
       >
-        Fiyat alarmı ve önemli gelişmeleri
-        iPhone&apos;undan takip et.
+        Fiyat alarmı ve önemli gelişmeleri iPhone&apos;undan takip et.
       </div>
 
       <button
         type="button"
         onClick={activateNotifications}
-        disabled={
-          status === 'loading'
-        }
+        disabled={status === 'loading'}
         style={{
           width: '100%',
           minHeight: '44px',
@@ -223,16 +195,15 @@ export default function NotificationButton({ user }) {
         }}
       >
         {status === 'loading'
-          ? 'Hazırlanıyor...'
-          : 'Bildirimleri Aç'}
+          ? 'Bildirimler hazırlanıyor...'
+          : '🔔 Bildirimleri Aç'}
       </button>
     </div>
   );
 }
 
 function detectPlatform() {
-  const ua =
-    navigator.userAgent;
+  const ua = navigator.userAgent;
 
   if (/iPhone/i.test(ua))
     return 'iPhone';

@@ -26,26 +26,22 @@ const QUICK_COMMANDS = [
 ];
 
 function parseCommand(command) {
-  const normalized =
-    String(command || '')
-      .toLocaleLowerCase('tr-TR')
-      .replace(/ı/g, 'i');
+  const normalized = String(command || '')
+    .toLocaleLowerCase('tr-TR')
+    .replace(/ı/g, 'i');
 
   const emaMatches = [
-    ...normalized.matchAll(
-      /ema\s*(\d+)/g
-    ),
+    ...normalized.matchAll(/ema\s*(\d+)/g),
   ];
 
-  const periods =
-    emaMatches
-      .map((match) => Number(match[1]))
-      .filter(
-        (value) =>
-          Number.isInteger(value) &&
-          value >= 2 &&
-          value <= 250
-      );
+  const periods = emaMatches
+    .map((match) => Number(match[1]))
+    .filter(
+      (value) =>
+        Number.isInteger(value) &&
+        value >= 2 &&
+        value <= 250
+    );
 
   let fast = periods[0] || 5;
   let slow = periods[1] || 22;
@@ -55,9 +51,7 @@ function parseCommand(command) {
   }
 
   const direction =
-    /asagi|aşağı|death|altina|altına/.test(
-      normalized
-    )
+    /asagi|aşağı|death|altina|altına/.test(normalized)
       ? 'down'
       : 'up';
 
@@ -99,14 +93,9 @@ export default function ScannerCenter() {
     QUICK_COMMANDS[0].command
   );
 
-  const [status, setStatus] =
-    useState('idle');
-
-  const [error, setError] =
-    useState('');
-
-  const [scanData, setScanData] =
-    useState(null);
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState('');
+  const [scanData, setScanData] = useState(null);
 
   const parsed = useMemo(
     () => parseCommand(command),
@@ -119,12 +108,11 @@ export default function ScannerCenter() {
       setError('');
       setScanData(null);
 
-      const params =
-        new URLSearchParams({
-          fast: String(parsed.fast),
-          slow: String(parsed.slow),
-          direction: parsed.direction,
-        });
+      const params = new URLSearchParams({
+        fast: String(parsed.fast),
+        slow: String(parsed.slow),
+        direction: parsed.direction,
+      });
 
       const response = await fetch(
         `/api/scanner?${params.toString()}`,
@@ -138,8 +126,7 @@ export default function ScannerCenter() {
 
       if (!response.ok || !data?.ok) {
         throw new Error(
-          data?.error ||
-            'Tarama tamamlanamadı.'
+          data?.error || 'Tarama tamamlanamadı.'
         );
       }
 
@@ -167,9 +154,9 @@ export default function ScannerCenter() {
           </h2>
 
           <p style={styles.description}>
-            BIST 100 hisselerini günlük
-            grafikte tarar ve yalnızca yeni
-            EMA kesişimlerini bulur.
+            BIST 100 hisselerini günlük grafikte
+            tarar ve yalnızca yeni EMA kesişimlerini
+            bulur.
           </p>
         </div>
 
@@ -183,9 +170,7 @@ export default function ScannerCenter() {
           <button
             key={item.label}
             type="button"
-            onClick={() =>
-              setCommand(item.command)
-            }
+            onClick={() => setCommand(item.command)}
             style={styles.quickButton}
           >
             {item.label}
@@ -211,27 +196,20 @@ export default function ScannerCenter() {
         <div style={styles.detectedRow}>
           <span>
             Hızlı EMA:
-            <strong>
-              {' '}
-              {parsed.fast}
-            </strong>
+            <strong> {parsed.fast}</strong>
           </span>
 
           <span>
             Yavaş EMA:
-            <strong>
-              {' '}
-              {parsed.slow}
-            </strong>
+            <strong> {parsed.slow}</strong>
           </span>
 
           <span>
             Yön:
             <strong>
-              {' '}
               {parsed.direction === 'up'
-                ? 'Yukarı'
-                : 'Aşağı'}
+                ? ' Yukarı ↑'
+                : ' Aşağı ↓'}
             </strong>
           </span>
         </div>
@@ -256,9 +234,8 @@ export default function ScannerCenter() {
 
       {status === 'loading' && (
         <div style={styles.infoBox}>
-          Yaklaşık 100 hissenin günlük
-          verileri inceleniyor. Bu işlem
-          birkaç saniye sürebilir.
+          Yaklaşık 100 hissenin günlük verileri
+          inceleniyor. Bu işlem birkaç saniye sürebilir.
         </div>
       )}
 
@@ -275,6 +252,7 @@ export default function ScannerCenter() {
               <span style={styles.summaryLabel}>
                 Taranan
               </span>
+
               <strong style={styles.summaryValue}>
                 {scanData.scanned}
               </strong>
@@ -284,6 +262,7 @@ export default function ScannerCenter() {
               <span style={styles.summaryLabel}>
                 Veri alınan
               </span>
+
               <strong style={styles.summaryValue}>
                 {scanData.dataAvailable}
               </strong>
@@ -293,6 +272,7 @@ export default function ScannerCenter() {
               <span style={styles.summaryLabel}>
                 Kesişim
               </span>
+
               <strong style={styles.summaryValue}>
                 {scanData.resultCount}
               </strong>
@@ -301,112 +281,87 @@ export default function ScannerCenter() {
 
           {scanData.results.length === 0 ? (
             <div style={styles.emptyBox}>
-              Bu taramada yeni kesişim
-              bulunamadı. Bu, sistemin
-              çalışmadığı anlamına gelmez;
-              son iki günlük mumda kesişim
-              oluşmamış olabilir.
+              Bu taramada yeni kesişim bulunamadı.
+              Bu, sistemin çalışmadığı anlamına gelmez;
+              son iki günlük mumda kesişim oluşmamış olabilir.
             </div>
           ) : (
             <div style={styles.tableWrap}>
               <table style={styles.table}>
                 <thead>
                   <tr>
-                    <th style={styles.th}>
-                      Hisse
-                    </th>
-                    <th style={styles.th}>
-                      Sinyal
-                    </th>
-                    <th style={styles.th}>
-                      Son fiyat
-                    </th>
-                    <th style={styles.th}>
-                      Günlük
-                    </th>
-                    <th style={styles.th}>
-                      Hacim
-                    </th>
-                    <th style={styles.th}>
-                      Grafik
-                    </th>
+                    <th style={styles.th}>Hisse</th>
+                    <th style={styles.th}>Sinyal</th>
+                    <th style={styles.th}>Son fiyat</th>
+                    <th style={styles.th}>Günlük</th>
+                    <th style={styles.th}>Hacim</th>
+                    <th style={styles.th}>Grafik</th>
                   </tr>
                 </thead>
 
                 <tbody>
-                  {scanData.results.map(
-                    (item) => (
-                      <tr key={item.symbol}>
-                        <td style={styles.td}>
-                          <strong>
-                            {item.symbol}
-                          </strong>
-                        </td>
+                  {scanData.results.map((item) => (
+                    <tr key={item.symbol}>
+                      <td style={styles.td}>
+                        <strong>
+                          {item.symbol}
+                        </strong>
+                      </td>
 
-                        <td style={styles.td}>
-                          EMA {scanData.fastPeriod}
-                          {' '}
-                          {scanData.direction ===
-                          'up'
-                            ? '↑'
-                            : '↓'}
-                          {' '}
-                          EMA {scanData.slowPeriod}
-                        </td>
+                      <td style={styles.td}>
+                        EMA {scanData.fastPeriod}
+                        {' '}
+                        {scanData.direction === 'up'
+                          ? '↑'
+                          : '↓'}
+                        {' '}
+                        EMA {scanData.slowPeriod}
+                      </td>
 
-                        <td style={styles.td}>
-                          {formatNumber(
-                            item.price,
-                            2
-                          )}{' '}
-                          TL
-                        </td>
+                      <td style={styles.td}>
+                        {formatNumber(item.price, 2)} TL
+                      </td>
 
-                        <td
-                          style={{
-                            ...styles.td,
-                            color:
-                              Number(
-                                item.dailyChange
-                              ) >= 0
-                                ? '#22c55e'
-                                : '#ef4444',
-                          }}
+                      <td
+                        style={{
+                          ...styles.td,
+                          color:
+                            Number(item.dailyChange) >= 0
+                              ? '#22c55e'
+                              : '#ef4444',
+                        }}
+                      >
+                        {formatPercent(
+                          item.dailyChange
+                        )}
+                      </td>
+
+                      <td style={styles.td}>
+                        {Number.isFinite(
+                          Number(item.volumeRatio)
+                        )
+                          ? `${formatNumber(
+                              item.volumeRatio,
+                              1
+                            )}x`
+                          : '-'}
+                      </td>
+
+                      <td style={styles.td}>
+                        <a
+                          href={
+                            `https://www.tradingview.com/chart/?symbol=BIST%3A` +
+                            item.symbol
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          style={styles.link}
                         >
-                          {formatPercent(
-                            item.dailyChange
-                          )}
-                        </td>
-
-                        <td style={styles.td}>
-                          {Number.isFinite(
-                            Number(
-                              item.volumeRatio
-                            )
-                          )
-                            ? `${formatNumber(
-                                item.volumeRatio,
-                                1
-                              )}x`
-                            : '-'}
-                        </td>
-
-                        <td style={styles.td}>
-                          <a
-                            href={
-                              `https://www.tradingview.com/chart/?symbol=BIST%3A` +
-                              item.symbol
-                            }
-                            target="_blank"
-                            rel="noreferrer"
-                            style={styles.link}
-                          >
-                            Aç
-                          </a>
-                        </td>
-                      </tr>
-                    )
-                  )}
+                          Aç
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
@@ -414,8 +369,7 @@ export default function ScannerCenter() {
 
           <div style={styles.footerNote}>
             Liste kaynağı:{' '}
-            {scanData.listSource ===
-            'dynamic'
+            {scanData.listSource === 'dynamic'
               ? 'Dinamik BIST 100'
               : 'Yedek BIST 100 listesi'}
           </div>
