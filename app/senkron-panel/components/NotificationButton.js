@@ -15,8 +15,10 @@ export default function NotificationButton({ user }) {
       'Notification' in window &&
       Notification.permission === 'granted'
     ) {
-      setStatus('active');
-      setMessage('Bildirim izni açık.');
+      setStatus('idle');
+      setMessage(
+        'Bildirim izni açık. Bu iPhone’u Firebase’e kaydetmek için butona dokun.'
+      );
     }
   }, []);
 
