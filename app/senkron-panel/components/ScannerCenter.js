@@ -295,7 +295,7 @@ export default function ScannerCenter() {
                       </td>
 
                       <td style={styles.td}>
-                        
+                        <a
                           href={`https://www.tradingview.com/chart/?symbol=BIST%3A${item.symbol}`}
                           target="_blank"
                           rel="noreferrer"
@@ -354,7 +354,7 @@ export default function ScannerCenter() {
                       </td>
 
                       <td style={styles.td}>
-                        
+                        <a
                           href={`https://www.tradingview.com/chart/?symbol=BIST%3A${item.symbol}`}
                           target="_blank"
                           rel="noreferrer"
