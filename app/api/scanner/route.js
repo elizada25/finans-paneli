@@ -262,23 +262,68 @@ function getVolumeRatio(rows) {
 }
 
 function findCross({ history, fastPeriod, slowPeriod, direction }) {
-  const rows = history.rows || [];
-  const closes = rows.map((r) => Number(r.close));
+  const rows = (history.rows || [])
+    .filter((row) =>
+      Number.isFinite(Number(row.close)) &&
+      Number.isFinite(Number(row.timestamp))
+    )
+    .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
 
-  if (closes.length < Math.max(fastPeriod, slowPeriod) + 10) {
+  if (direction !== "up" && direction !== "down") {
     return null;
   }
 
-  const fastEma = calculateEma(closes, fastPeriod);
-  const slowEma = calculateEma(closes, slowPeriod);
+  const closes = rows.map((row) => Number(row.close));
+  const minimumBars = Math.max(fastPeriod, slowPeriod) + 10;
 
-  const lastIndex = rows.length - 1;
-
-  if (lastIndex < 1) {
+  if (closes.length < minimumBars) {
     return null;
   }
 
+  /*
+   * Yahoo bazen güncel işlem gününe ait tamamlanmamış
+   * günlük mumu döndürebilir.
+   *
+   * Scanner sadece TAMAMLANMIŞ günlük mumları kullanır.
+   *
+   * BIST için Türkiye saatiyle gün kapanışı sonrası oluşan
+   * günlük mum esas alınır. Hafta sonu veya piyasa kapalıysa
+   * zaten son kapanmış mum kullanılır.
+   *
+   * Güvenlik amacıyla gelecekteki/zamanı hatalı kayıtları temizle.
+   */
+  const now = Math.floor(Date.now() / 1000);
+
+  const validRows = rows.filter(
+    (row) => Number(row.timestamp) <= now
+  );
+
+  if (validRows.length < minimumBars) {
+    return null;
+  }
+
+  const completedRows = validRows;
+
+  const completedCloses = completedRows.map(
+    (row) => Number(row.close)
+  );
+
+  const fastEma = calculateEma(
+    completedCloses,
+    fastPeriod
+  );
+
+  const slowEma = calculateEma(
+    completedCloses,
+    slowPeriod
+  );
+
+  const lastIndex = completedRows.length - 1;
   const previousIndex = lastIndex - 1;
+
+  if (previousIndex < 0) {
+    return null;
+  }
 
   const fastPrevious = fastEma[previousIndex];
   const slowPrevious = slowEma[previousIndex];
@@ -295,26 +340,38 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
     return null;
   }
 
-  const previousDifference = fastPrevious - slowPrevious;
-  const currentDifference = fastCurrent - slowCurrent;
+  /*
+   * GERÇEK YUKARI KESİŞİM:
+   *
+   * Önceki tamamlanmış mumda:
+   * EMA5 <= EMA22
+   *
+   * Son tamamlanmış mumda:
+   * EMA5 > EMA22
+   */
+  const isRealUpCross =
+    fastPrevious <= slowPrevious &&
+    fastCurrent > slowCurrent;
 
-  let isRealUpCross = false;
-  let isRealDownCross = false;
+  /*
+   * GERÇEK AŞAĞI KESİŞİM:
+   *
+   * Önceki tamamlanmış mumda:
+   * EMA5 >= EMA22
+   *
+   * Son tamamlanmış mumda:
+   * EMA5 < EMA22
+   */
+  const isRealDownCross =
+    fastPrevious >= slowPrevious &&
+    fastCurrent < slowCurrent;
 
-  if (
-    previousDifference <= 0 &&
-    currentDifference > 0
-  ) {
-    isRealUpCross = true;
-  }
-
-  if (
-    previousDifference >= 0 &&
-    currentDifference < 0
-  ) {
-    isRealDownCross = true;
-  }
-
+  /*
+   * YUKARI tarama sadece yukarı kesişimi kabul eder.
+   * AŞAĞI tarama sadece aşağı kesişimi kabul eder.
+   *
+   * Böylece aynı mum aynı anda iki yönde sinyal üretemez.
+   */
   if (direction === "up" && !isRealUpCross) {
     return null;
   }
@@ -323,28 +380,25 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
     return null;
   }
 
-  if (direction !== "up" && direction !== "down") {
-    return null;
-  }
+  const latestRow = completedRows[lastIndex];
+  const previousRow = completedRows[previousIndex];
 
-  const latestRow = rows[lastIndex];
-  const previousRow = rows[previousIndex];
+  const currentClose = Number(latestRow.close);
+  const previousClose = Number(previousRow.close);
 
-  const currentClose = Number(latestRow?.close);
-  const previousClose = Number(previousRow?.close);
-
-  if (!Number.isFinite(currentClose)) {
+  if (
+    !Number.isFinite(currentClose) ||
+    !Number.isFinite(previousClose)
+  ) {
     return null;
   }
 
   const dailyChange =
-    Number.isFinite(previousClose) &&
-    previousClose !== 0 &&
-    Number.isFinite(currentClose)
+    previousClose !== 0
       ? ((currentClose - previousClose) / previousClose) * 100
       : null;
 
-  const volumeRatio = getVolumeRatio(rows);
+  const volumeRatio = getVolumeRatio(completedRows);
 
   return {
     symbol: history.symbol,
@@ -358,9 +412,9 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
         : null,
     volumeRatio,
     barsSinceCross: 0,
-    signalDate: latestRow.timestamp
-      ? new Date(latestRow.timestamp * 1000).toISOString()
-      : null,
+    signalDate: new Date(
+      Number(latestRow.timestamp) * 1000
+    ).toISOString(),
     direction
   };
 }
