@@ -28,7 +28,12 @@ const QUICK_COMMANDS = [
 function parseCommand(command) {
   const normalized = String(command || '')
     .toLocaleLowerCase('tr-TR')
-    .replace(/ı/g, 'i');
+    .replace(/ı/g, 'i')
+    .replace(/ğ/g, 'g')
+    .replace(/ş/g, 's')
+    .replace(/ç/g, 'c')
+    .replace(/ö/g, 'o')
+    .replace(/ü/g, 'u');
 
   const emaMatches = [
     ...normalized.matchAll(/ema\s*(\d+)/g),
@@ -51,7 +56,7 @@ function parseCommand(command) {
   }
 
   const direction =
-    /asagi|aşağı|death|altina|altına/.test(normalized)
+    /asagi|death|dusus|alt/.test(normalized)
       ? 'down'
       : 'up';
 
