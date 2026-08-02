@@ -261,73 +261,70 @@ function getVolumeRatio(rows) {
   return currentVolume / average;
 }
 
-function findCross({
-  history,
-  fastPeriod,
-  slowPeriod,
-  direction,
-}) {
+function findCross({ history, fastPeriod, slowPeriod, direction }) {
   const rows = history.rows;
   const closes = rows.map((row) => row.close);
 
-  if (
-    closes.length <
-    Math.max(fastPeriod, slowPeriod) + 3
-  ) {
+  if (closes.length < Math.max(fastPeriod, slowPeriod) + 5) {
     return null;
   }
 
-  const fastEma =
-    calculateEma(closes, fastPeriod);
+  const fastEma = calculateEma(closes, fastPeriod);
+  const slowEma = calculateEma(closes, slowPeriod);
 
-  const slowEma =
-    calculateEma(closes, slowPeriod);
-
-  // Yalnızca tamamlanmış son günlük mumu kullan.
+  // Sadece son TAMAMLANMIŞ günlük mum kontrol edilir.
+  // Son satır devam eden/güncel mum olabileceği için kullanılmaz.
   const lastIndex = closes.length - 2;
   const previousIndex = lastIndex - 1;
+
   const fastPrevious = fastEma[previousIndex];
   const fastCurrent = fastEma[lastIndex];
   const slowPrevious = slowEma[previousIndex];
   const slowCurrent = slowEma[lastIndex];
-  if (!(Number.isFinite(fastPrevious) && Number.isFinite(fastCurrent) && Number.isFinite(slowPrevious) && Number.isFinite(slowCurrent))) {
+
+  if (!Number.isFinite(fastPrevious) || !Number.isFinite(fastCurrent) || !Number.isFinite(slowPrevious) || !Number.isFinite(slowCurrent)) {
     return null;
   }
-  const crossedUp = fastPrevious <= slowPrevious && fastCurrent > slowCurrent;
-  const crossedDown = fastPrevious >= slowPrevious && fastCurrent < slowCurrent;
-  const matched = direction === "up" ? crossedUp : crossedDown;
-  if (!matched) {
+
+  const crossedUp =
+    fastPrevious <= slowPrevious &&
+    fastCurrent > slowCurrent;
+
+  const crossedDown =
+    fastPrevious >= slowPrevious &&
+    fastCurrent < slowCurrent;
+
+  if (direction === "up" && !crossedUp) {
+    return null;
+  }
+
+  if (direction === "down" && !crossedDown) {
     return null;
   }
 
   const latestRow = rows[lastIndex];
-  const signalDate = latestRow.timestamp ? new Date(latestRow.timestamp * 1000).toISOString() : null;
-
-  const previousClose =
-    rows[previousIndex]?.close;
+  const previousClose = rows[previousIndex]?.close;
 
   const dailyChange =
     Number.isFinite(previousClose) &&
     previousClose !== 0
-      ? ((latestRow.close - previousClose) /
-          previousClose) *
-        100
+      ? ((latestRow.close - previousClose) / previousClose) * 100
       : null;
+
+  const volumeRatio = getVolumeRatio(rows);
 
   return {
     symbol: history.symbol,
-    signalStrength: Math.abs(((fastCurrent - slowCurrent) / slowCurrent) * 100) >= 0.5 ? 'strong' : 'normal',
-    barsSinceCross: 0,
     price: latestRow.close,
     dailyChange,
     fastEma: fastCurrent,
     slowEma: slowCurrent,
     differencePercent:
-      ((fastCurrent - slowCurrent) /
-        slowCurrent) *
-      100,
-    volumeRatio: getVolumeRatio(rows),
-    signalDate,
+      ((fastCurrent - slowCurrent) / slowCurrent) * 100,
+    volumeRatio,
+    signalDate: latestRow.timestamp
+      ? new Date(latestRow.timestamp * 1000).toISOString()
+      : null,
     direction,
   };
 }
