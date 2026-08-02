@@ -451,7 +451,7 @@ export async function GET(request) {
     const histories =
       await mapWithConcurrency(
         universe.symbols,
-        15,
+        10,
         fetchHistory
       );
 
