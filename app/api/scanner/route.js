@@ -264,68 +264,69 @@ function getVolumeRatio(rows) {
 function findCross({ history, fastPeriod, slowPeriod, direction }) {
   const rows = history.rows || [];
   const closes = rows.map((r) => Number(r.close));
-  const minBars = Math.max(fastPeriod, slowPeriod) + 5;
 
-  if (closes.length < minBars) return null;
+  if (closes.length < Math.max(fastPeriod, slowPeriod) + 10) {
+    return null;
+  }
 
   const fastEma = calculateEma(closes, fastPeriod);
   const slowEma = calculateEma(closes, slowPeriod);
 
-  const lastIndex = rows.length - 1;
+  // Son satır devam eden/güncel mum olabilir.
+  // Sadece son tamamlanmış günlük mumu kullan.
+  const currentIndex = rows.length - 2;
+  const previousIndex = currentIndex - 1;
 
-  if (lastIndex < 1) return null;
-
-  const lastFast = fastEma[lastIndex];
-  const lastSlow = slowEma[lastIndex];
-
-  if (!Number.isFinite(lastFast) || !Number.isFinite(lastSlow)) return null;
-
-  let crossIndex = -1;
-
-  for (let i = lastIndex; i >= 1; i--) {
-    const fastPrev = fastEma[i - 1];
-    const slowPrev = slowEma[i - 1];
-    const fastNow = fastEma[i];
-    const slowNow = slowEma[i];
-
-    if (![fastPrev, slowPrev, fastNow, slowNow].every(Number.isFinite)) continue;
-
-    const crossedUp =
-      fastPrev <= slowPrev &&
-      fastNow > slowNow;
-
-    const crossedDown =
-      fastPrev >= slowPrev &&
-      fastNow < slowNow;
-
-    if (
-      (direction === "up" && crossedUp) ||
-      (direction === "down" && crossedDown)
-    ) {
-      crossIndex = i;
-      break;
-    }
-
-    if (
-      (direction === "up" && fastNow < slowNow) ||
-      (direction === "down" && fastNow > slowNow)
-    ) {
-      return null;
-    }
+  if (previousIndex < 0) {
+    return null;
   }
 
-  if (crossIndex === -1 || crossIndex !== lastIndex) return null;
+  const fastCurrent = fastEma[currentIndex];
+  const slowCurrent = slowEma[currentIndex];
+  const fastPrevious = fastEma[previousIndex];
+  const slowPrevious = slowEma[previousIndex];
 
-  const latestRow = rows[lastIndex];
-  const previousRow = rows[lastIndex - 1];
+  if (
+    !Number.isFinite(fastCurrent) ||
+    !Number.isFinite(slowCurrent) ||
+    !Number.isFinite(fastPrevious) ||
+    !Number.isFinite(slowPrevious)
+  ) {
+    return null;
+  }
 
-  const previousClose = Number(previousRow?.close);
+  let crossed = false;
+
+  if (direction === "up") {
+    crossed =
+      fastPrevious <= slowPrevious &&
+      fastCurrent > slowCurrent;
+  }
+
+  if (direction === "down") {
+    crossed =
+      fastPrevious >= slowPrevious &&
+      fastCurrent < slowCurrent;
+  }
+
+  // Son tamamlanmış mumda GERÇEK kesişim yoksa sonuç yok.
+  if (!crossed) {
+    return null;
+  }
+
+  const latestRow = rows[currentIndex];
+  const previousRow = rows[previousIndex];
+
   const currentClose = Number(latestRow?.close);
+  const previousClose = Number(previousRow?.close);
+
+  if (!Number.isFinite(currentClose)) {
+    return null;
+  }
 
   const dailyChange =
     Number.isFinite(previousClose) &&
-    previousClose !== 0 &&
-    Number.isFinite(currentClose)
+    previousClose !== 0
       ? ((currentClose - previousClose) / previousClose) * 100
       : null;
 
@@ -335,11 +336,11 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
     symbol: history.symbol,
     price: currentClose,
     dailyChange,
-    fastEma: lastFast,
-    slowEma: lastSlow,
+    fastEma: fastCurrent,
+    slowEma: slowCurrent,
     differencePercent:
-      lastSlow !== 0
-        ? ((lastFast - lastSlow) / lastSlow) * 100
+      slowCurrent !== 0
+        ? ((fastCurrent - slowCurrent) / slowCurrent) * 100
         : null,
     volumeRatio,
     barsSinceCross: 0,
