@@ -301,6 +301,11 @@ function findCross({
   }
 
   const latestRow = rows[lastIndex];
+  const previousClose = rows[previousIndex]?.close;
+  const dailyChange = Number.isFinite(previousClose) && previousClose !== 0 ? ((latestRow.close - previousClose) / previousClose) * 100 : null;
+  const signalDate = latestRow.timestamp ? new Date(latestRow.timestamp * 1000).toISOString() : null;
+
+
   const previousClose =
     rows[previousIndex]?.close;
 
