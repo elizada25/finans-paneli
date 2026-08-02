@@ -285,6 +285,8 @@ function findCross({
 
   const lastIndex = closes.length - 1;
   const previousIndex = lastIndex - 1;
+  const signalIndex = lastIndex;
+  const signalDate = rows[signalIndex]?.timestamp ? new Date(rows[signalIndex].timestamp * 1000).toISOString() : null;
 
   const fastPrevious =
     fastEma[previousIndex];
@@ -338,6 +340,8 @@ function findCross({
 
   return {
     symbol: history.symbol,
+    signalStrength: Math.abs(((fastCurrent - slowCurrent) / slowCurrent) * 100) >= 0.5 ? 'strong' : 'normal',
+    barsSinceCross: 0,
     price: latestRow.close,
     dailyChange,
     fastEma: fastCurrent,
@@ -347,12 +351,7 @@ function findCross({
         slowCurrent) *
       100,
     volumeRatio: getVolumeRatio(rows),
-    signalDate:
-      latestRow.timestamp
-        ? new Date(
-            latestRow.timestamp * 1000
-          ).toISOString()
-        : null,
+    signalDate,
     direction,
   };
 }
@@ -490,6 +489,7 @@ export async function GET(request) {
       scanned: universe.symbols.length,
       dataAvailable: validHistories.length,
       resultCount: results.length,
+      strongSignalCount: results.filter((item) => item.signalStrength === 'strong').length,
       results,
       scannedAt:
         new Date().toISOString(),
