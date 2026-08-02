@@ -272,49 +272,62 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
   const fastEma = calculateEma(closes, fastPeriod);
   const slowEma = calculateEma(closes, slowPeriod);
 
-  // Son satır devam eden/güncel mum olabilir.
-  // Sadece son tamamlanmış günlük mumu kullan.
-  const currentIndex = rows.length - 2;
-  const previousIndex = currentIndex - 1;
+  const lastIndex = rows.length - 1;
 
-  if (previousIndex < 0) {
+  if (lastIndex < 1) {
     return null;
   }
 
-  const fastCurrent = fastEma[currentIndex];
-  const slowCurrent = slowEma[currentIndex];
+  const previousIndex = lastIndex - 1;
+
   const fastPrevious = fastEma[previousIndex];
   const slowPrevious = slowEma[previousIndex];
 
+  const fastCurrent = fastEma[lastIndex];
+  const slowCurrent = slowEma[lastIndex];
+
   if (
-    !Number.isFinite(fastCurrent) ||
-    !Number.isFinite(slowCurrent) ||
     !Number.isFinite(fastPrevious) ||
-    !Number.isFinite(slowPrevious)
+    !Number.isFinite(slowPrevious) ||
+    !Number.isFinite(fastCurrent) ||
+    !Number.isFinite(slowCurrent)
   ) {
     return null;
   }
 
-  let crossed = false;
+  const previousDifference = fastPrevious - slowPrevious;
+  const currentDifference = fastCurrent - slowCurrent;
 
-  if (direction === "up") {
-    crossed =
-      fastPrevious <= slowPrevious &&
-      fastCurrent > slowCurrent;
+  let isRealUpCross = false;
+  let isRealDownCross = false;
+
+  if (
+    previousDifference <= 0 &&
+    currentDifference > 0
+  ) {
+    isRealUpCross = true;
   }
 
-  if (direction === "down") {
-    crossed =
-      fastPrevious >= slowPrevious &&
-      fastCurrent < slowCurrent;
+  if (
+    previousDifference >= 0 &&
+    currentDifference < 0
+  ) {
+    isRealDownCross = true;
   }
 
-  // Son tamamlanmış mumda GERÇEK kesişim yoksa sonuç yok.
-  if (!crossed) {
+  if (direction === "up" && !isRealUpCross) {
     return null;
   }
 
-  const latestRow = rows[currentIndex];
+  if (direction === "down" && !isRealDownCross) {
+    return null;
+  }
+
+  if (direction !== "up" && direction !== "down") {
+    return null;
+  }
+
+  const latestRow = rows[lastIndex];
   const previousRow = rows[previousIndex];
 
   const currentClose = Number(latestRow?.close);
@@ -326,7 +339,8 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
 
   const dailyChange =
     Number.isFinite(previousClose) &&
-    previousClose !== 0
+    previousClose !== 0 &&
+    Number.isFinite(currentClose)
       ? ((currentClose - previousClose) / previousClose) * 100
       : null;
 
