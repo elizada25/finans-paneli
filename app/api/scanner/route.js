@@ -283,45 +283,19 @@ function findCross({
   const slowEma =
     calculateEma(closes, slowPeriod);
 
-  const lastIndex = closes.length - 1;
+  // Yalnızca tamamlanmış son günlük mumu kullan.
+  const lastIndex = closes.length - 2;
   const previousIndex = lastIndex - 1;
-  const signalIndex = lastIndex;
-  const signalDate = rows[signalIndex]?.timestamp ? new Date(rows[signalIndex].timestamp * 1000).toISOString() : null;
-
-  const fastPrevious =
-    fastEma[previousIndex];
-
-  const fastCurrent =
-    fastEma[lastIndex];
-
-  const slowPrevious =
-    slowEma[previousIndex];
-
-  const slowCurrent =
-    slowEma[lastIndex];
-
-  if (
-    !Number.isFinite(fastPrevious) ||
-    !Number.isFinite(fastCurrent) ||
-    !Number.isFinite(slowPrevious) ||
-    !Number.isFinite(slowCurrent)
-  ) {
+  const fastPrevious = fastEma[previousIndex];
+  const fastCurrent = fastEma[lastIndex];
+  const slowPrevious = slowEma[previousIndex];
+  const slowCurrent = slowEma[lastIndex];
+  if (!(Number.isFinite(fastPrevious) && Number.isFinite(fastCurrent) && Number.isFinite(slowPrevious) && Number.isFinite(slowCurrent))) {
     return null;
   }
-
-  const crossedUp =
-    fastPrevious <= slowPrevious &&
-    fastCurrent > slowCurrent;
-
-  const crossedDown =
-    fastPrevious >= slowPrevious &&
-    fastCurrent < slowCurrent;
-
-  const matched =
-    direction === 'down'
-      ? crossedDown
-      : crossedUp;
-
+  const crossedUp = fastPrevious <= slowPrevious && fastCurrent > slowCurrent;
+  const crossedDown = fastPrevious >= slowPrevious && fastCurrent < slowCurrent;
+  const matched = direction === "up" ? crossedUp : crossedDown;
   if (!matched) {
     return null;
   }
