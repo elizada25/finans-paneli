@@ -194,36 +194,75 @@ function dateKeyFromTimestamp(timestampSeconds) {
   return new Date(timestampSeconds * 1000).toISOString().slice(0, 10);
 }
 
-function findCross({ history, fastPeriod, slowPeriod, direction }) {
+// Ortak fonksiyon: hem kesişim taramasi hem de EMA yakınlık taraması
+// bu fonksiyonla "gerçekten tamamlanmış" mumları alır. Piyasa açıkken
+// bugüne ait canlı/tamamlanmamış mumu listeden düşürür.
+function getCompletedRows(history, now) {
   const rows = (history.rows || [])
-    .filter((row) => Number.isFinite(Number(row.close)) && Number.isFinite(Number(row.timestamp)))
+    .filter(
+      (row) =>
+        Number.isFinite(Number(row.close)) &&
+        Number.isFinite(Number(row.timestamp))
+    )
     .sort((a, b) => Number(a.timestamp) - Number(b.timestamp));
-
-  if (direction !== "up" && direction !== "down") return null;
-
-  const minimumBars = Math.max(fastPeriod, slowPeriod) + 10;
-  const now = Math.floor(Date.now() / 1000);
 
   const validRows = rows.filter((row) => Number(row.timestamp) <= now);
 
-  if (validRows.length < minimumBars) return null;
-
   let completedRows = validRows;
 
-  // KRİTİK DÜZELTME: piyasa açıkken bugünün mumu canlı/tamamlanmamıştır.
-  // Bu mumu son tamamlanmış mum gibi kullanmak, aynı hissenin bir istekte
-  // yukarı, başka bir istekte aşağı kesişim gibi görünmesine sebep olur.
   const marketCloseTimestamp = history.marketCloseTimestamp;
 
   if (marketCloseTimestamp && now < marketCloseTimestamp) {
     const lastRow = completedRows[completedRows.length - 1];
-    const lastRowDateKey = dateKeyFromTimestamp(Number(lastRow.timestamp));
-    const todayDateKey = dateKeyFromTimestamp(now);
 
-    if (lastRowDateKey === todayDateKey) {
-      completedRows = completedRows.slice(0, -1);
+    if (lastRow) {
+      const lastRowDateKey = dateKeyFromTimestamp(Number(lastRow.timestamp));
+      const todayDateKey = dateKeyFromTimestamp(now);
+
+      if (lastRowDateKey === todayDateKey) {
+        completedRows = completedRows.slice(0, -1);
+      }
     }
   }
+
+  return completedRows;
+}
+
+// Kesişimin gerçekten kaç mum önce oluştuğunu hesaplar.
+// Şu anki tarama mantığı sadece SON mumda oluşan kesişimleri kabul
+// ettiği için bu değer normal şartlarda her zaman 0 döner — ama artık
+// gerçekten hesaplanıyor, sabit yazılmıyor.
+function computeBarsSinceCross(fastEma, slowEma, endIndex, direction) {
+  for (let index = endIndex; index >= 1; index -= 1) {
+    const prevDiff = fastEma[index - 1] - slowEma[index - 1];
+    const currDiff = fastEma[index] - slowEma[index];
+
+    if (!Number.isFinite(prevDiff) || !Number.isFinite(currDiff)) {
+      break;
+    }
+
+    const isUp = prevDiff <= 0 && currDiff > 0;
+    const isDown = prevDiff >= 0 && currDiff < 0;
+
+    if ((direction === 'up' && isUp) || (direction === 'down' && isDown)) {
+      return endIndex - index;
+    }
+
+    const sameSideAsEnd = direction === 'up' ? currDiff > 0 : currDiff < 0;
+
+    if (!sameSideAsEnd) {
+      break;
+    }
+  }
+
+  return null;
+}
+
+function findCross({ history, fastPeriod, slowPeriod, direction, now }) {
+  if (direction !== 'up' && direction !== 'down') return null;
+
+  const minimumBars = Math.max(fastPeriod, slowPeriod) + 10;
+  const completedRows = getCompletedRows(history, now);
 
   if (completedRows.length < minimumBars) return null;
 
@@ -254,8 +293,8 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
   const isRealUpCross = fastPrevious <= slowPrevious && fastCurrent > slowCurrent;
   const isRealDownCross = fastPrevious >= slowPrevious && fastCurrent < slowCurrent;
 
-  if (direction === "up" && !isRealUpCross) return null;
-  if (direction === "down" && !isRealDownCross) return null;
+  if (direction === 'up' && !isRealUpCross) return null;
+  if (direction === 'down' && !isRealDownCross) return null;
 
   const latestRow = completedRows[lastIndex];
   const previousRow = completedRows[previousIndex];
@@ -269,6 +308,7 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
     previousClose !== 0 ? ((currentClose - previousClose) / previousClose) * 100 : null;
 
   const volumeRatio = getVolumeRatio(completedRows);
+  const barsSinceCross = computeBarsSinceCross(fastEma, slowEma, lastIndex, direction) ?? 0;
 
   return {
     symbol: history.symbol,
@@ -279,9 +319,45 @@ function findCross({ history, fastPeriod, slowPeriod, direction }) {
     differencePercent:
       slowCurrent !== 0 ? ((fastCurrent - slowCurrent) / slowCurrent) * 100 : null,
     volumeRatio,
-    barsSinceCross: 0,
+    barsSinceCross,
     signalDate: new Date(Number(latestRow.timestamp) * 1000).toISOString(),
     direction,
+  };
+}
+
+function findNearEma({ history, period, thresholdPercent, now }) {
+  const completedRows = getCompletedRows(history, now);
+  const minimumBars = period + 5;
+
+  if (completedRows.length < minimumBars) return null;
+
+  const closes = completedRows.map((row) => Number(row.close));
+  const ema = calculateEma(closes, period);
+
+  const lastIndex = completedRows.length - 1;
+  const currentEma = ema[lastIndex];
+
+  if (!Number.isFinite(currentEma) || currentEma === 0) return null;
+
+  const latestRow = completedRows[lastIndex];
+  const currentClose = Number(latestRow.close);
+
+  if (!Number.isFinite(currentClose)) return null;
+
+  const diffPercent = ((currentClose - currentEma) / currentEma) * 100;
+
+  if (Math.abs(diffPercent) > thresholdPercent) return null;
+
+  const volumeRatio = getVolumeRatio(completedRows);
+
+  return {
+    symbol: history.symbol,
+    price: currentClose,
+    emaValue: currentEma,
+    diffPercent,
+    position: diffPercent >= 0 ? 'above' : 'below',
+    volumeRatio,
+    signalDate: new Date(Number(latestRow.timestamp) * 1000).toISOString(),
   };
 }
 
@@ -320,6 +396,42 @@ function readNumber(value, fallback) {
 export async function GET(request) {
   try {
     const url = new URL(request.url);
+    const mode = url.searchParams.get('mode') === 'near' ? 'near' : 'cross';
+    const now = Math.floor(Date.now() / 1000);
+
+    const universe = await fetchBist100Symbols();
+    const histories = await mapWithConcurrency(universe.symbols, 10, fetchHistory);
+    const validHistories = histories.filter(Boolean);
+
+    if (mode === 'near') {
+      const period = readNumber(url.searchParams.get('period'), 200);
+
+      const thresholdRaw = Number(url.searchParams.get('threshold'));
+      const thresholdPercent =
+        Number.isFinite(thresholdRaw) && thresholdRaw > 0 && thresholdRaw <= 20
+          ? thresholdRaw
+          : 2;
+
+      const results = validHistories
+        .map((history) => findNearEma({ history, period, thresholdPercent, now }))
+        .filter(Boolean)
+        .sort((a, b) => Math.abs(a.diffPercent) - Math.abs(b.diffPercent));
+
+      return NextResponse.json({
+        ok: true,
+        universe: 'BIST 100',
+        timeframe: '1D',
+        listSource: universe.source,
+        mode: 'near',
+        emaPeriod: period,
+        thresholdPercent,
+        scanned: universe.symbols.length,
+        dataAvailable: validHistories.length,
+        resultCount: results.length,
+        results,
+        scannedAt: new Date().toISOString(),
+      });
+    }
 
     const fastPeriod = readNumber(url.searchParams.get('fast'), 5);
     const slowPeriod = readNumber(url.searchParams.get('slow'), 22);
@@ -332,12 +444,8 @@ export async function GET(request) {
       );
     }
 
-    const universe = await fetchBist100Symbols();
-    const histories = await mapWithConcurrency(universe.symbols, 10, fetchHistory);
-    const validHistories = histories.filter(Boolean);
-
     const results = validHistories
-      .map((history) => findCross({ history, fastPeriod, slowPeriod, direction }))
+      .map((history) => findCross({ history, fastPeriod, slowPeriod, direction, now }))
       .filter(Boolean)
       .sort((a, b) => (Number(b.volumeRatio) || 0) - (Number(a.volumeRatio) || 0));
 
@@ -346,6 +454,7 @@ export async function GET(request) {
       universe: 'BIST 100',
       timeframe: '1D',
       listSource: universe.source,
+      mode: 'cross',
       fastPeriod,
       slowPeriod,
       direction,
