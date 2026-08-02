@@ -261,7 +261,94 @@ function getVolumeRatio(rows) {
   return currentVolume / average;
 }
 
-function findCross({ history, fastPeriod, slowPeriod, direction }) { const rows = history.rows; const closes = rows.map((row) => Number(row.close)); if (closes.length < Math.max(fastPeriod, slowPeriod) + 5) return null; const fastEma = calculateEma(closes, fastPeriod); const slowEma = calculateEma(closes, slowPeriod); const lastIndex = rows.length - 1; const previousIndex = lastIndex - 1; const fastPrev = fastEma[previousIndex]; const slowPrev = slowEma[previousIndex]; const fastNow = fastEma[lastIndex]; const slowNow = slowEma[lastIndex]; if (![fastPrev, slowPrev, fastNow, slowNow].every(Number.isFinite)) return null; const crossedUp = fastPrev <= slowPrev && fastNow > slowNow; const crossedDown = fastPrev >= slowPrev && fastNow < slowNow; const isCorrectDirection = direction === "up" ? crossedUp : crossedDown; if (!isCorrectDirection) return null; const latestRow = rows[lastIndex]; const previousClose = Number(rows[previousIndex]?.close); const dailyChange = Number.isFinite(previousClose) && previousClose !== 0 ? ((latestRow.close - previousClose) / previousClose) * 100 : null; return { symbol: history.symbol, price: latestRow.close, dailyChange, fastEma: fastNow, slowEma: slowNow, differencePercent: ((fastNow - slowNow) / slowNow) * 100, volumeRatio: getVolumeRatio(rows), signalDate: latestRow.timestamp ? new Date(latestRow.timestamp * 1000).toISOString() : null, direction }; }
+function findCross({ history, fastPeriod, slowPeriod, direction }) {
+  const rows = history.rows || [];
+  const closes = rows.map((r) => Number(r.close));
+  const minBars = Math.max(fastPeriod, slowPeriod) + 5;
+
+  if (closes.length < minBars) return null;
+
+  const fastEma = calculateEma(closes, fastPeriod);
+  const slowEma = calculateEma(closes, slowPeriod);
+
+  const lastIndex = rows.length - 1;
+
+  if (lastIndex < 1) return null;
+
+  const lastFast = fastEma[lastIndex];
+  const lastSlow = slowEma[lastIndex];
+
+  if (!Number.isFinite(lastFast) || !Number.isFinite(lastSlow)) return null;
+
+  let crossIndex = -1;
+
+  for (let i = lastIndex; i >= 1; i--) {
+    const fastPrev = fastEma[i - 1];
+    const slowPrev = slowEma[i - 1];
+    const fastNow = fastEma[i];
+    const slowNow = slowEma[i];
+
+    if (![fastPrev, slowPrev, fastNow, slowNow].every(Number.isFinite)) continue;
+
+    const crossedUp =
+      fastPrev <= slowPrev &&
+      fastNow > slowNow;
+
+    const crossedDown =
+      fastPrev >= slowPrev &&
+      fastNow < slowNow;
+
+    if (
+      (direction === "up" && crossedUp) ||
+      (direction === "down" && crossedDown)
+    ) {
+      crossIndex = i;
+      break;
+    }
+
+    if (
+      (direction === "up" && fastNow < slowNow) ||
+      (direction === "down" && fastNow > slowNow)
+    ) {
+      return null;
+    }
+  }
+
+  if (crossIndex === -1 || crossIndex !== lastIndex) return null;
+
+  const latestRow = rows[lastIndex];
+  const previousRow = rows[lastIndex - 1];
+
+  const previousClose = Number(previousRow?.close);
+  const currentClose = Number(latestRow?.close);
+
+  const dailyChange =
+    Number.isFinite(previousClose) &&
+    previousClose !== 0 &&
+    Number.isFinite(currentClose)
+      ? ((currentClose - previousClose) / previousClose) * 100
+      : null;
+
+  const volumeRatio = getVolumeRatio(rows);
+
+  return {
+    symbol: history.symbol,
+    price: currentClose,
+    dailyChange,
+    fastEma: lastFast,
+    slowEma: lastSlow,
+    differencePercent:
+      lastSlow !== 0
+        ? ((lastFast - lastSlow) / lastSlow) * 100
+        : null,
+    volumeRatio,
+    barsSinceCross: 0,
+    signalDate: latestRow.timestamp
+      ? new Date(latestRow.timestamp * 1000).toISOString()
+      : null,
+    direction
+  };
+}
 async function mapWithConcurrency(
   values,
   concurrency,
