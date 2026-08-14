@@ -305,6 +305,118 @@ function shorten(value, maxLength = 160) {
   return `${text.slice(0, maxLength - 1)}…`;
 }
 
+function cleanTranslation(value) {
+  return String(value || '')
+    .replace(/^["'“”]+|["'“”]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function translateTitleWithOpenAI({
+  openai,
+  title,
+}) {
+  if (!openai) return null;
+
+  try {
+    const response = await openai.responses.create({
+      model:
+        process.env.OPENAI_ALERT_MODEL ||
+        process.env.OPENAI_MODEL ||
+        'gpt-5-mini',
+      store: false,
+      max_output_tokens: 90,
+      instructions: [
+        'Verilen finans haber başlığını doğal ve kısa Türkçeye çevir.',
+        'Hisse kodlarını, şirket isimlerini, sayıları ve para birimlerini değiştirme.',
+        'Yorum veya açıklama ekleme.',
+        'Yalnızca çevrilmiş başlığı yaz.',
+      ].join(' '),
+      input: title,
+    });
+
+    const translated = cleanTranslation(
+      response.output_text
+    );
+
+    return translated || null;
+  } catch (error) {
+    console.error(
+      'OpenAI başlık çeviri hatası:',
+      error?.message || error
+    );
+    return null;
+  }
+}
+
+async function translateTitleFree(title) {
+  try {
+    const query = new URLSearchParams({
+      client: 'gtx',
+      sl: 'auto',
+      tl: 'tr',
+      dt: 't',
+      q: title,
+    });
+
+    const response = await fetch(
+      `https://translate.googleapis.com/translate_a/single?${query.toString()}`,
+      {
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'Mozilla/5.0 Sky-Finans/1.0',
+        },
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    const translated = cleanTranslation(
+      Array.isArray(data?.[0])
+        ? data[0]
+            .map((part) => part?.[0] || '')
+            .join('')
+        : ''
+    );
+
+    return translated || null;
+  } catch (error) {
+    console.error(
+      'Ücretsiz başlık çeviri hatası:',
+      error?.message || error
+    );
+    return null;
+  }
+}
+
+async function translateNewsTitle({
+  openai,
+  title,
+  cache,
+}) {
+  const cacheKey = String(title || '').trim();
+
+  if (!cacheKey) return '';
+  if (cache.has(cacheKey)) {
+    return cache.get(cacheKey);
+  }
+
+  const translated =
+    await translateTitleWithOpenAI({
+      openai,
+      title: cacheKey,
+    }) ||
+    await translateTitleFree(cacheKey) ||
+    cacheKey;
+
+  const result = shorten(translated, 190);
+  cache.set(cacheKey, result);
+  return result;
+}
+
 async function createSkyAiComment({
   openai,
   article,
@@ -446,6 +558,7 @@ async function processUser({
   articles,
   baseUrl,
   openai,
+  translationCache,
 }) {
   const userRef = userDoc.ref;
 
@@ -477,6 +590,7 @@ async function processUser({
       matched: 0,
       sent: 0,
       aiComments: 0,
+      translations: 0,
     };
   }
 
@@ -503,6 +617,7 @@ async function processUser({
   let sent = 0;
   let matched = 0;
   let aiComments = 0;
+  let translations = 0;
 
   for (const candidate of candidates) {
     if (sent >= 3) {
@@ -539,15 +654,26 @@ async function processUser({
       aiComments += 1;
     }
 
+    const translatedTitle =
+      await translateNewsTitle({
+        openai,
+        title: article.title,
+        cache: translationCache,
+      });
+
+    if (translatedTitle !== article.title) {
+      translations += 1;
+    }
+
     const title =
       `📰 ${stock.code} önemli haber`;
 
     const body = aiComment
       ? shorten(
-          `${article.title} — Sky AI: ${aiComment}`,
+          `${translatedTitle} — Sky AI: ${aiComment}`,
           220
         )
-      : shorten(article.title, 190);
+      : translatedTitle;
 
     const targetUrl =
       article.link ||
@@ -564,7 +690,8 @@ async function processUser({
           url: targetUrl,
           symbol: stock.code,
           type: 'news-ai',
-          newsTitle: article.title,
+          newsTitle: translatedTitle,
+          originalNewsTitle: article.title,
           newsUrl: article.link,
           aiComment: aiComment || '',
         },
@@ -583,6 +710,7 @@ async function processUser({
     await historyRef.set({
       symbol: stock.code,
       title: article.title,
+      translatedTitle,
       link: article.link,
       source: article.source,
       publishedAt:
@@ -609,6 +737,7 @@ async function processUser({
     matched,
     sent,
     aiComments,
+    translations,
   };
 }
 
@@ -653,6 +782,8 @@ export async function GET(request) {
     let totalMatched = 0;
     let totalSent = 0;
     let totalAiComments = 0;
+    let totalTranslations = 0;
+    const translationCache = new Map();
 
     for (const userDoc of usersSnapshot.docs) {
       const result = await processUser({
@@ -661,22 +792,25 @@ export async function GET(request) {
         articles,
         baseUrl,
         openai,
+        translationCache,
       });
 
       totalMatched += result.matched;
       totalSent += result.sent;
       totalAiComments += result.aiComments;
+      totalTranslations += result.translations;
     }
 
     return NextResponse.json({
       ok: true,
-      version: 'news-alerts-ai-v1',
+      version: 'news-alerts-tr-v2',
       aiEnabled: Boolean(openai),
       users: usersSnapshot.size,
       articles: articles.length,
       matched: totalMatched,
       sent: totalSent,
       aiComments: totalAiComments,
+      translations: totalTranslations,
     });
   } catch (error) {
     console.error(

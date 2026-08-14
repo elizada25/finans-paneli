@@ -19,32 +19,26 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-messaging.onBackgroundMessage((payload) => {
-  const title =
-    payload?.notification?.title ||
-    payload?.data?.title ||
-    "Sky Finans";
-
-  const options = {
-    body:
-      payload?.notification?.body ||
-      payload?.data?.body ||
-      "Yeni bir bildiriminiz var.",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
-    data: {
-      url: payload?.data?.url || "/senkron-panel"
-    }
-  };
-
-  self.registration.showNotification(title, options);
+self.addEventListener("install", () => {
+  self.skipWaiting();
 });
+
+self.addEventListener("activate", (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
+/*
+  Bildirim mesajlarını Firebase arka planda otomatik gösterir.
+  Burada tekrar showNotification çağrılırsa aynı bildirim iki kez görünür.
+*/
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
   const targetUrl =
     event.notification?.data?.url ||
+    event.notification?.data?.FCM_MSG?.fcmOptions?.link ||
+    event.notification?.data?.FCM_MSG?.data?.url ||
     "/senkron-panel";
 
   event.waitUntil(
