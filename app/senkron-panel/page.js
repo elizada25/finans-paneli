@@ -9,6 +9,7 @@ import TradingViewChart from './TradingViewChart';
 import ScannerCenter from './components/ScannerCenter';
 import SkyAI from './components/SkyAI';
 import NotificationButton from './components/NotificationButton';
+import OptionsPressureModal from './components/OptionsPressureModal';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -20,6 +21,7 @@ export default function SenkronPanelPage() {
   const [priceStatus, setPriceStatus] = useState('');
   const [usdTry, setUsdTry] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [selectedOptionsStock, setSelectedOptionsStock] = useState(null);
 
   useEffect(() => {
     let unsubscribePortfolio = null;
@@ -558,6 +560,7 @@ export default function SenkronPanelPage() {
         stocks={bistStocks}
         prices={prices}
         userId={user.uid}
+        onOpenOptions={setSelectedOptionsStock}
       />
 
       <PortfolioSection
@@ -566,6 +569,7 @@ export default function SenkronPanelPage() {
         stocks={usStocks}
         prices={prices}
         userId={user.uid}
+        onOpenOptions={setSelectedOptionsStock}
       />
 
       <section style={styles.dashboardPanels}>
@@ -592,6 +596,12 @@ export default function SenkronPanelPage() {
         </div>
       </section>
           <ScannerCenter />
+      {selectedOptionsStock && (
+        <OptionsPressureModal
+          stock={selectedOptionsStock}
+          onClose={() => setSelectedOptionsStock(null)}
+        />
+      )}
     </main>
   );
 }
@@ -618,6 +628,7 @@ function PortfolioSection({
   stocks,
   prices,
   userId,
+  onOpenOptions,
 }) {
   const [processingId, setProcessingId] = useState('');
 
@@ -846,9 +857,26 @@ function PortfolioSection({
             return (
               <div key={stock.id} style={styles.stockRow}>
                 <div>
-                  <strong style={styles.rowStockCode}>
-                    {code || 'KOD YOK'}
-                  </strong>
+                  {stock.market === 'bist' ? (
+                    <strong style={styles.rowStockCode}>
+                      {code || 'KOD YOK'}
+                    </strong>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onOpenOptions({
+                          ...stock,
+                          code,
+                          currentPrice,
+                        })
+                      }
+                      style={styles.rowStockButton}
+                      title={`${code} opsiyon ve short analizini aç`}
+                    >
+                      {code || 'KOD YOK'}
+                    </button>
+                  )}
                   <span style={styles.rowMarket}>
                     {stock.market === 'bist' ? 'BIST' : 'NASDAQ'}
                   </span>
@@ -2203,6 +2231,19 @@ const styles = {
     display: 'block',
     color: '#f8fafc',
     fontSize: '17px',
+  },
+  rowStockButton: {
+    display: 'block',
+    padding: 0,
+    border: 0,
+    background: 'transparent',
+    color: '#e6c65c',
+    fontSize: '17px',
+    fontWeight: 800,
+    cursor: 'pointer',
+    textDecoration: 'underline',
+    textDecorationColor: 'rgba(230,198,92,0.35)',
+    textUnderlineOffset: '3px',
   },
   rowMarket: {
     color: '#64748b',
