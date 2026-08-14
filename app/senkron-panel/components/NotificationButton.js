@@ -5,7 +5,7 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { firebaseApp, firestoreDb } from '../../../lib-firebase';
 
-const STORAGE_KEY = 'sky-finans-bildirimler-acik-v2';
+const STORAGE_KEY = 'sky-finans-bildirimler-acik-v3';
 
 export default function NotificationButton({ user }) {
   const [status, setStatus] = useState('idle');
@@ -92,6 +92,12 @@ export default function NotificationButton({ user }) {
 
       const deviceId =
         await createDeviceId(token);
+
+      await setDoc(
+        doc(firestoreDb, 'users', user.uid),
+        { updatedAt: serverTimestamp() },
+        { merge: true }
+      );
 
       await setDoc(
         doc(
