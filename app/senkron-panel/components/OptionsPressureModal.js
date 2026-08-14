@@ -66,6 +66,19 @@ export default function OptionsPressureModal({ stock, onClose }) {
     );
   }, [data]);
 
+  const optionBias = useMemo(() => {
+    const calls = Number(data?.options?.totalCallOpenInterest || 0);
+    const puts = Number(data?.options?.totalPutOpenInterest || 0);
+    const total = calls + puts;
+
+    if (total <= 0) return null;
+
+    return {
+      long: (calls / total) * 100,
+      short: (puts / total) * 100,
+    };
+  }, [data]);
+
   if (!stock) return null;
 
   return (
@@ -105,127 +118,157 @@ export default function OptionsPressureModal({ stock, onClose }) {
 
         {status === 'ready' && data && (
           <>
+            <section style={styles.signalCard}>
+              <p style={styles.signalTitle}>OPSİYON EĞİLİMİ</p>
+              {optionBias ? (
+                <>
+                  <div style={styles.signalNumbers}>
+                    <strong style={styles.longNumber}>
+                      LONG %{optionBias.long.toFixed(0)}
+                    </strong>
+                    <strong style={styles.shortNumber}>
+                      SHORT %{optionBias.short.toFixed(0)}
+                    </strong>
+                  </div>
+                  <div style={styles.biasBar}>
+                    <div
+                      style={{
+                        ...styles.longBias,
+                        width: `${optionBias.long}%`,
+                      }}
+                    />
+                    <div
+                      style={{
+                        ...styles.shortBias,
+                        width: `${optionBias.short}%`,
+                      }}
+                    />
+                  </div>
+                  <p style={styles.plainSummary}>
+                    {buildPlainSummary(optionBias.long, symbol)}
+                  </p>
+                </>
+              ) : (
+                <div style={styles.emptyBox}>Opsiyon eğilimi bulunamadı.</div>
+              )}
+              <p style={styles.biasNote}>
+                Bu oran Call/Put açık pozisyon dağılımıdır; gerçek hisse short
+                oranı değildir.
+              </p>
+            </section>
+
             <div style={styles.cards}>
               <MetricCard
-                label="Call duvarı"
-                value={formatPrice(data.options.callWall)}
-                tone="green"
+                label="Resmi short hisse"
+                value={formatCompact(data.short.shortInterest)}
               />
               <MetricCard
-                label="Put duvarı"
-                value={formatPrice(data.options.putWall)}
+                label="Gerçek Short / Float"
+                value={formatPercent(data.short.shortPercentOfFloat)}
                 tone="red"
               />
               <MetricCard
-                label="Max Pain"
-                value={formatPrice(data.options.maxPain)}
+                label="Short kapanma süresi"
+                value={formatDays(data.short.daysToCover)}
               />
               <MetricCard
-                label="Put / Call"
-                value={formatRatio(data.options.putCallRatio)}
+                label="Short veri tarihi"
+                value={data.short.settlementDate || '—'}
               />
             </div>
 
-            <section style={styles.section}>
-              <div style={styles.sectionHeader}>
-                <div>
-                  <h3 style={styles.sectionTitle}>Opsiyon Basınç Haritası</h3>
-                  <p style={styles.sectionNote}>
-                    Yeşil: Call açık pozisyonu • Kırmızı: Put açık pozisyonu
-                  </p>
-                </div>
-                <span style={styles.sourceTag}>
-                  {data.options.source || 'Veri yok'}
-                </span>
+            <details style={styles.details}>
+              <summary style={styles.detailsSummary}>
+                Teknik ayrıntıları göster
+              </summary>
+
+              <div style={{ ...styles.cards, marginTop: '14px' }}>
+                <MetricCard
+                  label="Call duvarı"
+                  value={formatPrice(data.options.callWall)}
+                  tone="green"
+                />
+                <MetricCard
+                  label="Put duvarı"
+                  value={formatPrice(data.options.putWall)}
+                  tone="red"
+                />
+                <MetricCard
+                  label="Max Pain"
+                  value={formatPrice(data.options.maxPain)}
+                />
+                <MetricCard
+                  label="Put / Call"
+                  value={formatRatio(data.options.putCallRatio)}
+                />
               </div>
 
-              {data.options.rows?.length ? (
-                <div style={styles.pressureList}>
-                  {data.options.rows.map((row) => (
-                    <div key={row.strike} style={styles.pressureRow}>
-                      <div style={styles.callSide}>
-                        <span style={styles.oiText}>
-                          {formatCompact(row.callOpenInterest)}
-                        </span>
-                        <div style={styles.track}>
-                          <div
-                            style={{
-                              ...styles.callBar,
-                              width: `${Math.max(
-                                2,
-                                (Number(row.callOpenInterest || 0) /
-                                  maxOpenInterest) *
-                                  100
-                              )}%`,
-                            }}
-                          />
+              <section style={styles.section}>
+                <div style={styles.sectionHeader}>
+                  <div>
+                    <h3 style={styles.sectionTitle}>Opsiyon Basınç Haritası</h3>
+                    <p style={styles.sectionNote}>
+                      Yeşil: Call • Kırmızı: Put açık pozisyonu
+                    </p>
+                  </div>
+                  <span style={styles.sourceTag}>
+                    {data.options.source || 'Veri yok'}
+                  </span>
+                </div>
+
+                {data.options.rows?.length ? (
+                  <div style={styles.pressureList}>
+                    {data.options.rows.map((row) => (
+                      <div key={row.strike} style={styles.pressureRow}>
+                        <div style={styles.callSide}>
+                          <span style={styles.oiText}>
+                            {formatCompact(row.callOpenInterest)}
+                          </span>
+                          <div style={styles.track}>
+                            <div
+                              style={{
+                                ...styles.callBar,
+                                width: `${Math.max(
+                                  2,
+                                  (Number(row.callOpenInterest || 0) /
+                                    maxOpenInterest) *
+                                    100
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+
+                        <strong style={styles.strike}>
+                          ${formatNumber(row.strike)}
+                        </strong>
+
+                        <div style={styles.putSide}>
+                          <div style={styles.track}>
+                            <div
+                              style={{
+                                ...styles.putBar,
+                                width: `${Math.max(
+                                  2,
+                                  (Number(row.putOpenInterest || 0) /
+                                    maxOpenInterest) *
+                                    100
+                                )}%`,
+                              }}
+                            />
+                          </div>
+                          <span style={styles.oiText}>
+                            {formatCompact(row.putOpenInterest)}
+                          </span>
                         </div>
                       </div>
-
-                      <strong style={styles.strike}>
-                        ${formatNumber(row.strike)}
-                      </strong>
-
-                      <div style={styles.putSide}>
-                        <div style={styles.track}>
-                          <div
-                            style={{
-                              ...styles.putBar,
-                              width: `${Math.max(
-                                2,
-                                (Number(row.putOpenInterest || 0) /
-                                  maxOpenInterest) *
-                                  100
-                              )}%`,
-                            }}
-                          />
-                        </div>
-                        <span style={styles.oiText}>
-                          {formatCompact(row.putOpenInterest)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div style={styles.emptyBox}>
-                  Bu hissede kullanılabilir opsiyon açık pozisyonu bulunamadı.
-                </div>
-              )}
-            </section>
-
-            <section style={styles.section}>
-              <div style={styles.sectionHeader}>
-                <div>
-                  <h3 style={styles.sectionTitle}>Short Pozisyon</h3>
-                  <p style={styles.sectionNote}>
-                    Son yayımlanan resmi uzlaşma dönemi
-                  </p>
-                </div>
-                <span style={styles.sourceTag}>
-                  {data.short.source || 'Veri yok'}
-                </span>
-              </div>
-
-              <div style={styles.shortGrid}>
-                <MetricCard
-                  label="Short hisse"
-                  value={formatCompact(data.short.shortInterest)}
-                />
-                <MetricCard
-                  label="Short / Float"
-                  value={formatPercent(data.short.shortPercentOfFloat)}
-                />
-                <MetricCard
-                  label="Kapanma süresi"
-                  value={formatDays(data.short.daysToCover)}
-                />
-                <MetricCard
-                  label="Veri tarihi"
-                  value={data.short.settlementDate || '—'}
-                />
-              </div>
-            </section>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={styles.emptyBox}>Opsiyon ayrıntısı bulunamadı.</div>
+                )}
+              </section>
+            </details>
 
             {data.warnings?.length > 0 && (
               <div style={styles.warning}>{data.warnings.join(' ')}</div>
@@ -255,8 +298,23 @@ function MetricCard({ label, value, tone }) {
   );
 }
 
+function buildPlainSummary(longPercent, symbol) {
+  if (longPercent >= 60) {
+    return `${symbol} opsiyonlarında yukarı yönlü beklenti daha güçlü.`;
+  }
+  if (longPercent <= 40) {
+    return `${symbol} opsiyonlarında aşağı yönlü korunma/baskı daha güçlü.`;
+  }
+  return `${symbol} opsiyonlarında Long ve Short tarafı dengeli.`;
+}
+
+function hasNumber(value) {
+  return value !== null && value !== undefined && value !== '' &&
+    Number.isFinite(Number(value));
+}
+
 function formatNumber(value) {
-  return Number.isFinite(Number(value))
+  return hasNumber(value)
     ? Number(value).toLocaleString('tr-TR', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -265,27 +323,27 @@ function formatNumber(value) {
 }
 
 function formatPrice(value) {
-  return Number.isFinite(Number(value)) ? `$${formatNumber(value)}` : '—';
+  return hasNumber(value) ? `$${formatNumber(value)}` : '—';
 }
 
 function formatRatio(value) {
-  return Number.isFinite(Number(value)) ? Number(value).toFixed(2) : '—';
+  return hasNumber(value) ? Number(value).toFixed(2) : '—';
 }
 
 function formatPercent(value) {
-  return Number.isFinite(Number(value))
+  return hasNumber(value)
     ? `%${Number(value).toFixed(2)}`
     : '—';
 }
 
 function formatDays(value) {
-  return Number.isFinite(Number(value))
+  return hasNumber(value)
     ? `${Number(value).toFixed(2)} gün`
     : '—';
 }
 
 function formatCompact(value) {
-  if (!Number.isFinite(Number(value))) return '—';
+  if (!hasNumber(value)) return '—';
   return new Intl.NumberFormat('tr-TR', {
     notation: 'compact',
     maximumFractionDigits: 2,
@@ -346,6 +404,62 @@ const styles = {
     gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
     gap: '10px',
     marginBottom: '16px',
+  },
+  signalCard: {
+    marginBottom: '16px',
+    padding: '20px',
+    borderRadius: '18px',
+    border: '1px solid rgba(212,175,55,0.30)',
+    background: 'rgba(212,175,55,0.05)',
+  },
+  signalTitle: {
+    margin: '0 0 12px',
+    color: '#e6c65c',
+    fontSize: '12px',
+    fontWeight: 900,
+    letterSpacing: '0.12em',
+  },
+  signalNumbers: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '14px',
+    flexWrap: 'wrap',
+  },
+  longNumber: { color: '#4ade80', fontSize: 'clamp(25px, 5vw, 44px)' },
+  shortNumber: { color: '#fb7185', fontSize: 'clamp(25px, 5vw, 44px)' },
+  biasBar: {
+    display: 'flex',
+    height: '18px',
+    overflow: 'hidden',
+    marginTop: '14px',
+    borderRadius: '999px',
+    background: '#1e293b',
+  },
+  longBias: { height: '100%', background: '#22c55e' },
+  shortBias: { height: '100%', background: '#ef4444' },
+  plainSummary: {
+    margin: '14px 0 0',
+    color: '#f8fafc',
+    fontSize: '16px',
+    fontWeight: 800,
+  },
+  biasNote: {
+    margin: '7px 0 0',
+    color: '#64748b',
+    fontSize: '11px',
+  },
+  details: {
+    marginTop: '14px',
+    padding: '14px',
+    borderRadius: '14px',
+    border: '1px solid rgba(148,163,184,0.20)',
+    background: 'rgba(255,255,255,0.025)',
+  },
+  detailsSummary: {
+    color: '#e6c65c',
+    fontWeight: 800,
+    cursor: 'pointer',
   },
   metricCard: {
     minWidth: 0,
