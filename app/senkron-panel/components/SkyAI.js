@@ -126,6 +126,30 @@ export default function SkyAI({
     return result.slice(0, 4);
   }, [stockRows]);
 
+  const recentMacroEvents = useMemo(
+    () =>
+      skyEvents
+        .filter(
+          (event) =>
+            event.type !== 'EARNINGS' &&
+            event.status === 'recent'
+        )
+        .slice(0, 4),
+    [skyEvents]
+  );
+
+  const upcomingMacroEvents = useMemo(
+    () =>
+      skyEvents
+        .filter(
+          (event) =>
+            event.type !== 'EARNINGS' &&
+            event.status !== 'recent'
+        )
+        .slice(0, 6),
+    [skyEvents]
+  );
+
   useEffect(() => {
     const symbols = [...new Set(
       allStocks
@@ -137,23 +161,22 @@ export default function SkyAI({
         .filter(Boolean)
     )];
 
-    if (!symbols.length) {
-      setSkyEvents([]);
-      return;
-    }
-
     const controller = new AbortController();
 
     async function loadSkyEvents() {
       try {
         setSkyEventsLoading(true);
 
-        const params = new URLSearchParams({
-          symbols: symbols.join(','),
-        });
+        const params = new URLSearchParams();
+
+        if (symbols.length) {
+          params.set('symbols', symbols.join(','));
+        }
+
+        const query = params.toString();
 
         const response = await fetch(
-          `/api/sky-events?${params.toString()}`,
+          `/api/sky-events${query ? `?${query}` : ''}`,
           {
             cache: 'no-store',
             signal: controller.signal,
@@ -661,49 +684,60 @@ export default function SkyAI({
                 Bilanço • FED • ABD Ekonomik Takvim
               </strong>
 
-              {skyEventsLoading && !skyEvents.length ? (
+              {skyEventsLoading &&
+              !recentMacroEvents.length &&
+              !upcomingMacroEvents.length ? (
                 <div style={{ marginTop: 8 }}>
                   Takvim ve bilanço verileri yükleniyor…
                 </div>
-              ) : skyEvents.length ? (
-                <div style={{ marginTop: 7 }}>
-                  {skyEvents.filter((event) => event.type !== 'EARNINGS').slice(0, 8).map((event, index) => (
-                    <div
-                      key={`${event.type}-${event.title}-${index}`}
-                      style={{
-                        marginTop: 6,
-                        color:
-                          event.level === 'critical'
-                            ? '#fbbf24'
-                            : '#cbd5e1',
-                      }}
-                    >
-                      •{' '}
-                      {event.url ? (
-                        <a
-                          href={event.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{
-                            color: '#d4af37',
-                            fontWeight: 800,
-                            textDecoration: 'underline',
-                            textUnderlineOffset: 3,
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          {event.title}
-                        </a>
-                      ) : (
-                        <strong>{event.title}</strong>
-                      )}
-                      : {event.text}
+              ) : recentMacroEvents.length ||
+                upcomingMacroEvents.length ? (
+                <div style={{ marginTop: 9 }}>
+                  {recentMacroEvents.length ? (
+                    <div>
+                      <div
+                        style={{
+                          color: '#fbbf24',
+                          fontWeight: 800,
+                          marginTop: 7,
+                        }}
+                      >
+                        Son açıklanan veriler
+                      </div>
+
+                      {recentMacroEvents.map((event, index) => (
+                        <MacroEventRow
+                          key={`recent-${event.title}-${index}`}
+                          event={event}
+                        />
+                      ))}
                     </div>
-                  ))}
+                  ) : null}
+
+                  {upcomingMacroEvents.length ? (
+                    <div>
+                      <div
+                        style={{
+                          color: '#94a3b8',
+                          fontWeight: 800,
+                          marginTop: 10,
+                        }}
+                      >
+                        Yaklaşan önemli veriler
+                      </div>
+
+                      {upcomingMacroEvents.map((event, index) => (
+                        <MacroEventRow
+                          key={`upcoming-${event.title}-${index}`}
+                          event={event}
+                        />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               ) : (
                 <div style={{ marginTop: 8 }}>
-                  Yaklaşan kritik veri bulunamadı.
+                  Güncel kritik veri bulunamadı.
                 </div>
               )}
             </div>
@@ -1184,6 +1218,41 @@ export default function SkyAI({
         </div>
       )}
     </>
+  );
+}
+
+function MacroEventRow({ event }) {
+  return (
+    <div
+      style={{
+        marginTop: 6,
+        color:
+          event.level === 'critical'
+            ? '#fbbf24'
+            : '#cbd5e1',
+      }}
+    >
+      •{' '}
+      {event.url ? (
+        <a
+          href={event.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            color: '#d4af37',
+            fontWeight: 800,
+            textDecoration: 'underline',
+            textUnderlineOffset: 3,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {event.title}
+        </a>
+      ) : (
+        <strong>{event.title}</strong>
+      )}
+      : {event.text}
+    </div>
   );
 }
 

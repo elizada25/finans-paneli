@@ -41,15 +41,11 @@ export async function GET(request) {
       events.push(...filingsResult.value);
     }
 
-    events.sort((a, b) => {
-      const aTime = a.sortTime || Number.MAX_SAFE_INTEGER;
-      const bTime = b.sortTime || Number.MAX_SAFE_INTEGER;
-      return aTime - bTime;
-    });
+    events.sort(compareEvents);
 
     return Response.json(
       {
-        events: events.slice(0, 12),
+        events: events.slice(0, 20),
         generatedAt: new Date().toISOString(),
       },
       {
@@ -77,6 +73,8 @@ export async function GET(request) {
 async function getMacroEvents() {
   const events = [];
   const now = Date.now();
+  const recentLimit = now - 14 * 86400000;
+  const upcomingLimit = now + 35 * 86400000;
 
   // -------------------------------------------------------
   // FED / FOMC
@@ -93,12 +91,13 @@ async function getMacroEvents() {
 
     events.push({
       type: 'FED',
+      status: 'upcoming',
       level: days <= 7 ? 'critical' : 'important',
       title: 'FED / FOMC',
       text:
         `Sıradaki FOMC toplantısı ${formatDate(nextFed.start)}–` +
         `${formatDay(nextFed.end)}. ${daysLabel(days)}`,
-      url: 'https://tr.investing.com/central-banks/fed-rate-monitor',
+      url: 'https://www.federalreserve.gov/monetarypolicy/fomccalendars.htm',
       sortTime: nextFed.sortTime,
     });
   }
@@ -121,6 +120,8 @@ async function getMacroEvents() {
     if (blsResponse.ok) {
       const ics = await blsResponse.text();
 
+      const latestBLS = await getLatestBLSValues();
+
       const blsEvents = parseICS(ics)
         .filter((event) => {
           const s = event.summary.toLowerCase();
@@ -131,20 +132,26 @@ async function getMacroEvents() {
             s.includes('employment situation')
           );
         })
-        .filter((event) => event.sortTime >= now - 60 * 60 * 1000)
-        .slice(0, 5);
+        .filter(
+          (event) =>
+            event.sortTime >= recentLimit &&
+            event.sortTime <= upcomingLimit
+        );
 
       for (const event of blsEvents) {
         const title = normalizeBLSTitle(event.summary);
+        const isRecent = event.sortTime < now;
         const days = daysUntil(event.sortTime);
+        const result = latestBLS[title];
 
         events.push({
           type: 'MACRO',
-          level: days <= 2 ? 'critical' : 'important',
+          status: isRecent ? 'recent' : 'upcoming',
+          level: isRecent || days <= 2 ? 'critical' : 'important',
           title,
-          text:
-            `${title}: ${formatDateTime(event.sortTime)}. ` +
-            `${daysLabel(days)}`,
+          text: isRecent
+            ? buildRecentBLSText(event.sortTime, result)
+            : `${formatDateTime(event.sortTime)}. ${daysLabel(days)}`,
           url: getBLSUrl(title),
           sortTime: event.sortTime,
         });
@@ -171,39 +178,46 @@ async function getMacroEvents() {
 
     if (response.ok) {
       const html = await response.text();
-      const clean = stripHtml(html);
-
       const year = new Date().getUTCFullYear();
+      const rows =
+        html.match(/<tr[^>]*>[\s\S]*?<\/tr>/gi) || [];
 
-      const monthNames =
-        '(January|February|March|April|May|June|July|August|September|October|November|December)';
+      for (const row of rows) {
+        const clean = stripHtml(row).replace(/\s+/g, ' ').trim();
 
-      const regex = new RegExp(
-        `${monthNames}\\s+(\\d{1,2})\\s+(\\d{1,2}:\\d{2}\\s+(?:AM|PM))[\\s\\S]{0,180}?(GDP[^\\n]{0,150})`,
-        'gi'
-      );
+        if (!/\bGDP\b/i.test(clean)) continue;
 
-      let match;
+        const match = clean.match(
+          /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})\s+(\d{1,2}:\d{2}\s+(?:AM|PM))/i
+        );
 
-      while ((match = regex.exec(clean))) {
+        if (!match) continue;
+
         const month = monthNumber(match[1]);
         const day = Number(match[2]);
         const time = match[3];
 
         const sortTime = easternDateToUtc(year, month, day, time);
 
-        if (!sortTime || sortTime < now - 60 * 60 * 1000) continue;
+        if (
+          !sortTime ||
+          sortTime < now - 60 * 60 * 1000 ||
+          sortTime > upcomingLimit
+        ) {
+          continue;
+        }
 
         const days = daysUntil(sortTime);
 
         events.push({
           type: 'MACRO',
+          status: 'upcoming',
           level: days <= 2 ? 'critical' : 'important',
           title: 'ABD GDP',
           text:
             `ABD GDP verisi ${formatDateTime(sortTime)}. ` +
             `${daysLabel(days)}`,
-          url: 'https://tr.investing.com/economic-calendar/',
+          url: 'https://www.bea.gov/news/schedule',
           sortTime,
         });
 
@@ -214,7 +228,160 @@ async function getMacroEvents() {
     console.error('BEA GDP takvimi alınamadı:', error);
   }
 
-  return events;
+  return events.sort(compareEvents);
+}
+
+async function getLatestBLSValues() {
+  const seriesIds = [
+    'CES0000000001',
+    'LNS14000000',
+    'CUSR0000SA0',
+    'WPSFD4',
+  ];
+
+  try {
+    const year = new Date().getUTCFullYear();
+    const response = await fetch(
+      'https://api.bls.gov/publicAPI/v2/timeseries/data/',
+      {
+        method: 'POST',
+        cache: 'no-store',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+          'User-Agent': 'Sky-Finans/1.0',
+        },
+        body: JSON.stringify({
+          seriesid: seriesIds,
+          startyear: String(year - 1),
+          endyear: String(year),
+        }),
+      }
+    );
+
+    if (!response.ok) return {};
+
+    const data = await response.json();
+    const seriesMap = {};
+
+    for (const series of data?.Results?.series || []) {
+      seriesMap[series.seriesID] = monthlyValues(series.data);
+    }
+
+    const payroll = seriesMap.CES0000000001 || [];
+    const unemployment = seriesMap.LNS14000000 || [];
+    const cpi = seriesMap.CUSR0000SA0 || [];
+    const ppi = seriesMap.WPSFD4 || [];
+
+    const latestPayroll = difference(payroll, 0);
+    const previousPayroll = difference(payroll, 1);
+    const latestCPI = percentChange(cpi, 0);
+    const previousCPI = percentChange(cpi, 1);
+    const latestPPI = percentChange(ppi, 0);
+    const previousPPI = percentChange(ppi, 1);
+
+    return {
+      'ABD İstihdam': {
+        actual:
+          `Tarım dışı ${formatSignedThousands(latestPayroll)} • ` +
+          `İşsizlik ${formatPercent(unemployment[0])}`,
+        previous:
+          `${formatSignedThousands(previousPayroll)} • ` +
+          `${formatPercent(unemployment[1])}`,
+      },
+      'ABD CPI': {
+        actual: formatPercent(latestCPI),
+        previous: formatPercent(previousCPI),
+      },
+      'ABD PPI': {
+        actual: formatPercent(latestPPI),
+        previous: formatPercent(previousPPI),
+      },
+    };
+  } catch (error) {
+    console.error('BLS son verileri alınamadı:', error);
+    return {};
+  }
+}
+
+function monthlyValues(data) {
+  return (Array.isArray(data) ? data : [])
+    .filter((item) => /^M(0[1-9]|1[0-2])$/.test(item?.period || ''))
+    .map((item) => Number(item.value))
+    .filter(Number.isFinite);
+}
+
+function difference(values, offset) {
+  const current = values[offset];
+  const previous = values[offset + 1];
+
+  if (!Number.isFinite(current) || !Number.isFinite(previous)) {
+    return null;
+  }
+
+  return current - previous;
+}
+
+function percentChange(values, offset) {
+  const current = values[offset];
+  const previous = values[offset + 1];
+
+  if (
+    !Number.isFinite(current) ||
+    !Number.isFinite(previous) ||
+    previous === 0
+  ) {
+    return null;
+  }
+
+  return ((current / previous) - 1) * 100;
+}
+
+function formatSignedThousands(value) {
+  if (!Number.isFinite(value)) return 'veri bekleniyor';
+
+  const rounded = Math.round(value);
+  return `${rounded > 0 ? '+' : ''}${rounded.toLocaleString('tr-TR')} bin`;
+}
+
+function formatPercent(value) {
+  if (!Number.isFinite(value)) return 'veri bekleniyor';
+
+  const normalized = Math.abs(value) < 0.05 ? 0 : value;
+  const number = Math.abs(normalized).toLocaleString('tr-TR', {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+
+  return `${normalized < 0 ? '-' : ''}%${number}`;
+}
+
+function buildRecentBLSText(sortTime, result) {
+  if (!result?.actual) {
+    return `Sonuç açıklandı: ${formatDateTime(sortTime)}. Ayrıntı için dokunun.`;
+  }
+
+  return (
+    `Açıklanan: ${result.actual}. ` +
+    `Önceki: ${result.previous || '-'}. ` +
+    `${formatDateTime(sortTime)}.`
+  );
+}
+
+function compareEvents(a, b) {
+  const aRecent = a.status === 'recent';
+  const bRecent = b.status === 'recent';
+
+  if (aRecent && bRecent) {
+    return (b.sortTime || 0) - (a.sortTime || 0);
+  }
+
+  if (aRecent !== bRecent) return aRecent ? -1 : 1;
+
+  return (
+    (a.sortTime || Number.MAX_SAFE_INTEGER) -
+    (b.sortTime || Number.MAX_SAFE_INTEGER)
+  );
 }
 
 async function getLatestFilings(symbols) {
@@ -356,24 +523,27 @@ function parseICSDate(value) {
   const hour = Number(match[4] || 8);
   const minute = Number(match[5] || 30);
 
-  // BLS takvimi Eastern Time. Yaz döneminde UTC-4 yaklaşık dönüşüm.
-  return Date.UTC(year, month, day, hour + 4, minute);
+  if (String(value).trim().endsWith('Z')) {
+    return Date.UTC(year, month, day, hour, minute);
+  }
+
+  return easternPartsToUtc(year, month + 1, day, hour, minute);
 }
 
 function getBLSUrl(title) {
   if (title === 'ABD CPI') {
-    return 'https://tr.investing.com/economic-calendar/';
+    return 'https://www.bls.gov/news.release/cpi.nr0.htm';
   }
 
   if (title === 'ABD PPI') {
-    return 'https://tr.investing.com/economic-calendar/';
+    return 'https://www.bls.gov/news.release/ppi.nr0.htm';
   }
 
   if (title === 'ABD İstihdam') {
-    return 'https://tr.investing.com/economic-calendar/';
+    return 'https://www.bls.gov/news.release/empsit.nr0.htm';
   }
 
-  return 'https://tr.investing.com/economic-calendar/';
+  return 'https://www.bls.gov/schedule/news_release/';
 }
 
 function normalizeBLSTitle(value) {
@@ -466,7 +636,28 @@ function easternDateToUtc(year, month, day, timeText) {
   if (ampm === 'PM' && hour !== 12) hour += 12;
   if (ampm === 'AM' && hour === 12) hour = 0;
 
-  return Date.UTC(year, month - 1, day, hour + 4, minute);
+  return easternPartsToUtc(year, month, day, hour, minute);
+}
+
+function easternPartsToUtc(year, month, day, hour, minute) {
+  const offset = isEasternDaylightTime(year, month, day) ? 4 : 5;
+  return Date.UTC(year, month - 1, day, hour + offset, minute);
+}
+
+function isEasternDaylightTime(year, month, day) {
+  const secondSundayMarch = nthSunday(year, 3, 2);
+  const firstSundayNovember = nthSunday(year, 11, 1);
+
+  if (month < 3 || month > 11) return false;
+  if (month > 3 && month < 11) return true;
+  if (month === 3) return day >= secondSundayMarch;
+  return day < firstSundayNovember;
+}
+
+function nthSunday(year, month, occurrence) {
+  const firstDay = new Date(Date.UTC(year, month - 1, 1)).getUTCDay();
+  const firstSunday = 1 + ((7 - firstDay) % 7);
+  return firstSunday + (occurrence - 1) * 7;
 }
 
 function stripHtml(html) {
