@@ -158,6 +158,28 @@ export default function ScannerCenter() {
         <div style={styles.badge}>Günlük</div>
       </div>
 
+      <div
+        style={{
+          display: 'flex',
+          gap: '12px',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          marginBottom: '18px',
+          padding: '12px 14px',
+          borderRadius: '12px',
+          border: '1px solid rgba(212,175,55,0.32)',
+          background: 'rgba(212,175,55,0.07)',
+        }}
+      >
+        <strong style={{ color: '#facc15' }}>
+          FXU030N1
+        </strong>
+
+        <span style={{ opacity: 0.78, fontSize: '13px' }}>
+          EMA 5/20 kesişim ve EMA 100/200 %2 yakınlık bildirimleri aktif
+        </span>
+      </div>
+
       <div style={styles.quickGrid}>
         {QUICK_COMMANDS.map((item) => (
           <button

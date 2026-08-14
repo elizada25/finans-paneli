@@ -379,11 +379,192 @@ function getTechnicalSignal(quote) {
   return null;
 }
 
+async function fetchFuturesEmaSignal() {
+  const response = await fetch(
+    'https://scanner.tradingview.com/global/scan',
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0',
+      },
+      cache: 'no-store',
+      body: JSON.stringify({
+        symbols: {
+          tickers: ['BIST:XU030D1!'],
+          query: { types: [] },
+        },
+        columns: [
+          'close',
+          'EMA5',
+          'EMA20',
+          'EMA100',
+          'EMA200',
+        ],
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `FXU030N1 veri servisi hatasi: ${response.status}`
+    );
+  }
+
+  const data = await response.json();
+  const values = data?.data?.[0]?.d || [];
+
+  const [price, ema5, ema20, ema100, ema200] =
+    values.map((value) => numberValue(value));
+
+  if (
+    ![price, ema5, ema20, ema100, ema200].every(
+      Number.isFinite
+    )
+  ) {
+    return null;
+  }
+
+  return {
+    symbol: 'FXU030N1',
+    tradingViewSymbol: 'BIST:XU030D1!',
+    price,
+    ema5,
+    ema20,
+    ema100,
+    ema200,
+    ema100Distance:
+      Math.abs((price - ema100) / ema100) * 100,
+    ema200Distance:
+      Math.abs((price - ema200) / ema200) * 100,
+  };
+}
+
+async function processFuturesAlerts({
+  userRef,
+  messaging,
+  tokens,
+  baseUrl,
+  dateKey,
+  signal,
+}) {
+  if (!signal || tokens.length === 0) {
+    return 0;
+  }
+
+  const alerts = [];
+  const stateRef = userRef
+    .collection('smartAlertState')
+    .doc('FXU030N1');
+
+  const previousState = await stateRef.get();
+  const previousRelation =
+    previousState.data()?.ema5Ema20Relation || null;
+  const currentRelation =
+    signal.ema5 >= signal.ema20 ? 'above' : 'below';
+
+  if (
+    previousRelation === 'below' &&
+    currentRelation === 'above'
+  ) {
+    alerts.push({
+      id: 'ema5_20_up',
+      title: '🟢 FXU030N1 yukari kesisti',
+      body:
+        `EMA 5, EMA 20 seviyesini yukari kesti. ` +
+        `Son fiyat: ${signal.price.toFixed(2)}.`,
+      type: 'futures-ema-cross-up',
+    });
+  }
+
+  if (
+    previousRelation === 'above' &&
+    currentRelation === 'below'
+  ) {
+    alerts.push({
+      id: 'ema5_20_down',
+      title: '🔴 FXU030N1 asagi kesisti',
+      body:
+        `EMA 5, EMA 20 seviyesini asagi kesti. ` +
+        `Son fiyat: ${signal.price.toFixed(2)}.`,
+      type: 'futures-ema-cross-down',
+    });
+  }
+
+  if (signal.ema100Distance <= 2) {
+    alerts.push({
+      id: 'ema100_near',
+      title: '🟡 FXU030N1 EMA 100 seviyesine yakin',
+      body:
+        `Fiyat EMA 100 seviyesine %${signal.ema100Distance.toFixed(2)} ` +
+        `uzaklikta. Son fiyat: ${signal.price.toFixed(2)}.`,
+      type: 'futures-ema100-near',
+    });
+  }
+
+  if (signal.ema200Distance <= 2) {
+    alerts.push({
+      id: 'ema200_near',
+      title: '🟠 FXU030N1 EMA 200 seviyesine yakin',
+      body:
+        `Fiyat EMA 200 seviyesine %${signal.ema200Distance.toFixed(2)} ` +
+        `uzaklikta. Son fiyat: ${signal.price.toFixed(2)}.`,
+      type: 'futures-ema200-near',
+    });
+  }
+
+  let sent = 0;
+
+  for (const alert of alerts) {
+    const result = await sendOncePerDay({
+      historyRef: userRef
+        .collection('smartAlertHistory')
+        .doc(`${dateKey}_FXU030N1_${alert.id}`),
+      messaging,
+      tokens,
+      title: alert.title,
+      body: alert.body,
+      baseUrl,
+      details: {
+        type: alert.type,
+        symbol: signal.symbol,
+        price: signal.price,
+        ema5: signal.ema5,
+        ema20: signal.ema20,
+        ema100: signal.ema100,
+        ema200: signal.ema200,
+        ema100Distance: signal.ema100Distance,
+        ema200Distance: signal.ema200Distance,
+        dateKey,
+      },
+    });
+
+    sent += result.successCount;
+  }
+
+  await stateRef.set(
+    {
+      symbol: signal.symbol,
+      ema5Ema20Relation: currentRelation,
+      price: signal.price,
+      ema5: signal.ema5,
+      ema20: signal.ema20,
+      ema100: signal.ema100,
+      ema200: signal.ema200,
+      checkedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  return sent;
+}
+
 async function processUser({
   userDoc,
   messaging,
   baseUrl,
   dateKey,
+  futuresSignal,
 }) {
   const userRef = userDoc.ref;
 
@@ -406,13 +587,22 @@ async function processUser({
     ),
   ];
 
+  const futuresSent = await processFuturesAlerts({
+    userRef,
+    messaging,
+    tokens,
+    baseUrl,
+    dateKey,
+    signal: futuresSignal,
+  });
+
   if (
     portfolioSnapshot.empty ||
     tokens.length === 0
   ) {
     return {
       stocks: 0,
-      sent: 0,
+      sent: futuresSent,
     };
   }
 
@@ -443,7 +633,7 @@ async function processUser({
       fetchPrices(baseUrl, 'NASDAQ', nasdaqCodes),
     ]);
 
-  let totalSent = 0;
+  let totalSent = futuresSent;
 
   const portfolioTotals = {
     BIST: {
@@ -690,6 +880,9 @@ export async function GET(request) {
     const dateKey =
       getIstanbulDateKey();
 
+    const futuresSignal =
+      await fetchFuturesEmaSignal();
+
     let totalStocks = 0;
     let totalSent = 0;
 
@@ -699,6 +892,7 @@ export async function GET(request) {
         messaging,
         baseUrl,
         dateKey,
+        futuresSignal,
       });
 
       totalStocks += result.stocks;
