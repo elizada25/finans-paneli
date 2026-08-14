@@ -7,7 +7,7 @@ export default function TradingViewChart({
     `https://s.tradingview.com/widgetembed/` +
     `?symbol=${encodeURIComponent(symbol)}` +
     `&interval=D` +
-    `&theme=dark` +
+    `&theme=light` +
     `&style=1` +
     `&timezone=Europe%2FIstanbul` +
     `&locale=tr` +

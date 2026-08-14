@@ -339,7 +339,7 @@ export default function SenkronPanelPage() {
     padding: 20,
     border: '1px solid #26364d',
     borderRadius: 20,
-    background: '#18140d',
+    background: 'rgba(38,75,105,0.88)',
   }}
 >
   <div
@@ -1296,7 +1296,7 @@ function WatchlistPanel({ items, prices, userId }) {
               border: '1px solid rgba(212,175,55,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#151109',
+              background: '#214763',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -1413,7 +1413,7 @@ function WatchlistPanel({ items, prices, userId }) {
                     justifyContent: 'center',
                     border: '1px solid rgba(212,175,55,0.42)',
                     borderRadius: 9,
-                    background: '#151109',
+                    background: '#214763',
                     color: '#f8fafc',
                     cursor: processing ? 'default' : 'grab',
                     opacity: processing ? 0.45 : 1,
@@ -1614,7 +1614,7 @@ function ClosedPositionsPanel({ positions, userId }) {
               border: '1px solid rgba(212,175,55,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#151109',
+              background: '#214763',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -1723,7 +1723,7 @@ function ClosedPositionsPanel({ positions, userId }) {
           padding: 16,
           border: '1px solid rgba(212,175,55,0.42)',
           borderRadius: 14,
-          background: '#18140d',
+          background: 'rgba(52,91,126,0.72)',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -1745,7 +1745,7 @@ function ClosedPositionsPanel({ positions, userId }) {
           padding: 16,
           border: '1px solid rgba(212,175,55,0.42)',
           borderRadius: 14,
-          background: '#18140d',
+          background: 'rgba(52,91,126,0.72)',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -2033,7 +2033,7 @@ function formatPercent(value) {
 const styles = {
   page: {
     minHeight: '100vh',
-    background: 'radial-gradient(circle at top, #211a0d 0%, #100d08 42%, #080706 100%)',
+    background: 'radial-gradient(circle at top left, #37698f 0%, #234968 38%, #16324f 100%)',
     color: '#f8fafc',
     padding: '20px',
     fontFamily: 'Arial, Helvetica, sans-serif',
@@ -2043,15 +2043,15 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#0d0b07',
+    background: '#16324f',
     padding: '20px',
     fontFamily: 'Arial, Helvetica, sans-serif',
   },
   loadingCard: {
     width: '100%',
     maxWidth: '420px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.25)',
+    background: 'rgba(38,75,105,0.96)',
+    border: '1px solid rgba(125,211,252,0.30)',
     borderRadius: '18px',
     padding: '28px',
     textAlign: 'center',
@@ -2122,8 +2122,8 @@ const styles = {
     gap: '14px',
   },
   summaryCard: {
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: 'rgba(38,75,105,0.92)',
+    border: '1px solid rgba(125,211,252,0.26)',
     borderRadius: '16px',
     padding: '18px',
     display: 'flex',
@@ -2148,8 +2148,8 @@ const styles = {
     width: '100%',
     maxWidth: '1600px',
     margin: '0 auto 18px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: 'rgba(38,75,105,0.92)',
+    border: '1px solid rgba(125,211,252,0.26)',
     borderRadius: '14px',
     padding: '12px 14px',
     display: 'flex',
@@ -2193,7 +2193,7 @@ const styles = {
     fontSize: '12px',
   },
   emptyBox: {
-    background: '#17130c',
+    background: 'rgba(38,75,105,0.88)',
     border: '1px dashed rgba(148,163,184,0.3)',
     color: '#94a3b8',
     borderRadius: '14px',
@@ -2203,8 +2203,8 @@ const styles = {
   tableWrapper: {
     width: '100%',
     overflowX: 'auto',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: 'rgba(38,75,105,0.94)',
+    border: '1px solid rgba(125,211,252,0.26)',
     borderRadius: '16px',
   },
   tableHeader: {
@@ -2300,8 +2300,8 @@ const styles = {
   panelCard: {
     minWidth: 0,
     minHeight: '310px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: 'rgba(38,75,105,0.92)',
+    border: '1px solid rgba(125,211,252,0.26)',
     borderRadius: '16px',
     padding: '18px',
     boxShadow: '0 12px 30px rgba(0,0,0,0.26), 0 0 22px rgba(212,175,55,0.025)',
@@ -2420,8 +2420,8 @@ const styles = {
   fullChartWrapper: {
     width: '100%',
     height: '560px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: 'rgba(38,75,105,0.94)',
+    border: '1px solid rgba(125,211,252,0.26)',
     borderRadius: '16px',
     overflow: 'hidden',
   },
