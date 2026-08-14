@@ -54,16 +54,9 @@ function normalizeMarket(item) {
 }
 
 function getThresholds(market) {
-  if (market === 'NASDAQ') {
-    return {
-      up: 5,
-      down: -5,
-    };
-  }
-
   return {
-    up: 3,
-    down: -2,
+    up: 5,
+    down: -7,
   };
 }
 

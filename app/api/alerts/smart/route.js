@@ -107,6 +107,45 @@ function getIstanbulDateKey() {
   }).format(new Date());
 }
 
+function getMarketClock(market) {
+  const timeZone =
+    market === 'NASDAQ'
+      ? 'America/New_York'
+      : 'Europe/Istanbul';
+
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      weekday: 'short',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date())
+      .filter((part) => part.type !== 'literal')
+      .map((part) => [part.type, part.value])
+  );
+
+  const minutes =
+    Number(parts.hour) * 60 +
+    Number(parts.minute);
+
+  const closeMinutes =
+    market === 'NASDAQ'
+      ? 16 * 60
+      : 18 * 60 + 10;
+
+  return {
+    dateKey:
+      `${parts.year}-${parts.month}-${parts.day}`,
+    isWeekday: !['Sat', 'Sun'].includes(parts.weekday),
+    isClosed: minutes >= closeMinutes,
+  };
+}
+
 function formatMoney(value, market) {
   const number = Number(value);
 
@@ -552,8 +591,11 @@ async function processUser({
 
   for (const market of ['BIST', 'NASDAQ']) {
     const totals = portfolioTotals[market];
+    const marketClock = getMarketClock(market);
 
     if (
+      !marketClock.isWeekday ||
+      !marketClock.isClosed ||
       totals.previousValue <= 0 ||
       totals.currentValue <= 0
     ) {
@@ -565,10 +607,6 @@ async function processUser({
         totals.previousValue) *
       100;
 
-    if (Math.abs(portfolioPercent) < 2) {
-      continue;
-    }
-
     const direction =
       portfolioPercent >= 0
         ? 'yükseldi'
@@ -577,34 +615,32 @@ async function processUser({
     const historyRef = userRef
       .collection('smartAlertHistory')
       .doc(
-        `${dateKey}_${market}_portfolio_` +
-          `${portfolioPercent >= 0 ? 'up' : 'down'}`
+        `${marketClock.dateKey}_${market}_close_summary`
       );
 
     const result = await sendOncePerDay({
       historyRef,
       messaging,
       tokens,
-      title:
-        portfolioPercent >= 0
-          ? `💰 ${market} portföyün yükseliyor`
-          : `⚠️ ${market} portföyün düşüyor`,
+      title: `📊 ${market} gün sonu özeti`,
       body:
-        `${market} portföyün bugün ` +
-        `${signedPercent(portfolioPercent)} ${direction}. ` +
-        `Günlük fark: ${formatMoney(
+        `Portföy bugün ${signedPercent(portfolioPercent)} ` +
+        `${direction}. Günlük kâr/zarar: ${formatMoney(
           totals.dailyChange,
           market
-        )}`,
+        )}. Gün sonu değeri: ${formatMoney(
+          totals.currentValue,
+          market
+        )}.`,
       baseUrl,
       details: {
-        type: 'portfolio-daily-change',
+        type: 'portfolio-close-summary',
         market,
         portfolioPercent,
         dailyChange: totals.dailyChange,
         currentValue: totals.currentValue,
         previousValue: totals.previousValue,
-        dateKey,
+        dateKey: marketClock.dateKey,
       },
     });
 
