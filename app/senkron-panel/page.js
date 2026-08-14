@@ -339,7 +339,7 @@ export default function SenkronPanelPage() {
     padding: 20,
     border: '1px solid #26364d',
     borderRadius: 20,
-    background: 'rgba(38,75,105,0.88)',
+    background: 'linear-gradient(135deg, rgba(43,96,91,0.94), rgba(48,74,92,0.94))',
   }}
 >
   <div
@@ -611,8 +611,18 @@ function SummaryCard({ title, value, subtitle, positive }) {
   if (positive === true) valueColor = '#22c55e';
   if (positive === false) valueColor = '#ef4444';
 
+  const cardColor = title.includes('BIST Günlük')
+    ? 'linear-gradient(145deg, #356b58, #2b594d)'
+    : title.includes('BIST')
+      ? 'linear-gradient(145deg, #2f6b68, #285b62)'
+      : title.includes('NASDAQ Günlük')
+        ? 'linear-gradient(145deg, #66577f, #514d79)'
+        : title.includes('NASDAQ')
+          ? 'linear-gradient(145deg, #3e6284, #46577b)'
+          : 'linear-gradient(145deg, #75613f, #65543e)';
+
   return (
-    <article style={styles.summaryCard}>
+    <article style={{ ...styles.summaryCard, background: cardColor }}>
       <p style={styles.summaryTitle}>{title}</p>
       <strong style={{ ...styles.summaryValue, color: valueColor }}>
         {value}
@@ -806,7 +816,15 @@ function PortfolioSection({
       {stocks.length === 0 ? (
         <div style={styles.emptyBox}>Bu bölümde kayıtlı hisse yok.</div>
       ) : (
-        <div style={styles.tableWrapper}>
+        <div
+          style={{
+            ...styles.tableWrapper,
+            background:
+              currency === 'TRY'
+                ? 'linear-gradient(145deg, rgba(38,92,75,0.96), rgba(35,69,72,0.96))'
+                : 'linear-gradient(145deg, rgba(54,73,120,0.96), rgba(48,61,101,0.96))',
+          }}
+        >
           <div style={styles.tableHeader}>
             <div>Hisse</div>
             <div>Lot</div>
@@ -1007,7 +1025,12 @@ function NewsPanel({ stocks }) {
   }, [nasdaqSymbols]);
 
   return (
-    <article style={styles.panelCard}>
+    <article
+      style={{
+        ...styles.panelCard,
+        background: 'linear-gradient(145deg, #4c567d, #3d4c6d)',
+      }}
+    >
       <div style={styles.panelHeader}>
         <h3 style={styles.panelTitle}>NASDAQ Haberleri</h3>
         <span style={styles.panelBadge}>Canlı</span>
@@ -1214,7 +1237,13 @@ function WatchlistPanel({ items, prices, userId }) {
   }
 
   return (
-    <article style={styles.panelCard} className="sky-watch-card">
+    <article
+      style={{
+        ...styles.panelCard,
+        background: 'linear-gradient(145deg, #356b68, #315b65)',
+      }}
+      className="sky-watch-card"
+    >
       <style jsx global>{`
         .sky-watch-header,
         .sky-watch-row {
@@ -1599,7 +1628,12 @@ function ClosedPositionsPanel({ positions, userId }) {
     );
 
   return (
-    <article style={styles.panelCard}>
+    <article
+      style={{
+        ...styles.panelCard,
+        background: 'linear-gradient(145deg, #6a5647, #5b4c50)',
+      }}
+    >
       <div style={styles.panelHeader}>
         <h3 style={styles.panelTitle}>Kapanan Pozisyonlar</h3>
 
@@ -2033,7 +2067,7 @@ function formatPercent(value) {
 const styles = {
   page: {
     minHeight: '100vh',
-    background: 'radial-gradient(circle at top left, #37698f 0%, #234968 38%, #16324f 100%)',
+    background: 'radial-gradient(circle at 15% 0%, #426b6a 0%, #304b5c 38%, #293b4b 70%, #343247 100%)',
     color: '#f8fafc',
     padding: '20px',
     fontFamily: 'Arial, Helvetica, sans-serif',
@@ -2148,7 +2182,7 @@ const styles = {
     width: '100%',
     maxWidth: '1600px',
     margin: '0 auto 18px',
-    background: 'rgba(38,75,105,0.92)',
+    background: 'linear-gradient(135deg, rgba(48,91,111,0.94), rgba(53,76,105,0.94))',
     border: '1px solid rgba(125,211,252,0.26)',
     borderRadius: '14px',
     padding: '12px 14px',
@@ -2420,7 +2454,7 @@ const styles = {
   fullChartWrapper: {
     width: '100%',
     height: '560px',
-    background: 'rgba(38,75,105,0.94)',
+    background: 'linear-gradient(145deg, rgba(70,79,112,0.96), rgba(47,66,91,0.96))',
     border: '1px solid rgba(125,211,252,0.26)',
     borderRadius: '16px',
     overflow: 'hidden',

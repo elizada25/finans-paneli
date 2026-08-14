@@ -368,7 +368,7 @@ const styles = {
     maxWidth: '1050px',
     borderRadius: '22px',
     border: '1px solid rgba(212,175,55,0.42)',
-    background: 'linear-gradient(180deg, #315d80 0%, #1f4665 100%)',
+    background: 'linear-gradient(160deg, #465d7b 0%, #554b73 52%, #3f6670 100%)',
     color: '#f8fafc',
     padding: '22px',
     boxShadow: '0 30px 90px rgba(0,0,0,0.55)',
@@ -410,7 +410,7 @@ const styles = {
     padding: '20px',
     borderRadius: '18px',
     border: '1px solid rgba(212,175,55,0.30)',
-    background: 'rgba(125,211,252,0.08)',
+    background: 'rgba(155,135,193,0.14)',
   },
   signalTitle: {
     margin: '0 0 12px',
@@ -466,7 +466,7 @@ const styles = {
     padding: '14px',
     borderRadius: '14px',
     border: '1px solid rgba(148,163,184,0.18)',
-    background: 'rgba(125,211,252,0.09)',
+    background: 'rgba(106,155,156,0.16)',
   },
   metricLabel: {
     display: 'block',
@@ -481,7 +481,7 @@ const styles = {
     padding: '16px',
     borderRadius: '16px',
     border: '1px solid rgba(212,175,55,0.20)',
-    background: 'rgba(16,45,70,0.44)',
+    background: 'rgba(49,59,88,0.48)',
   },
   sectionHeader: {
     display: 'flex',
