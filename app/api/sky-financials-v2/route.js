@@ -103,8 +103,9 @@ export async function GET(request) {
       netIncome: getYoYMetric(
         facts,
         [
-          'NetIncomeLoss',
           'ProfitLoss',
+          'NetIncomeLoss',
+          'NetIncomeLossAvailableToCommonStockholdersBasic',
         ],
         ['USD'],
         false,
@@ -129,6 +130,19 @@ export async function GET(request) {
         [
           'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents',
           'CashAndCashEquivalentsAtCarryingValue',
+        ],
+        ['USD'],
+        true,
+        filing,
+        'instant'
+      ),
+
+      shortTermInvestments: getYoYMetric(
+        facts,
+        [
+          'ShortTermInvestments',
+          'MarketableSecuritiesCurrent',
+          'MarketableSecurities',
         ],
         ['USD'],
         true,
@@ -912,6 +926,9 @@ Gelir: ${money(metrics.revenue?.current)}
 Net kâr/zarar: ${money(metrics.netIncome?.current)}
 EPS: ${formatNumber(metrics.eps?.current)}
 Nakit: ${money(metrics.cash?.current)}
+Kısa vadeli yatırımlar: ${money(
+  metrics.shortTermInvestments?.current
+)}
 Operasyonel nakit akışı: ${money(
   metrics.operatingCashFlow?.current
 )}
@@ -925,6 +942,9 @@ Gelir: ${money(metrics.revenue?.previous)}
 Net kâr/zarar: ${money(metrics.netIncome?.previous)}
 EPS: ${formatNumber(metrics.eps?.previous)}
 Nakit: ${money(metrics.cash?.previous)}
+Kısa vadeli yatırımlar: ${money(
+  metrics.shortTermInvestments?.previous
+)}
 Operasyonel nakit akışı: ${money(
   metrics.operatingCashFlow?.previous
 )}

@@ -998,6 +998,17 @@ export default function SkyAI({
                     )}
                   />
 
+                  {financialModal.metrics
+                    ?.shortTermInvestments && (
+                    <FinancialMetric
+                      title="Kısa Vadeli Yatırımlar"
+                      value={formatFinancialMoney(
+                        financialModal.metrics
+                          .shortTermInvestments.current
+                      )}
+                    />
+                  )}
+
                   <FinancialMetric
                     title="Operasyonel Nakit Akışı"
                     value={formatFinancialMoney(
@@ -1107,6 +1118,26 @@ export default function SkyAI({
                           }
                           money
                         />
+
+                        {financialModal.metrics
+                          ?.shortTermInvestments && (
+                          <YoYMetric
+                            title="Kısa Vadeli Yatırımlar"
+                            current={
+                              financialModal.metrics
+                                .shortTermInvestments.current
+                            }
+                            previous={
+                              financialModal.metrics
+                                .shortTermInvestments.previous
+                            }
+                            percent={
+                              financialModal.metrics
+                                .shortTermInvestments.yoyPercent
+                            }
+                            money
+                          />
+                        )}
 
                         <YoYMetric
                           title="Operasyonel Nakit"
@@ -1340,6 +1371,10 @@ function FinancialMetric({ title, value }) {
 }
 
 function formatFinancialMoney(value) {
+  if (value === null || value === undefined || value === '') {
+    return '—';
+  }
+
   const number = Number(value);
 
   if (!Number.isFinite(number)) return '—';
@@ -1372,6 +1407,10 @@ function formatFinancialMoney(value) {
 }
 
 function formatFinancialNumber(value) {
+  if (value === null || value === undefined || value === '') {
+    return '—';
+  }
+
   const number = Number(value);
 
   return Number.isFinite(number)
