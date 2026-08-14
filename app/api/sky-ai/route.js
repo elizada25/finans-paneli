@@ -440,6 +440,16 @@ function buildDecision({
     }
   }
 
+  if (Number.isFinite(technical.dailyChangePercent)) {
+    if (technical.dailyChangePercent >= 3) {
+      score += 1;
+      reasons.push("Günlük fiyat momentumu pozitif.");
+    } else if (technical.dailyChangePercent <= -3) {
+      score -= 1;
+      reasons.push("Günlük fiyat momentumu negatif.");
+    }
+  }
+
   const positiveWords = [
     "beats",
     "beat estimates",
@@ -496,16 +506,32 @@ function buildDecision({
     reasons.push("Son 3 günde anlamlı haber başlığı bulunamadı.");
   }
 
-  let decision = "BEKLE";
+  if (Number.isFinite(financial?.score)) {
+    if (financial.score >= 4) {
+      score += 2;
+      reasons.push("Son bilanço puanı güçlü.");
+    } else if (financial.score >= 2) {
+      score += 1;
+      reasons.push("Son bilanço puanı olumlu.");
+    } else if (financial.score <= -3) {
+      score -= 2;
+      reasons.push("Son bilanço puanı riskli.");
+    } else if (financial.score < 0) {
+      score -= 1;
+      reasons.push("Son bilanço puanı zayıf.");
+    }
+  }
 
-  if (score >= 4) {
-    decision = "GÜÇLÜ EKLE";
+  let decision = "NÖTR";
+
+  if (score >= 5) {
+    decision = "GÜÇLÜ POZİTİF";
   } else if (score >= 2) {
-    decision = "KADEMELİ EKLE";
-  } else if (score >= 0) {
-    decision = "BEKLE";
-  } else if (score > -3) {
-    decision = "ZAYIF — BEKLE";
+    decision = "POZİTİF";
+  } else if (score >= -1) {
+    decision = "NÖTR";
+  } else if (score >= -4) {
+    decision = "TEMKİNLİ";
   } else {
     decision = "RİSK YÜKSEK";
   }
@@ -542,6 +568,12 @@ function buildDecision({
     currentPrice,
     technical.resistance,
   );
+  const decisionPlan = buildDecisionPlan({
+    decision,
+    support,
+    resistance,
+    currency,
+  });
 
   let focusedAnswer = "";
 
@@ -616,6 +648,8 @@ ${reasons
 
 Yakın destek: ${support} ${currency}
 Yakın direnç: ${resistance} ${currency}
+İzlenecek plan: ${decisionPlan}
+Puan: ${score.toFixed(1)}
 SONUÇ: ${decision}`;
   } else {
     focusedAnswer = `${symbol} GENEL ANALİZ — ${decision}
@@ -636,6 +670,8 @@ ${reasons
   .map((x) => `• ${x}`)
   .join("\n")}
 
+İzlenecek plan: ${decisionPlan}
+Puan: ${score.toFixed(1)}
 SONUÇ: ${decision}`;
   }
 
@@ -655,6 +691,18 @@ Bu otomatik veri özeti yatırım tavsiyesi veya kesin alım/satım emri değild
   };
 }
 
+function buildDecisionPlan({ decision, support, resistance, currency }) {
+  if (decision === "GÜÇLÜ POZİTİF" || decision === "POZİTİF") {
+    return `${resistance} ${currency} üzerindeki hacimli kapanış güçlenmeyi teyit eder; acele alım yerine destek ve direnç takibi yapılmalı.`;
+  }
+
+  if (decision === "NÖTR") {
+    return `${support} ${currency} destek ve ${resistance} ${currency} direnç arasında yön teyidi beklenmeli.`;
+  }
+
+  return `${support} ${currency} desteği altında risk artar; direnç aşılmadan güçlü görünüm teyit edilmiş sayılmaz.`;
+}
+
 function detectQuestionIntent(question) {
   const value = String(question || "").toLocaleLowerCase("tr-TR");
 
@@ -669,7 +717,11 @@ function detectQuestionIntent(question) {
   if (/rsi|macd|teknik|ortalama|ema|trend|hacim/.test(value)) {
     return "technical";
   }
-  if (/\bal\b|\bsat\b|ekle|bekle|tut|mantıklı|mantikli/.test(value)) {
+  if (
+    /\bal\b|\bsat\b|alım|alim|almalı|almali|satım|satim|satmalı|satmali|yapmalı|yapmali|ekle|bekle|tut|mantıklı|mantikli/.test(
+      value,
+    )
+  ) {
     return "decision";
   }
 

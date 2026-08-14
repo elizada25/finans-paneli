@@ -368,7 +368,13 @@ export default function SkyAI({
       normalized.includes("bilanco") ||
       normalized.includes("financial");
 
-    const firstTickerMatch = question.trim().match(/^([A-Z][A-Z0-9.-]{0,9})\b/);
+    const firstTickerMatch = question
+      .trim()
+      .match(/^([A-Z][A-Z0-9.-]{0,9})\b/i);
+
+    if (firstTickerMatch) {
+      firstTickerMatch[1] = firstTickerMatch[1].toUpperCase();
+    }
 
     const externalFinancialSymbol =
       financialIntent && firstTickerMatch ? firstTickerMatch[1] : null;
@@ -416,7 +422,7 @@ export default function SkyAI({
     }
 
     const stockAnalysisIntent =
-      /analiz|nasıl|nasil|almalı|almali|satmalı|satmali|ekle|bekle|tut|destek|diren[cç]|rsi|macd|haber|risk|teknik|fiyat|maliyet|k[aâ]r|zarar|trend|hacim/.test(
+      /analiz|nasıl|nasil|alım|alim|almalı|almali|satım|satim|satmalı|satmali|yapmalı|yapmali|ekle|bekle|tut|destek|diren[cç]|rsi|macd|haber|risk|teknik|fiyat|maliyet|k[aâ]r|zarar|trend|hacim/.test(
         normalized,
       );
 
