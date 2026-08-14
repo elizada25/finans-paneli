@@ -345,8 +345,9 @@ function findNearEma({ history, period, thresholdPercent, now }) {
   if (!Number.isFinite(currentClose)) return null;
 
   const diffPercent = ((currentClose - currentEma) / currentEma) * 100;
+  const distancePercent = Math.abs(diffPercent);
 
-  if (Math.abs(diffPercent) > thresholdPercent) return null;
+  if (distancePercent < 1 || distancePercent > 2) return null;
 
   const volumeRatio = getVolumeRatio(completedRows);
 
