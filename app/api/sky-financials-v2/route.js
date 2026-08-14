@@ -95,7 +95,9 @@ export async function GET(request) {
           'SalesRevenueNet',
         ],
         ['USD'],
-        false
+        false,
+        filing,
+        'quarter'
       ),
 
       netIncome: getYoYMetric(
@@ -105,7 +107,9 @@ export async function GET(request) {
           'ProfitLoss',
         ],
         ['USD'],
-        false
+        false,
+        filing,
+        'quarter'
       ),
 
       eps: getYoYMetric(
@@ -115,17 +119,21 @@ export async function GET(request) {
           'EarningsPerShareBasic',
         ],
         ['USD/shares'],
-        false
+        false,
+        filing,
+        'quarter'
       ),
 
       cash: getYoYMetric(
         facts,
         [
-          'CashAndCashEquivalentsAtCarryingValue',
           'CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents',
+          'CashAndCashEquivalentsAtCarryingValue',
         ],
         ['USD'],
-        true
+        true,
+        filing,
+        'instant'
       ),
 
       operatingCashFlow: getYoYMetric(
@@ -134,21 +142,27 @@ export async function GET(request) {
           'NetCashProvidedByUsedInOperatingActivities',
         ],
         ['USD'],
-        false
+        false,
+        filing,
+        'ytd'
       ),
 
       assets: getYoYMetric(
         facts,
         ['Assets'],
         ['USD'],
-        true
+        true,
+        filing,
+        'instant'
       ),
 
       liabilities: getYoYMetric(
         facts,
         ['Liabilities'],
         ['USD'],
-        true
+        true,
+        filing,
+        'instant'
       ),
     };
 
@@ -163,12 +177,12 @@ export async function GET(request) {
       {
         headers: {
           'Cache-Control': 'no-store, max-age=0',
-          'X-Sky-Financials-Version': 'V2',
+          'X-Sky-Financials-Version': 'V3-period-locked',
         },
       }
     );
   } catch (error) {
-    console.error('Sky financials V1.3 hatası:', error);
+    console.error('Sky financials V3 hatası:', error);
 
     return Response.json(
       {
@@ -218,7 +232,9 @@ function getYoYMetric(
   facts,
   tags,
   units,
-  instantMetric = false
+  instantMetric = false,
+  filing = null,
+  periodMode = 'quarter'
 ) {
   for (const tag of tags) {
     const fact = facts?.[tag];
@@ -286,15 +302,20 @@ function getYoYMetric(
       if (!unique.length) continue;
 
       /*
-        Önce frame içeren en yeni veri aranır.
-        Frame, SEC'de CY2026Q1 / CY2026Q1I gibi
-        dönemleri doğru eşleştirmemizi sağlar.
+        Metrikleri son 10-Q/10-K raporunun erişim numarası
+        ve dönem sonuna bağla. Aynı yeni rapor içinde SEC,
+        geçen yılın karşılaştırma satırlarını da yeniden
+        dosyaladığı için yalnızca "filed" tarihine bakmak
+        eski dönemin seçilmesine yol açar.
       */
-      let current =
-        unique.find((item) =>
-          isUsefulFrame(item.frame, instantMetric)
-        ) ||
-        unique[0];
+      const current = selectCurrentFact(
+        unique,
+        filing,
+        instantMetric,
+        periodMode
+      );
+
+      if (!current) continue;
 
       let previous = findSamePeriodLastYear(
         unique,
@@ -307,15 +328,22 @@ function getYoYMetric(
         ve yıl üzerinden ikinci yöntem.
       */
       if (!previous) {
+        previous = findPreviousByDates(
+          unique,
+          current,
+          instantMetric,
+          periodMode
+        );
+      }
+
+      if (!previous) {
         previous = unique.find((candidate) => {
           if (candidate === current) return false;
 
           const currentYear =
-            Number(current.fy) ||
             new Date(current.end).getUTCFullYear();
 
           const candidateYear =
-            Number(candidate.fy) ||
             new Date(candidate.end).getUTCFullYear();
 
           if (
@@ -378,6 +406,154 @@ function getYoYMetric(
   return null;
 }
 
+function selectCurrentFact(
+  values,
+  filing,
+  instantMetric,
+  periodMode
+) {
+  let pool = [...values];
+
+  if (filing?.accessionNumber) {
+    const accessionMatches = pool.filter(
+      (item) => item.accn === filing.accessionNumber
+    );
+
+    if (accessionMatches.length) {
+      pool = accessionMatches;
+    } else {
+      return null;
+    }
+  } else if (filing?.date) {
+    const filedMatches = pool.filter(
+      (item) => item.filed === filing.date
+    );
+
+    if (filedMatches.length) {
+      pool = filedMatches;
+    }
+  }
+
+  if (filing?.reportDate) {
+    const endMatches = pool.filter(
+      (item) => item.end === filing.reportDate
+    );
+
+    if (endMatches.length) {
+      pool = endMatches;
+    } else {
+      return null;
+    }
+  }
+
+  if (!pool.length) return null;
+
+  if (instantMetric || periodMode === 'instant') {
+    return [...pool].sort((a, b) =>
+      scoreInstantFact(b, filing) -
+      scoreInstantFact(a, filing)
+    )[0];
+  }
+
+  if (periodMode === 'ytd') {
+    return [...pool].sort(
+      (a, b) => durationDays(b) - durationDays(a)
+    )[0];
+  }
+
+  const annual = filing?.form === '10-K';
+  const targetDays = annual ? 365 : 91;
+
+  return [...pool].sort((a, b) => {
+    const aFrame = isUsefulFrame(a.frame, false) ? 1 : 0;
+    const bFrame = isUsefulFrame(b.frame, false) ? 1 : 0;
+
+    if (aFrame !== bFrame) return bFrame - aFrame;
+
+    return (
+      Math.abs(durationDays(a) - targetDays) -
+      Math.abs(durationDays(b) - targetDays)
+    );
+  })[0];
+}
+
+function scoreInstantFact(item, filing) {
+  let score = 0;
+
+  if (isUsefulFrame(item.frame, true)) score += 10;
+  if (filing?.reportDate && item.end === filing.reportDate) {
+    score += 100;
+  }
+
+  return score;
+}
+
+function durationDays(item) {
+  if (!item?.start || !item?.end) return 0;
+
+  const start = new Date(`${item.start}T00:00:00Z`).getTime();
+  const end = new Date(`${item.end}T00:00:00Z`).getTime();
+
+  if (!Number.isFinite(start) || !Number.isFinite(end)) {
+    return 0;
+  }
+
+  return Math.round((end - start) / 86400000) + 1;
+}
+
+function findPreviousByDates(
+  values,
+  current,
+  instantMetric,
+  periodMode
+) {
+  const previousEnd = shiftYear(current.end, -1);
+  const previousStart = current.start
+    ? shiftYear(current.start, -1)
+    : null;
+
+  const candidates = values.filter((item) => {
+    if (item === current || item.end !== previousEnd) {
+      return false;
+    }
+
+    if (instantMetric || periodMode === 'instant') {
+      return true;
+    }
+
+    if (previousStart && item.start === previousStart) {
+      return true;
+    }
+
+    return (
+      Math.abs(durationDays(item) - durationDays(current)) <= 7
+    );
+  });
+
+  return candidates.sort((a, b) => {
+    const aExact = previousStart && a.start === previousStart ? 1 : 0;
+    const bExact = previousStart && b.start === previousStart ? 1 : 0;
+
+    if (aExact !== bExact) return bExact - aExact;
+
+    return (
+      new Date(b.filed || b.end).getTime() -
+      new Date(a.filed || a.end).getTime()
+    );
+  })[0] || null;
+}
+
+function shiftYear(value, amount) {
+  if (!value) return null;
+
+  const date = new Date(`${value}T00:00:00Z`);
+
+  if (!Number.isFinite(date.getTime())) return null;
+
+  date.setUTCFullYear(date.getUTCFullYear() + amount);
+  return date.toISOString().slice(0, 10);
+}
+
 function isUsefulFrame(frame, instantMetric) {
   if (!frame) return false;
 
@@ -429,6 +605,8 @@ function getLatestFiling(data) {
 
   const forms = recent?.form || [];
   const dates = recent?.filingDate || [];
+  const reportDates = recent?.reportDate || [];
+  const accessionNumbers = recent?.accessionNumber || [];
 
   for (let i = 0; i < forms.length; i++) {
     if (
@@ -438,6 +616,8 @@ function getLatestFiling(data) {
       return {
         form: forms[i],
         date: dates[i],
+        reportDate: reportDates[i] || null,
+        accessionNumber: accessionNumbers[i] || null,
       };
     }
   }
