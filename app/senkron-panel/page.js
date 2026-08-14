@@ -2067,7 +2067,7 @@ function formatPercent(value) {
 const styles = {
   page: {
     minHeight: '100vh',
-    background: 'radial-gradient(circle at 15% 0%, #426b6a 0%, #304b5c 38%, #293b4b 70%, #343247 100%)',
+    background: 'radial-gradient(circle at top, #211a0d 0%, #100d08 42%, #080706 100%)',
     color: '#f8fafc',
     padding: '20px',
     fontFamily: 'Arial, Helvetica, sans-serif',
@@ -2077,7 +2077,7 @@ const styles = {
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#16324f',
+    background: '#0d0b07',
     padding: '20px',
     fontFamily: 'Arial, Helvetica, sans-serif',
   },
