@@ -1281,7 +1281,7 @@ const styles = {
     border: "1px solid rgba(148, 163, 184, 0.22)",
     borderRadius: 16,
     overflow: "hidden",
-    background: "linear-gradient(145deg, rgba(35,91,84,0.96), rgba(44,72,91,0.96))",
+    background: "rgba(15, 23, 42, 0.88)",
     marginBottom: 18,
   },
   header: {
@@ -1313,7 +1313,7 @@ const styles = {
   subtitle: {
     marginTop: 3,
     fontSize: 12,
-    color: "#c2d6e8",
+    color: "#94a3b8",
   },
   headerRight: {
     display: "flex",
@@ -1334,7 +1334,7 @@ const styles = {
   },
   arrow: {
     fontSize: 12,
-    color: "#c2d6e8",
+    color: "#94a3b8",
   },
   content: {
     borderTop: "1px solid rgba(148, 163, 184, 0.14)",
@@ -1348,14 +1348,14 @@ const styles = {
   infoCard: {
     padding: 12,
     borderRadius: 12,
-    background: "linear-gradient(145deg, rgba(69,115,108,0.82), rgba(56,91,111,0.82))",
+    background: "rgba(30, 41, 59, 0.72)",
     display: "flex",
     flexDirection: "column",
     gap: 5,
   },
   label: {
     fontSize: 12,
-    color: "#c2d6e8",
+    color: "#94a3b8",
   },
   positive: {
     color: "#22c55e",
@@ -1369,7 +1369,7 @@ const styles = {
     marginTop: 11,
     padding: 12,
     borderRadius: 12,
-    background: "rgba(92,78,121,0.62)",
+    background: "rgba(30, 41, 59, 0.52)",
   },
   sectionTitle: {
     marginBottom: 8,
@@ -1387,7 +1387,7 @@ const styles = {
   },
   empty: {
     fontSize: 13,
-    color: "#c2d6e8",
+    color: "#94a3b8",
   },
   futureNote: {
     marginTop: 10,
@@ -1407,7 +1407,7 @@ const styles = {
     minWidth: 0,
     border: "1px solid rgba(148, 163, 184, 0.24)",
     borderRadius: 10,
-    background: "rgba(24, 58, 87, 0.96)",
+    background: "rgba(15, 23, 42, 0.9)",
     color: "#f8fafc",
     padding: "10px 11px",
     outline: "none",
@@ -1426,7 +1426,7 @@ const styles = {
     marginTop: 10,
     padding: 11,
     borderRadius: 10,
-    background: "rgba(47,116,128,0.34)",
+    background: "rgba(37, 99, 235, 0.10)",
     border: "1px solid rgba(37, 99, 235, 0.20)",
     fontSize: 13,
     lineHeight: 1.5,
@@ -1436,7 +1436,7 @@ const styles = {
     position: "fixed",
     inset: 0,
     zIndex: 9999,
-    background: "rgba(9,30,50,0.76)",
+    background: "rgba(0,0,0,0.78)",
     backdropFilter: "blur(8px)",
     display: "flex",
     alignItems: "center",
@@ -1450,7 +1450,7 @@ const styles = {
     overflowY: "auto",
     borderRadius: 20,
     padding: 20,
-    background: "linear-gradient(160deg,#3f6f6a 0%,#3f5575 52%,#544a6d 100%)",
+    background: "linear-gradient(180deg,#151109 0%,#0d0b07 100%)",
     border: "1px solid rgba(212,175,55,0.38)",
     boxShadow: "0 30px 80px rgba(0,0,0,.65)",
     color: "#f8fafc",
@@ -1511,13 +1511,13 @@ const styles = {
     padding: 14,
     borderRadius: 14,
     border: "1px solid",
-    background: "rgba(125,211,252,.07)",
+    background: "rgba(255,255,255,.025)",
     marginBottom: 14,
   },
 
   verdictLabel: {
     fontSize: 11,
-    color: "#c2d6e8",
+    color: "#94a3b8",
     fontWeight: 800,
   },
 
@@ -1546,7 +1546,7 @@ const styles = {
     minHeight: 82,
     borderRadius: 13,
     padding: 12,
-    background: "rgba(67,102,119,.70)",
+    background: "rgba(30,41,59,.45)",
     border: "1px solid rgba(212,175,55,.12)",
     display: "flex",
     flexDirection: "column",
@@ -1555,7 +1555,7 @@ const styles = {
 
   financialMetricTitle: {
     fontSize: 11,
-    color: "#c2d6e8",
+    color: "#94a3b8",
     fontWeight: 700,
   },
 
@@ -1631,7 +1631,7 @@ const styles = {
     borderRadius: 12,
     padding: 11,
     border: "1px solid rgba(212,175,55,.13)",
-    background: "rgba(82,73,108,.60)",
+    background: "rgba(15,23,42,.42)",
   },
 
   yoyValues: {
@@ -1658,7 +1658,7 @@ const styles = {
   yoyValueOld: {
     display: "block",
     fontSize: 13,
-    color: "#c2d6e8",
+    color: "#94a3b8",
     wordBreak: "break-word",
   },
 

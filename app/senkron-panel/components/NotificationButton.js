@@ -154,8 +154,8 @@ export default function NotificationButton({ user }) {
         padding: '14px',
         marginBottom: '16px',
         borderRadius: '14px',
-        background: 'linear-gradient(135deg, rgba(78,112,104,0.88), rgba(91,78,119,0.88))',
-        border: '1px solid rgba(125,211,252,0.30)',
+        background: 'rgba(255,255,255,0.06)',
+        border: '1px solid rgba(212,175,55,0.32)',
       }}
     >
       <div

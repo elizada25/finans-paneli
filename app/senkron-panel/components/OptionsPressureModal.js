@@ -360,7 +360,7 @@ const styles = {
     alignItems: 'flex-start',
     padding: '24px 12px',
     overflowY: 'auto',
-    background: 'rgba(9,30,50,0.78)',
+    background: 'rgba(2,6,23,0.88)',
     backdropFilter: 'blur(8px)',
   },
   modal: {
@@ -368,7 +368,7 @@ const styles = {
     maxWidth: '1050px',
     borderRadius: '22px',
     border: '1px solid rgba(212,175,55,0.42)',
-    background: 'linear-gradient(160deg, #465d7b 0%, #554b73 52%, #3f6670 100%)',
+    background: 'linear-gradient(180deg, #111827 0%, #0b0f17 100%)',
     color: '#f8fafc',
     padding: '22px',
     boxShadow: '0 30px 90px rgba(0,0,0,0.55)',
@@ -388,7 +388,7 @@ const styles = {
     letterSpacing: '0.16em',
   },
   title: { margin: 0, fontSize: '34px' },
-  subtitle: { margin: '6px 0 0', color: '#c2d6e8', fontSize: '13px' },
+  subtitle: { margin: '6px 0 0', color: '#94a3b8', fontSize: '13px' },
   closeButton: {
     width: '44px',
     height: '44px',
@@ -410,7 +410,7 @@ const styles = {
     padding: '20px',
     borderRadius: '18px',
     border: '1px solid rgba(212,175,55,0.30)',
-    background: 'rgba(155,135,193,0.14)',
+    background: 'rgba(212,175,55,0.05)',
   },
   signalTitle: {
     margin: '0 0 12px',
@@ -434,7 +434,7 @@ const styles = {
     overflow: 'hidden',
     marginTop: '14px',
     borderRadius: '999px',
-    background: '#173a57',
+    background: '#1e293b',
   },
   longBias: { height: '100%', background: '#22c55e' },
   shortBias: { height: '100%', background: '#ef4444' },
@@ -446,7 +446,7 @@ const styles = {
   },
   biasNote: {
     margin: '7px 0 0',
-    color: '#aac4da',
+    color: '#64748b',
     fontSize: '11px',
   },
   details: {
@@ -454,7 +454,7 @@ const styles = {
     padding: '14px',
     borderRadius: '14px',
     border: '1px solid rgba(148,163,184,0.20)',
-    background: 'rgba(125,211,252,0.07)',
+    background: 'rgba(255,255,255,0.025)',
   },
   detailsSummary: {
     color: '#e6c65c',
@@ -466,11 +466,11 @@ const styles = {
     padding: '14px',
     borderRadius: '14px',
     border: '1px solid rgba(148,163,184,0.18)',
-    background: 'rgba(106,155,156,0.16)',
+    background: 'rgba(255,255,255,0.04)',
   },
   metricLabel: {
     display: 'block',
-    color: '#c2d6e8',
+    color: '#94a3b8',
     fontSize: '11px',
     fontWeight: 700,
     marginBottom: '7px',
@@ -481,7 +481,7 @@ const styles = {
     padding: '16px',
     borderRadius: '16px',
     border: '1px solid rgba(212,175,55,0.20)',
-    background: 'rgba(49,59,88,0.48)',
+    background: 'rgba(0,0,0,0.18)',
   },
   sectionHeader: {
     display: 'flex',
@@ -491,7 +491,7 @@ const styles = {
     marginBottom: '14px',
   },
   sectionTitle: { margin: 0, fontSize: '17px' },
-  sectionNote: { margin: '4px 0 0', color: '#c2d6e8', fontSize: '11px' },
+  sectionNote: { margin: '4px 0 0', color: '#94a3b8', fontSize: '11px' },
   sourceTag: {
     flexShrink: 0,
     padding: '5px 8px',
@@ -548,7 +548,7 @@ const styles = {
   emptyBox: {
     padding: '22px',
     textAlign: 'center',
-    color: '#c2d6e8',
+    color: '#94a3b8',
   },
   warning: {
     marginTop: '12px',
@@ -557,7 +557,7 @@ const styles = {
   },
   disclaimer: {
     margin: '14px 2px 0',
-    color: '#aac4da',
+    color: '#64748b',
     fontSize: '11px',
     lineHeight: 1.5,
   },

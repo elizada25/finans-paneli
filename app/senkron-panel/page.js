@@ -339,7 +339,7 @@ export default function SenkronPanelPage() {
     padding: 20,
     border: '1px solid #26364d',
     borderRadius: 20,
-    background: 'linear-gradient(135deg, rgba(43,96,91,0.94), rgba(48,74,92,0.94))',
+    background: '#18140d',
   }}
 >
   <div
@@ -611,18 +611,8 @@ function SummaryCard({ title, value, subtitle, positive }) {
   if (positive === true) valueColor = '#22c55e';
   if (positive === false) valueColor = '#ef4444';
 
-  const cardColor = title.includes('BIST Günlük')
-    ? 'linear-gradient(145deg, #356b58, #2b594d)'
-    : title.includes('BIST')
-      ? 'linear-gradient(145deg, #2f6b68, #285b62)'
-      : title.includes('NASDAQ Günlük')
-        ? 'linear-gradient(145deg, #66577f, #514d79)'
-        : title.includes('NASDAQ')
-          ? 'linear-gradient(145deg, #3e6284, #46577b)'
-          : 'linear-gradient(145deg, #75613f, #65543e)';
-
   return (
-    <article style={{ ...styles.summaryCard, background: cardColor }}>
+    <article style={styles.summaryCard}>
       <p style={styles.summaryTitle}>{title}</p>
       <strong style={{ ...styles.summaryValue, color: valueColor }}>
         {value}
@@ -816,15 +806,7 @@ function PortfolioSection({
       {stocks.length === 0 ? (
         <div style={styles.emptyBox}>Bu bölümde kayıtlı hisse yok.</div>
       ) : (
-        <div
-          style={{
-            ...styles.tableWrapper,
-            background:
-              currency === 'TRY'
-                ? 'linear-gradient(145deg, rgba(38,92,75,0.96), rgba(35,69,72,0.96))'
-                : 'linear-gradient(145deg, rgba(54,73,120,0.96), rgba(48,61,101,0.96))',
-          }}
-        >
+        <div style={styles.tableWrapper}>
           <div style={styles.tableHeader}>
             <div>Hisse</div>
             <div>Lot</div>
@@ -1025,12 +1007,7 @@ function NewsPanel({ stocks }) {
   }, [nasdaqSymbols]);
 
   return (
-    <article
-      style={{
-        ...styles.panelCard,
-        background: 'linear-gradient(145deg, #4c567d, #3d4c6d)',
-      }}
-    >
+    <article style={styles.panelCard}>
       <div style={styles.panelHeader}>
         <h3 style={styles.panelTitle}>NASDAQ Haberleri</h3>
         <span style={styles.panelBadge}>Canlı</span>
@@ -1237,13 +1214,7 @@ function WatchlistPanel({ items, prices, userId }) {
   }
 
   return (
-    <article
-      style={{
-        ...styles.panelCard,
-        background: 'linear-gradient(145deg, #356b68, #315b65)',
-      }}
-      className="sky-watch-card"
-    >
+    <article style={styles.panelCard} className="sky-watch-card">
       <style jsx global>{`
         .sky-watch-header,
         .sky-watch-row {
@@ -1325,7 +1296,7 @@ function WatchlistPanel({ items, prices, userId }) {
               border: '1px solid rgba(212,175,55,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#214763',
+              background: '#151109',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -1442,7 +1413,7 @@ function WatchlistPanel({ items, prices, userId }) {
                     justifyContent: 'center',
                     border: '1px solid rgba(212,175,55,0.42)',
                     borderRadius: 9,
-                    background: '#214763',
+                    background: '#151109',
                     color: '#f8fafc',
                     cursor: processing ? 'default' : 'grab',
                     opacity: processing ? 0.45 : 1,
@@ -1628,12 +1599,7 @@ function ClosedPositionsPanel({ positions, userId }) {
     );
 
   return (
-    <article
-      style={{
-        ...styles.panelCard,
-        background: 'linear-gradient(145deg, #6a5647, #5b4c50)',
-      }}
-    >
+    <article style={styles.panelCard}>
       <div style={styles.panelHeader}>
         <h3 style={styles.panelTitle}>Kapanan Pozisyonlar</h3>
 
@@ -1648,7 +1614,7 @@ function ClosedPositionsPanel({ positions, userId }) {
               border: '1px solid rgba(212,175,55,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#214763',
+              background: '#151109',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -1757,7 +1723,7 @@ function ClosedPositionsPanel({ positions, userId }) {
           padding: 16,
           border: '1px solid rgba(212,175,55,0.42)',
           borderRadius: 14,
-          background: 'rgba(52,91,126,0.72)',
+          background: '#18140d',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -1779,7 +1745,7 @@ function ClosedPositionsPanel({ positions, userId }) {
           padding: 16,
           border: '1px solid rgba(212,175,55,0.42)',
           borderRadius: 14,
-          background: 'rgba(52,91,126,0.72)',
+          background: '#18140d',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -2084,8 +2050,8 @@ const styles = {
   loadingCard: {
     width: '100%',
     maxWidth: '420px',
-    background: 'rgba(38,75,105,0.96)',
-    border: '1px solid rgba(125,211,252,0.30)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.25)',
     borderRadius: '18px',
     padding: '28px',
     textAlign: 'center',
@@ -2156,8 +2122,8 @@ const styles = {
     gap: '14px',
   },
   summaryCard: {
-    background: 'rgba(38,75,105,0.92)',
-    border: '1px solid rgba(125,211,252,0.26)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
     padding: '18px',
     display: 'flex',
@@ -2182,8 +2148,8 @@ const styles = {
     width: '100%',
     maxWidth: '1600px',
     margin: '0 auto 18px',
-    background: 'linear-gradient(135deg, rgba(48,91,111,0.94), rgba(53,76,105,0.94))',
-    border: '1px solid rgba(125,211,252,0.26)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '14px',
     padding: '12px 14px',
     display: 'flex',
@@ -2227,7 +2193,7 @@ const styles = {
     fontSize: '12px',
   },
   emptyBox: {
-    background: 'rgba(38,75,105,0.88)',
+    background: '#17130c',
     border: '1px dashed rgba(148,163,184,0.3)',
     color: '#94a3b8',
     borderRadius: '14px',
@@ -2237,8 +2203,8 @@ const styles = {
   tableWrapper: {
     width: '100%',
     overflowX: 'auto',
-    background: 'rgba(38,75,105,0.94)',
-    border: '1px solid rgba(125,211,252,0.26)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
   },
   tableHeader: {
@@ -2334,8 +2300,8 @@ const styles = {
   panelCard: {
     minWidth: 0,
     minHeight: '310px',
-    background: 'rgba(38,75,105,0.92)',
-    border: '1px solid rgba(125,211,252,0.26)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
     padding: '18px',
     boxShadow: '0 12px 30px rgba(0,0,0,0.26), 0 0 22px rgba(212,175,55,0.025)',
@@ -2454,8 +2420,8 @@ const styles = {
   fullChartWrapper: {
     width: '100%',
     height: '560px',
-    background: 'linear-gradient(145deg, rgba(70,79,112,0.96), rgba(47,66,91,0.96))',
-    border: '1px solid rgba(125,211,252,0.26)',
+    background: '#17130c',
+    border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
     overflow: 'hidden',
   },
