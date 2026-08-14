@@ -1,11 +1,18 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
+import {
+  collection,
+  deleteDoc,
+  doc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+} from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { firebaseApp, firestoreDb } from '../../../lib-firebase';
 
-const STORAGE_KEY = 'sky-finans-bildirimler-acik-v3';
+const STORAGE_KEY = 'sky-finans-bildirimler-acik-v4';
 
 export default function NotificationButton({ user }) {
   const [status, setStatus] = useState('idle');
@@ -93,6 +100,43 @@ export default function NotificationButton({ user }) {
       const deviceId =
         await createDeviceId(token);
 
+      const platform = detectPlatform();
+
+      try {
+        const devicesSnapshot = await getDocs(
+          collection(
+            firestoreDb,
+            'users',
+            user.uid,
+            'notificationDevices'
+          )
+        );
+
+        const oldDevices = devicesSnapshot.docs.filter(
+          (device) => {
+            const data = device.data();
+
+            return (
+              device.id !== deviceId &&
+              data?.token !== token &&
+              (data?.userAgent === navigator.userAgent ||
+                data?.platform === platform)
+            );
+          }
+        );
+
+        await Promise.all(
+          oldDevices.map((device) =>
+            deleteDoc(device.ref)
+          )
+        );
+      } catch (cleanupError) {
+        console.warn(
+          'Eski bildirim cihazları temizlenemedi:',
+          cleanupError
+        );
+      }
+
       await setDoc(
         doc(firestoreDb, 'users', user.uid),
         { updatedAt: serverTimestamp() },
@@ -110,7 +154,7 @@ export default function NotificationButton({ user }) {
         {
           token,
           enabled: true,
-          platform: detectPlatform(),
+          platform,
           userAgent: navigator.userAgent,
           updatedAt: serverTimestamp(),
           createdAt: serverTimestamp(),
