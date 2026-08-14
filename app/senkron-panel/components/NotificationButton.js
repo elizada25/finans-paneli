@@ -5,7 +5,7 @@ import { doc, serverTimestamp, setDoc } from 'firebase/firestore';
 import { getMessaging, getToken, isSupported } from 'firebase/messaging';
 import { firebaseApp, firestoreDb } from '../../../lib-firebase';
 
-const STORAGE_KEY = 'sky-finans-bildirimler-acik';
+const STORAGE_KEY = 'sky-finans-bildirimler-acik-v2';
 
 export default function NotificationButton({ user }) {
   const [status, setStatus] = useState('idle');
@@ -20,7 +20,7 @@ export default function NotificationButton({ user }) {
       'Notification' in window &&
       Notification.permission === 'granted';
 
-    if (localActive || permissionGranted) {
+    if (localActive) {
       setStatus('hidden');
     } else {
       setStatus('idle');
