@@ -180,7 +180,16 @@ async function fetchLiquidCandidates() {
           tickers: BIST_UNIVERSE.map((symbol) => `BIST:${symbol}`),
           query: { types: [] },
         },
-        columns: ['close', 'volume', 'change', 'open', 'high', 'low'],
+        columns: [
+          'close',
+          'volume',
+          'change',
+          'open',
+          'high',
+          'low',
+          'EMA20',
+          'EMA50',
+        ],
       }),
     }
   );
@@ -197,12 +206,24 @@ async function fetchLiquidCandidates() {
       const close = numberValue(row?.d?.[0]);
       const volume = numberValue(row?.d?.[1]);
       const changePercent = numberValue(row?.d?.[2]);
+      const dailyEma20 = numberValue(row?.d?.[6]);
+      const dailyEma50 = numberValue(row?.d?.[7]);
+
+      const dailyTrend =
+        Number.isFinite(close) &&
+        Number.isFinite(dailyEma20) &&
+        Number.isFinite(dailyEma50)
+          ? close > dailyEma20 && dailyEma20 >= dailyEma50
+          : null;
 
       return {
         symbol,
         close,
         volume,
         changePercent,
+        dailyEma20,
+        dailyEma50,
+        dailyTrend,
         turnover:
           Number.isFinite(close) && Number.isFinite(volume)
             ? close * volume
@@ -249,6 +270,53 @@ function parseYahooRows(payload) {
   return rows.sort((first, second) => first.timestamp - second.timestamp);
 }
 
+function analyzeMarketRegime(allRows) {
+  if (allRows.length < 30) {
+    return {
+      positive: null,
+      message: 'BIST 100 yönü doğrulanamadı.',
+    };
+  }
+
+  const latestDate = istanbulDateKey(allRows[allRows.length - 1].timestamp);
+  const sessionRows = allRows.filter(
+    (row) => istanbulDateKey(row.timestamp) === latestDate
+  );
+  const nowSeconds = Date.now() / 1000;
+  const fifteenRows = aggregate15Minutes(allRows).filter(
+    (row) => row.timestamp + 900 <= nowSeconds
+  );
+
+  if (sessionRows.length < 3 || fifteenRows.length < 22) {
+    return {
+      positive: null,
+      message: 'BIST 100 için yeterli tamamlanmış mum yok.',
+    };
+  }
+
+  const closes = fifteenRows.map((row) => row.close);
+  const ema9 = calculateEma(closes, 9);
+  const ema20 = calculateEma(closes, 20);
+  const lastIndex = fifteenRows.length - 1;
+  const vwap = getVwap(sessionRows);
+  const price = sessionRows[sessionRows.length - 1].close;
+  const emaPositive = ema9[lastIndex] > ema20[lastIndex];
+  const vwapPositive = Number.isFinite(vwap) ? price > vwap : false;
+
+  return {
+    positive: emaPositive && vwapPositive,
+    emaPositive,
+    vwapPositive,
+    price: round(price),
+    vwap: round(vwap),
+    sessionDate: latestDate,
+    message:
+      emaPositive && vwapPositive
+        ? 'BIST 100 kısa vadeli yönü olumlu.'
+        : 'BIST 100 kısa vadeli yönü henüz olumlu değil.',
+  };
+}
+
 async function fetchFiveMinuteRows(symbol) {
   const url =
     `https://query1.finance.yahoo.com/v8/finance/chart/` +
@@ -267,13 +335,25 @@ async function fetchFiveMinuteRows(symbol) {
   return parseYahooRows(await response.json());
 }
 
-function analyzeCandidate(candidate, allRows) {
+function analyzeCandidate(candidate, allRows, marketRegime) {
   if (allRows.length < 45) return null;
 
   const latestDate = istanbulDateKey(allRows[allRows.length - 1].timestamp);
   const sessionRows = allRows.filter(
     (row) => istanbulDateKey(row.timestamp) === latestDate
   );
+
+  const olderRows = allRows.filter(
+    (row) => istanbulDateKey(row.timestamp) !== latestDate
+  );
+  const previousDate = olderRows.length
+    ? istanbulDateKey(olderRows[olderRows.length - 1].timestamp)
+    : null;
+  const previousSessionRows = previousDate
+    ? olderRows.filter(
+        (row) => istanbulDateKey(row.timestamp) === previousDate
+      )
+    : [];
 
   if (sessionRows.length < 6) return null;
 
@@ -313,14 +393,20 @@ function analyzeCandidate(candidate, allRows) {
     lastFifteenIndex
   );
 
+  const previousHigh = previousSessionRows.length
+    ? Math.max(...previousSessionRows.map((row) => row.high))
+    : null;
+
   let score = 0;
-  if (fifteenTrend) score += 25;
-  if (fiveTrend) score += 20;
-  if (aboveVwap) score += 20;
+  if (fifteenTrend) score += 20;
+  if (fiveTrend) score += 15;
+  if (aboveVwap) score += 15;
   if (Number.isFinite(volumeRatio) && volumeRatio >= 1.5) score += 15;
-  else if (Number.isFinite(volumeRatio) && volumeRatio >= 1.1) score += 8;
-  if (priceConfirmation) score += 10;
+  else if (Number.isFinite(volumeRatio) && volumeRatio >= 1.1) score += 7;
+  if (priceConfirmation) score += 15;
   if (crossBars !== null) score += 10;
+  if (candidate.dailyTrend === true) score += 5;
+  if (marketRegime?.positive === true) score += 5;
 
   const recentLow = Math.min(...sessionRows.slice(-6).map((row) => row.low));
   const atrStop = last.close - atr15 * 0.75;
@@ -332,12 +418,32 @@ function analyzeCandidate(candidate, allRows) {
 
   if (!Number.isFinite(riskPerShare) || riskPerShare <= 0) return null;
 
+  const target1 = last.close + riskPerShare * 2;
+  const nearestResistance =
+    Number.isFinite(previousHigh) && previousHigh > last.close
+      ? previousHigh
+      : null;
+  const hasResistanceRoom =
+    !Number.isFinite(nearestResistance) || nearestResistance >= target1;
+  const strongVolume =
+    Number.isFinite(volumeRatio) && volumeRatio >= 1.5;
+  const dailyTrendAcceptable = candidate.dailyTrend === true;
+  const marketAcceptable = marketRegime?.positive === true;
+
   const setup =
-    score >= 75 && fifteenTrend && fiveTrend && aboveVwap
-      ? 'HAZIRLIK'
-      : score >= 55
-        ? 'İZLE'
-        : 'BEKLE';
+    score >= 85 &&
+    fifteenTrend &&
+    fiveTrend &&
+    aboveVwap &&
+    priceConfirmation &&
+    strongVolume &&
+    dailyTrendAcceptable &&
+    marketAcceptable &&
+    hasResistanceRoom
+      ? 'İŞLEM SİNYALİ'
+      : score >= 70 && fifteenTrend && aboveVwap
+        ? 'ONAY BEKLİYOR'
+        : 'İZLE';
 
   return {
     symbol: candidate.symbol,
@@ -356,10 +462,16 @@ function analyzeCandidate(candidate, allRows) {
     fifteenTrend,
     aboveVwap,
     priceConfirmation,
+    strongVolume,
+    dailyTrend: candidate.dailyTrend,
+    marketPositive: marketRegime?.positive ?? null,
+    previousHigh: round(previousHigh),
+    nearestResistance: round(nearestResistance),
+    hasResistanceRoom,
     crossBars,
     entry: round(last.close),
     stop: round(stop),
-    target1: round(last.close + riskPerShare * 2),
+    target1: round(target1),
     target2: round(last.close + riskPerShare * 3),
     riskPerShare: round(riskPerShare),
     riskReward: 2,
@@ -398,14 +510,18 @@ async function mapWithConcurrency(items, limit, worker) {
 export async function GET() {
   try {
     const startedAt = Date.now();
-    const candidates = await fetchLiquidCandidates();
+    const [candidates, indexRows] = await Promise.all([
+      fetchLiquidCandidates(),
+      fetchFiveMinuteRows('XU100'),
+    ]);
+    const marketRegime = analyzeMarketRegime(indexRows);
 
     const analyses = await mapWithConcurrency(
       candidates,
       8,
       async (candidate) => {
         const rows = await fetchFiveMinuteRows(candidate.symbol);
-        return analyzeCandidate(candidate, rows);
+        return analyzeCandidate(candidate, rows, marketRegime);
       }
     );
 
@@ -413,9 +529,7 @@ export async function GET() {
       .filter(Boolean)
       .sort((first, second) => second.score - first.score);
 
-    const actionable = valid
-      .filter((item) => item.setup !== 'BEKLE')
-      .slice(0, 12);
+    const actionable = valid.slice(0, 3);
 
     return NextResponse.json({
       ok: true,
@@ -423,6 +537,7 @@ export async function GET() {
       generatedAt: new Date().toISOString(),
       scanned: candidates.length,
       analyzed: valid.length,
+      marketRegime,
       items: actionable,
       message: actionable.length
         ? ''
