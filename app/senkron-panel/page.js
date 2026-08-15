@@ -494,7 +494,7 @@ export default function SenkronPanelPage() {
           subtitle={`${bistStocks.length} hisse`}
         />
         <SummaryCard
-          title="BIST KÃ¢r / Zarar"
+          title="BIST Kâr / Zarar"
           value={formatMoney(bistSummary.profitLoss, 'TRY')}
           subtitle={formatPercent(bistSummary.profitLossPercent)}
           positive={bistSummary.profitLoss >= 0}
@@ -511,7 +511,7 @@ export default function SenkronPanelPage() {
           subtitle={`${usStocks.length} hisse`}
         />
         <SummaryCard
-          title="NASDAQ KÃ¢r / Zarar"
+          title="NASDAQ Kâr / Zarar"
           value={formatMoney(usSummary.profitLoss, 'USD')}
           subtitle={formatPercent(usSummary.profitLossPercent)}
           positive={usSummary.profitLoss >= 0}
@@ -586,6 +586,9 @@ export default function SenkronPanelPage() {
         />
       </section>
 
+      <BistTradeCenter />
+      <ScannerCenter />
+
       <section style={styles.fullChartSection}>
         <div style={styles.sectionHeader}>
           <h2 style={styles.sectionTitle}>Canlı Grafik</h2>
@@ -596,8 +599,7 @@ export default function SenkronPanelPage() {
           <TradingViewChart symbol="NASDAQ:EOSE" />
         </div>
       </section>
-      <BistTradeCenter />
-          <ScannerCenter />
+
       {selectedOptionsStock && (
         <OptionsPressureModal
           stock={selectedOptionsStock}
