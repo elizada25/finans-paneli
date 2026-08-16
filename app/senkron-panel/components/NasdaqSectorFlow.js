@@ -11,6 +11,10 @@ export default function NasdaqSectorFlow() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [selectedSector, setSelectedSector] = useState(null);
+  const [sectorStocks, setSectorStocks] = useState([]);
+  const [stocksLoading, setStocksLoading] = useState(false);
+  const [stocksError, setStocksError] = useState('');
 
   const loadFlow = useCallback(async () => {
     try {
@@ -30,6 +34,8 @@ export default function NasdaqSectorFlow() {
 
       setItems(Array.isArray(payload.items) ? payload.items : []);
       setSummary(payload);
+      setSelectedSector(null);
+      setSectorStocks([]);
     } catch (flowError) {
       setItems([]);
       setSummary(null);
@@ -46,6 +52,40 @@ export default function NasdaqSectorFlow() {
 
   const leader = summary?.leader;
 
+  async function openSector(item) {
+    if (selectedSector?.symbol === item.symbol) {
+      setSelectedSector(null);
+      setSectorStocks([]);
+      setStocksError('');
+      return;
+    }
+
+    try {
+      setSelectedSector(item);
+      setSectorStocks([]);
+      setStocksError('');
+      setStocksLoading(true);
+
+      const response = await fetch(
+        `/api/nasdaq-sector-stocks?sector=${encodeURIComponent(item.symbol)}` +
+          `&start=${encodeURIComponent(startDate)}` +
+          `&end=${encodeURIComponent(endDate)}`,
+        { cache: 'no-store' }
+      );
+      const payload = await response.json();
+
+      if (!response.ok || !payload?.ok) {
+        throw new Error(payload?.error || 'Sektör hisseleri hesaplanamadı.');
+      }
+
+      setSectorStocks(Array.isArray(payload.items) ? payload.items : []);
+    } catch (stockError) {
+      setStocksError(stockError?.message || 'Sektör hisseleri alınamadı.');
+    } finally {
+      setStocksLoading(false);
+    }
+  }
+
   return (
     <section style={styles.section}>
       <div style={styles.header}>
@@ -54,7 +94,8 @@ export default function NasdaqSectorFlow() {
           <h2 style={styles.title}>🌊 NASDAQ Sektör Akışı</h2>
           <p style={styles.description}>
             Seçilen dönemde sektörlerin getiri, QQQ&apos;ya göre güç ve hacim
-            değişimini birlikte karşılaştırır.
+            değişimini birlikte karşılaştırır. Hisseleri görmek için sektör
+            kutusuna dokunun.
           </p>
         </div>
         <span style={styles.badge}>Günlük veri</span>
@@ -90,9 +131,29 @@ export default function NasdaqSectorFlow() {
       {items.length ? (
         <div style={styles.grid}>
           {items.map((item, index) => (
-            <SectorCard key={item.symbol} item={item} rank={index + 1} />
+            <SectorCard
+              key={item.symbol}
+              item={item}
+              rank={index + 1}
+              selected={selectedSector?.symbol === item.symbol}
+              onOpen={() => openSector(item)}
+            />
           ))}
         </div>
+      ) : null}
+
+      {selectedSector ? (
+        <SectorStocksPanel
+          sector={selectedSector}
+          items={sectorStocks}
+          loading={stocksLoading}
+          error={stocksError}
+          onClose={() => {
+            setSelectedSector(null);
+            setSectorStocks([]);
+            setStocksError('');
+          }}
+        />
       ) : null}
 
       <div style={styles.legend}>
@@ -127,14 +188,20 @@ function DateInput({ label, value, onChange }) {
   );
 }
 
-function SectorCard({ item, rank }) {
+function SectorCard({ item, rank, selected, onOpen }) {
   const tone = getTone(item.flow);
 
   return (
     <article
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') onOpen();
+      }}
       style={{
         ...styles.card,
-        borderColor: tone.border,
+        borderColor: selected ? '#e6c65c' : tone.border,
         background: tone.background,
       }}
     >
@@ -154,7 +221,57 @@ function SectorCard({ item, rank }) {
         <Metric label="Hacim değişimi" value={formatRatio(item.volumeRatio)} />
         <Metric label="Ort. işlem hacmi" value={formatDollarVolume(item.averageDollarVolume)} />
       </div>
+      <span style={styles.openHint}>
+        {selected ? 'Detayı kapat ▲' : 'Hisseleri göster ▼'}
+      </span>
     </article>
+  );
+}
+
+function SectorStocksPanel({ sector, items, loading, error, onClose }) {
+  return (
+    <div style={styles.stockPanel}>
+      <div style={styles.stockPanelHeader}>
+        <div>
+          <span style={styles.stockPanelEyebrow}>{sector.symbol} SEKTÖR DETAYI</span>
+          <h3 style={styles.stockPanelTitle}>{sector.name} Hisseleri</h3>
+          <p style={styles.stockPanelDescription}>
+            Seçilen dönemde en çok yükselenden en çok düşene sıralanmıştır.
+          </p>
+        </div>
+        <button type="button" onClick={onClose} style={styles.closeButton}>✕</button>
+      </div>
+
+      {loading ? <div style={styles.stockStatus}>Hisseler hesaplanıyor…</div> : null}
+      {error ? <div style={styles.error}>{error}</div> : null}
+
+      {items.length ? (
+        <div style={styles.stockList}>
+          <div style={styles.stockListHeader}>
+            <span>Sıra / Hisse</span>
+            <span>Dönem getirisi</span>
+            <span>Son fiyat</span>
+            <span>Hacim değişimi</span>
+          </div>
+          {items.map((stock, index) => (
+            <a
+              key={stock.symbol}
+              href={`https://finance.yahoo.com/quote/${encodeURIComponent(stock.symbol)}`}
+              target="_blank"
+              rel="noreferrer"
+              style={styles.stockRow}
+            >
+              <strong>#{index + 1} {stock.symbol}</strong>
+              <strong style={{ color: stock.returnPercent >= 0 ? '#4ade80' : '#f87171' }}>
+                {signedPercent(stock.returnPercent)}
+              </strong>
+              <span>{formatUsd(stock.price)}</span>
+              <span>{formatRatio(stock.volumeRatio)}</span>
+            </a>
+          ))}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -232,6 +349,15 @@ function formatDollarVolume(value) {
   return `$${number.toLocaleString('tr-TR', { maximumFractionDigits: 0 })}`;
 }
 
+function formatUsd(value) {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return '-';
+  return `$${number.toLocaleString('tr-TR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
 function formatDate(value) {
   if (!value) return '-';
   return new Intl.DateTimeFormat('tr-TR', {
@@ -255,7 +381,7 @@ const styles = {
   leaderBox: { display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '13px', padding: '13px', borderRadius: '12px', background: 'rgba(34,197,94,0.09)', border: '1px solid rgba(34,197,94,0.24)', color: '#cbd5e1', fontSize: '11px' },
   error: { marginTop: '12px', padding: '12px', borderRadius: '10px', color: '#fecaca', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.24)', fontSize: '12px' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '10px', marginTop: '13px' },
-  card: { minWidth: 0, padding: '13px', borderRadius: '13px', border: '1px solid' },
+  card: { width: '100%', minWidth: 0, padding: '13px', borderRadius: '13px', border: '1px solid', color: '#f8fafc', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' },
   rank: { color: '#64748b', fontSize: '10px', fontWeight: 900 },
   flowBadge: { padding: '4px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.05)', fontSize: '9px', fontWeight: 900 },
@@ -263,6 +389,17 @@ const styles = {
   symbol: { display: 'block', marginTop: '3px', color: '#94a3b8', fontSize: '9px' },
   metrics: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '7px', marginTop: '11px' },
   metric: { minWidth: 0, padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.035)', color: '#94a3b8', fontSize: '9px' },
+  openHint: { display: 'block', marginTop: '10px', color: '#e6c65c', fontSize: '9px', fontWeight: 800 },
+  stockPanel: { marginTop: '14px', padding: '15px', borderRadius: '14px', background: 'rgba(8,13,22,0.68)', border: '1px solid rgba(212,175,55,0.28)' },
+  stockPanelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' },
+  stockPanelEyebrow: { color: '#d4af37', fontSize: '9px', fontWeight: 900, letterSpacing: '1px' },
+  stockPanelTitle: { margin: '4px 0 0', color: '#f8fafc', fontSize: '18px' },
+  stockPanelDescription: { margin: '5px 0 0', color: '#94a3b8', fontSize: '10px' },
+  closeButton: { width: '34px', height: '34px', borderRadius: '9px', border: '1px solid rgba(212,175,55,0.30)', background: 'rgba(212,175,55,0.08)', color: '#f8fafc', cursor: 'pointer' },
+  stockStatus: { marginTop: '12px', padding: '12px', color: '#bfdbfe', fontSize: '11px' },
+  stockList: { marginTop: '12px', overflowX: 'auto' },
+  stockListHeader: { minWidth: '560px', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '10px', padding: '8px 10px', color: '#64748b', borderBottom: '1px solid rgba(148,163,184,0.14)', fontSize: '9px' },
+  stockRow: { minWidth: '560px', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '10px', padding: '11px 10px', color: '#cbd5e1', borderBottom: '1px solid rgba(148,163,184,0.10)', textDecoration: 'none', fontSize: '11px' },
   legend: { display: 'flex', gap: '8px 16px', flexWrap: 'wrap', marginTop: '12px', color: '#94a3b8', fontSize: '10px' },
   disclaimer: { margin: '12px 1px 0', color: '#64748b', fontSize: '10px', lineHeight: 1.5 },
 };
