@@ -11,6 +11,7 @@ import SkyAI from './components/SkyAI';
 import NotificationButton from './components/NotificationButton';
 import OptionsPressureModal from './components/OptionsPressureModal';
 import BistTradeCenter from './components/BistTradeCenter';
+import NasdaqSectorFlow from './components/NasdaqSectorFlow';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -586,6 +587,7 @@ export default function SenkronPanelPage() {
         />
       </section>
 
+      <NasdaqSectorFlow />
       <BistTradeCenter />
       <ScannerCenter />
 
