@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const initialRange = getInitialRange();
 
@@ -15,6 +15,7 @@ export default function NasdaqSectorFlow() {
   const [sectorStocks, setSectorStocks] = useState([]);
   const [stocksLoading, setStocksLoading] = useState(false);
   const [stocksError, setStocksError] = useState('');
+  const stocksPanelRef = useRef(null);
 
   const loadFlow = useCallback(async () => {
     try {
@@ -49,6 +50,19 @@ export default function NasdaqSectorFlow() {
     loadFlow();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (!selectedSector) return;
+
+    const frame = requestAnimationFrame(() => {
+      stocksPanelRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    });
+
+    return () => cancelAnimationFrame(frame);
+  }, [selectedSector]);
 
   const leader = summary?.leader;
 
@@ -144,6 +158,7 @@ export default function NasdaqSectorFlow() {
 
       {selectedSector ? (
         <SectorStocksPanel
+          panelRef={stocksPanelRef}
           sector={selectedSector}
           items={sectorStocks}
           loading={stocksLoading}
@@ -228,9 +243,9 @@ function SectorCard({ item, rank, selected, onOpen }) {
   );
 }
 
-function SectorStocksPanel({ sector, items, loading, error, onClose }) {
+function SectorStocksPanel({ panelRef, sector, items, loading, error, onClose }) {
   return (
-    <div style={styles.stockPanel}>
+    <div ref={panelRef} style={styles.stockPanel}>
       <div style={styles.stockPanelHeader}>
         <div>
           <span style={styles.stockPanelEyebrow}>{sector.symbol} SEKTÖR DETAYI</span>
@@ -381,7 +396,7 @@ const styles = {
   leaderBox: { display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '13px', padding: '13px', borderRadius: '12px', background: 'rgba(34,197,94,0.09)', border: '1px solid rgba(34,197,94,0.24)', color: '#cbd5e1', fontSize: '11px' },
   error: { marginTop: '12px', padding: '12px', borderRadius: '10px', color: '#fecaca', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.24)', fontSize: '12px' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '10px', marginTop: '13px' },
-  card: { width: '100%', minWidth: 0, padding: '13px', borderRadius: '13px', border: '1px solid', color: '#f8fafc', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' },
+  card: { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '13px', borderRadius: '13px', border: '1px solid', color: '#f8fafc', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' },
   cardHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' },
   rank: { color: '#64748b', fontSize: '10px', fontWeight: 900 },
   flowBadge: { padding: '4px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.05)', fontSize: '9px', fontWeight: 900 },
@@ -390,7 +405,7 @@ const styles = {
   metrics: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '7px', marginTop: '11px' },
   metric: { minWidth: 0, padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.035)', color: '#94a3b8', fontSize: '9px' },
   openHint: { display: 'block', marginTop: '10px', color: '#e6c65c', fontSize: '9px', fontWeight: 800 },
-  stockPanel: { marginTop: '14px', padding: '15px', borderRadius: '14px', background: 'rgba(8,13,22,0.68)', border: '1px solid rgba(212,175,55,0.28)' },
+  stockPanel: { marginTop: '14px', scrollMarginTop: '90px', boxSizing: 'border-box', padding: '15px', borderRadius: '14px', background: 'rgba(8,13,22,0.68)', border: '1px solid rgba(212,175,55,0.28)' },
   stockPanelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' },
   stockPanelEyebrow: { color: '#d4af37', fontSize: '9px', fontWeight: 900, letterSpacing: '1px' },
   stockPanelTitle: { margin: '4px 0 0', color: '#f8fafc', fontSize: '18px' },
