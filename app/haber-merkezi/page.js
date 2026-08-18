@@ -73,6 +73,30 @@ export default function HaberMerkeziPage() {
 
   useEffect(() => {
     loadNews();
+
+    const intervalId = window.setInterval(
+      loadNews,
+      15 * 60 * 1000
+    );
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadNews();
+      }
+    };
+
+    document.addEventListener(
+      'visibilitychange',
+      handleVisibilityChange
+    );
+
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibilityChange
+      );
+    };
   }, [loadNews]);
 
   const categories = useMemo(() => {
