@@ -169,9 +169,18 @@ export default function HaberMerkeziPage() {
             ← Senkron Panele Dön
           </Link>
 
-          <div className="liveBadge">
-            <span className="liveDot" />
-            Canlı haber akışı
+          <div className="topActions">
+            <Link
+              href="/finans-akademisi"
+              className="academyLink"
+            >
+              🎓 Finans Akademisi
+            </Link>
+
+            <div className="liveBadge">
+              <span className="liveDot" />
+              Canlı haber akışı
+            </div>
           </div>
         </nav>
 
@@ -501,6 +510,36 @@ export default function HaberMerkeziPage() {
 
         .backLink:hover {
           color: #f0d675;
+        }
+
+        .topActions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 10px;
+          flex-wrap: wrap;
+        }
+
+        .academyLink {
+          padding: 8px 13px;
+          border: 1px solid rgba(212, 175, 55, 0.32);
+          border-radius: 999px;
+          color: #f0d675;
+          background: rgba(212, 175, 55, 0.08);
+          font-size: 11px;
+          font-weight: 900;
+          text-decoration: none;
+          white-space: nowrap;
+          transition:
+            border-color 160ms ease,
+            background 160ms ease,
+            transform 160ms ease;
+        }
+
+        .academyLink:hover {
+          border-color: rgba(240, 214, 117, 0.7);
+          background: rgba(212, 175, 55, 0.15);
+          transform: translateY(-1px);
         }
 
         .liveBadge {
