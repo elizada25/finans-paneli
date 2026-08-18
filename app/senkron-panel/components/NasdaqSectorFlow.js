@@ -236,6 +236,7 @@ export default function NasdaqSectorFlow() {
   const [sectorStocks, setSectorStocks] = useState([]);
   const [stocksLoading, setStocksLoading] = useState(false);
   const [stocksError, setStocksError] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
   const stocksPanelRef = useRef(null);
 
   const loadFlow = useCallback(async () => {
@@ -321,6 +322,16 @@ export default function NasdaqSectorFlow() {
     }
   }
 
+  function toggleSectorDetails() {
+    if (isExpanded) {
+      setSelectedSector(null);
+      setSectorStocks([]);
+      setStocksError('');
+    }
+
+    setIsExpanded(!isExpanded);
+  }
+
   return (
     <section style={styles.section}>
       <div style={styles.header}>
@@ -350,21 +361,36 @@ export default function NasdaqSectorFlow() {
       </div>
 
       {leader ? (
-        <div style={styles.leaderBox}>
-          <span>🏆 Dönemin en güçlü sektörü</span>
+        <button
+          type="button"
+          onClick={toggleSectorDetails}
+          aria-expanded={isExpanded}
+          style={styles.leaderBox}
+        >
+          <span style={styles.leaderTop}>
+            <span>🏆 Dönemin en güçlü sektörü</span>
+            <span style={styles.expandIcon}>
+              {isExpanded ? '▲ Kapat' : '▼ Sektörleri göster'}
+            </span>
+          </span>
+
           <strong>{leader.name}</strong>
+
           <small>
             {formatDate(summary.actualStart)} – {formatDate(summary.actualEnd)} •
             {' '}{signedPercent(leader.returnPercent)} getiri • QQQ&apos;ya göre{' '}
             {signedPercent(leader.relativeStrength)}
           </small>
-        </div>
+        </button>
       ) : null}
 
       {error ? <div style={styles.error}>{error}</div> : null}
 
-      {items.length ? (
-        <div style={styles.grid}>
+      {isExpanded && items.length ? (
+        <div
+          style={styles.grid}
+          className="sectorFlowOpen"
+        >
           {items.map((item, index) => (
             <SectorCard
               key={item.symbol}
@@ -377,7 +403,7 @@ export default function NasdaqSectorFlow() {
         </div>
       ) : null}
 
-      {selectedSector ? (
+      {isExpanded && selectedSector ? (
         <SectorStocksPanel
           panelRef={stocksPanelRef}
           sector={selectedSector}
@@ -614,7 +640,9 @@ const styles = {
   dateLabel: { display: 'flex', flexDirection: 'column', gap: '6px', color: '#cbd5e1', fontSize: '11px', fontWeight: 800 },
   dateInput: { minHeight: '42px', boxSizing: 'border-box', padding: '0 10px', borderRadius: '9px', border: '1px solid rgba(148,163,184,0.24)', background: '#0a101a', color: '#f8fafc', colorScheme: 'dark', fontSize: '13px' },
   button: { minHeight: '43px', border: 0, borderRadius: '10px', background: 'linear-gradient(135deg, #d4af37, #f0d675)', color: '#111827', fontSize: '13px', fontWeight: 900, cursor: 'pointer' },
-  leaderBox: { display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '13px', padding: '13px', borderRadius: '12px', background: 'rgba(34,197,94,0.09)', border: '1px solid rgba(34,197,94,0.24)', color: '#cbd5e1', fontSize: '11px' },
+  leaderBox: { width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '13px', padding: '13px', borderRadius: '12px', background: 'rgba(34,197,94,0.09)', border: '1px solid rgba(34,197,94,0.24)', color: '#cbd5e1', fontSize: '11px', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' },
+  leaderTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%' },
+  expandIcon: { color: '#f0d675', fontSize: '10px', fontWeight: 900, whiteSpace: 'nowrap' },
   error: { marginTop: '12px', padding: '12px', borderRadius: '10px', color: '#fecaca', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.24)', fontSize: '12px' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '10px', marginTop: '13px' },
   card: { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '13px', borderRadius: '13px', border: '1px solid', color: '#f8fafc', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' },
