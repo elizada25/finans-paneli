@@ -111,8 +111,30 @@ const IMPORTANT_WORDS = [
   'jumps',
   'rise',
   'rises',
+  'down',
+  'trade down',
 ];
 
+
+const STOCK_NAME_ALIASES = {
+  MU: ['Micron', 'Micron Technology'],
+  AKBNK: ['Akbank'],
+  ORZAX: ['Orzax'],
+  ONDS: ['Ondas', 'Ondas Holdings'],
+  EOSE: ['Eos Energy', 'Eos Energy Enterprises'],
+  PGSUS: ['Pegasus', 'Pegasus Hava Yolları'],
+  'CİTAS': ['Citas'],
+  IREN: ['IREN Limited', 'Iris Energy'],
+  CRWV: ['CoreWeave'],
+  PLTR: ['Palantir', 'Palantir Technologies'],
+  GARAN: ['Garanti BBVA', 'Türkiye Garanti Bankası'],
+  TEM: ['Tempus AI'],
+  NVDA: ['Nvidia', 'NVIDIA Corporation'],
+  RKLB: ['Rocket Lab'],
+  AMBA: ['Ambarella'],
+  META: ['Meta Platforms', 'Facebook'],
+  AAOI: ['Applied Optoelectronics'],
+};
 
 function getAdminApp() {
   if (getApps().length > 0) {
@@ -277,13 +299,16 @@ function isRecentArticle(article) {
 }
 
 function getStockAliases(item) {
+  const code = cleanCode(
+    item.code ||
+      item.symbol ||
+      item.ticker ||
+      item.id
+  );
+
   const values = [
-    cleanCode(
-      item.code ||
-        item.symbol ||
-        item.ticker ||
-        item.id
-    ),
+    code,
+    ...(STOCK_NAME_ALIASES[code] || []),
     item.name,
     item.company,
     item.companyName,
