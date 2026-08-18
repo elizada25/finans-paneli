@@ -541,8 +541,16 @@ export default function FinansAkademisiPage() {
           box-sizing: border-box;
         }
 
+        :global(html),
+        :global(body) {
+          max-width: 100%;
+          overflow-x: hidden;
+        }
+
         .page {
+          width: 100%;
           min-height: 100vh;
+          overflow-x: hidden;
           padding: 24px;
           color: #f8fafc;
           background:
@@ -562,7 +570,18 @@ export default function FinansAkademisiPage() {
         .shell {
           width: 100%;
           max-width: 1450px;
+          min-width: 0;
           margin: 0 auto;
+        }
+
+        .hero,
+        .lessonHeader,
+        .contentGrid,
+        .lessonCard,
+        .termCard,
+        .dailyInfo,
+        .quizCard {
+          min-width: 0;
         }
 
         .topbar,
@@ -819,6 +838,7 @@ export default function FinansAkademisiPage() {
         .lessonHeader h2 {
           max-width: 950px;
           margin: 0;
+          overflow-wrap: anywhere;
           font-size: clamp(23px, 3vw, 35px);
         }
 
