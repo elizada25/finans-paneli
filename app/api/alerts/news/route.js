@@ -830,6 +830,46 @@ export async function GET(request) {
         fetchNews(baseUrl),
       ]);
 
+    const debugMode =
+      new URL(request.url).searchParams.get('debug') === '1';
+
+    if (debugMode) {
+      const users = [];
+
+      for (const [index, userDoc] of usersSnapshot.docs.entries()) {
+        const stocks = await readUserStocks(userDoc.ref);
+
+        const matches = articles
+          .map((article) => {
+            const stock = findMatchedStock(article, stocks);
+            if (!stock) return null;
+
+            const score = getImportanceScore(article);
+
+            return {
+              symbol: stock.code,
+              title: article.title,
+              score,
+              accepted: score > 0,
+            };
+          })
+          .filter(Boolean);
+
+        users.push({
+          user: index + 1,
+          stocks: stocks.map((stock) => stock.code),
+          matches,
+        });
+      }
+
+      return NextResponse.json({
+        ok: true,
+        debug: true,
+        articleCount: articles.length,
+        users,
+      });
+    }
+
     let totalMatched = 0;
     let totalSent = 0;
     let totalAiComments = 0;
