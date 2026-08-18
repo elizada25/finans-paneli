@@ -313,19 +313,48 @@ export default function SenkronPanelPage() {
         <p style={styles.userText}>{user.email}</p>
       </div>
 
-      <NotificationButton user={user} />
-
-      <button
-        type="button"
-        onClick={logout}
-        disabled={loggingOut}
+      <div
         style={{
-          ...styles.logoutButton,
-          opacity: loggingOut ? 0.6 : 1,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'flex-end',
+          gap: '10px',
+          flexWrap: 'wrap',
         }}
       >
-        {loggingOut ? 'Çıkış yapılıyor…' : 'Çıkış Yap'}
-      </button>
+        <button
+          type="button"
+          onClick={() => router.push('/haber-merkezi')}
+          style={{
+            minHeight: '42px',
+            padding: '0 15px',
+            borderRadius: '10px',
+            border: '1px solid rgba(212,175,55,0.35)',
+            background: 'rgba(212,175,55,0.10)',
+            color: '#f0d675',
+            fontSize: '12px',
+            fontWeight: 900,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          📰 Haber Merkezi
+        </button>
+
+        <NotificationButton user={user} />
+
+        <button
+          type="button"
+          onClick={logout}
+          disabled={loggingOut}
+          style={{
+            ...styles.logoutButton,
+            opacity: loggingOut ? 0.6 : 1,
+          }}
+        >
+          {loggingOut ? 'Çıkış yapılıyor…' : 'Çıkış Yap'}
+        </button>
+      </div>
     </header>
 
     <SkyAI
