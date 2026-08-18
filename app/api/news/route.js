@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+export const maxDuration = 60;
 
 const MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
@@ -24,6 +25,21 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
 
+    const portalMode =
+      searchParams.get('mode') === 'portal';
+
+    const requestedLimit = Number(
+      searchParams.get('limit') || 12
+    );
+
+    const itemLimit = portalMode
+      ? Math.min(Math.max(requestedLimit, 12), 60)
+      : 12;
+
+    const maxAgeMs = portalMode
+      ? 7 * 24 * 60 * 60 * 1000
+      : MAX_AGE_MS;
+
     const symbols = String(searchParams.get('symbols') || '')
       .split(',')
       .map((item) => item.trim().toUpperCase())
@@ -42,20 +58,65 @@ export async function GET(request) {
       };
     });
 
-    const generalQueries = [
-      {
-        query:
-          '(NASDAQ OR Wall Street OR US stocks OR technology stocks) when:1d',
-        category: 'NASDAQ',
-        priority: 1,
-      },
-      {
-        query:
-          '(Federal Reserve OR US inflation OR US earnings OR S&P 500) when:1d',
-        category: 'ABD',
-        priority: 2,
-      },
-    ];
+    const generalQueries = portalMode
+      ? [
+          {
+            query:
+              '(NASDAQ OR Wall Street OR US stocks) when:1d',
+            category: 'SON DAKİKA',
+            priority: 1,
+          },
+          {
+            query:
+              '(Nvidia OR semiconductor OR artificial intelligence OR cloud OR cybersecurity) stock when:2d',
+            category: 'TEKNOLOJİ',
+            priority: 1,
+          },
+          {
+            query:
+              '(NASDAQ earnings OR quarterly results OR revenue OR guidance) when:2d',
+            category: 'BİLANÇO',
+            priority: 1,
+          },
+          {
+            query:
+              '(biotech OR FDA approval OR clinical trial) stock when:2d',
+            category: 'BİYOTEKNOLOJİ',
+            priority: 1,
+          },
+          {
+            query:
+              '(energy stocks OR oil stocks OR natural gas stocks) when:2d',
+            category: 'ENERJİ',
+            priority: 1,
+          },
+          {
+            query:
+              '(Federal Reserve OR US inflation OR bond yields OR jobs report) when:2d',
+            category: 'MAKRO',
+            priority: 1,
+          },
+          {
+            query:
+              '(investing education OR stock analysis OR market outlook OR how to invest) when:7d',
+            category: 'ÖĞREN',
+            priority: 2,
+          },
+        ]
+      : [
+          {
+            query:
+              '(NASDAQ OR Wall Street OR US stocks OR technology stocks) when:1d',
+            category: 'NASDAQ',
+            priority: 1,
+          },
+          {
+            query:
+              '(Federal Reserve OR US inflation OR US earnings OR S&P 500) when:1d',
+            category: 'ABD',
+            priority: 2,
+          },
+        ];
 
     const results = await Promise.allSettled(
       [...portfolioQueries, ...generalQueries].map(
@@ -72,10 +133,13 @@ export async function GET(request) {
       )
       .filter((item) => {
         const published = new Date(item.publishedAt).getTime();
-        return Number.isFinite(published) && now - published <= MAX_AGE_MS;
+        return Number.isFinite(published) && now - published <= maxAgeMs;
       })
       .sort((a, b) => {
-        if (a.priority !== b.priority) return a.priority - b.priority;
+        if (!portalMode && a.priority !== b.priority) {
+          return a.priority - b.priority;
+        }
+
         return (
           new Date(b.publishedAt).getTime() -
           new Date(a.publishedAt).getTime()
@@ -92,12 +156,24 @@ export async function GET(request) {
       seen.add(key);
       items.push(item);
 
-      if (items.length >= 12) break;
+      if (items.length >= itemLimit) break;
     }
+
+    const outputItems = portalMode
+      ? await Promise.all(
+          items.map(async (item, index) => ({
+            ...item,
+            titleTr:
+              index < 30
+                ? await translateTitleFree(item.title)
+                : item.title,
+          }))
+        )
+      : items;
 
     return NextResponse.json(
       {
-        items,
+        items: outputItems,
         generatedAt: new Date().toISOString(),
       },
       {
@@ -199,6 +275,47 @@ function decodeXml(value) {
     .replace(/&#(\d+);/g, (_, code) =>
       String.fromCharCode(Number(code))
     );
+}
+
+
+async function translateTitleFree(title) {
+  try {
+    const query = new URLSearchParams({
+      client: 'gtx',
+      sl: 'auto',
+      tl: 'tr',
+      dt: 't',
+      q: title,
+    });
+
+    const response = await fetch(
+      `https://translate.googleapis.com/translate_a/single?${query.toString()}`,
+      {
+        cache: 'no-store',
+        headers: {
+          Accept: 'application/json',
+          'User-Agent': 'Mozilla/5.0 Sky-Finans-News-Portal/1.0',
+        },
+        signal: AbortSignal.timeout(8000),
+      }
+    );
+
+    if (!response.ok) return title;
+
+    const data = await response.json();
+
+    const translated = Array.isArray(data?.[0])
+      ? data[0]
+          .map((part) => part?.[0] || '')
+          .join('')
+          .replace(/\s+/g, ' ')
+          .trim()
+      : '';
+
+    return translated || title;
+  } catch {
+    return title;
+  }
 }
 
 function normalizeTitle(value) {
