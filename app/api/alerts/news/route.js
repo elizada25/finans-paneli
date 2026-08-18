@@ -82,7 +82,37 @@ const IMPORTANT_WORDS = [
   'not indirimi',
   'upgrade',
   'downgrade',
+  'yükseldi',
+  'yükseliş',
+  'geriledi',
+  'düştü',
+  'düşüş',
+  'arttı',
+  'ralli',
+  'rekor',
+  'zirve',
+  'fall',
+  'falls',
+  'drop',
+  'drops',
+  'slide',
+  'slides',
+  'decline',
+  'declines',
+  'plunge',
+  'plummet',
+  'selloff',
+  'slump',
+  'surge',
+  'rally',
+  'gain',
+  'gains',
+  'jump',
+  'jumps',
+  'rise',
+  'rises',
 ];
+
 
 function getAdminApp() {
   if (getApps().length > 0) {
@@ -129,6 +159,22 @@ function normalizeText(value) {
     .replace(/[^a-z0-9\s.-]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function escapeRegExp(value) {
+  return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function containsAlias(text, alias) {
+  const cleanAlias = normalizeText(alias);
+  if (!cleanAlias) return false;
+
+  const pattern = new RegExp(
+    `(^|[^a-z0-9])${escapeRegExp(cleanAlias)}(?=$|[^a-z0-9])`,
+    'i'
+  );
+
+  return pattern.test(text);
 }
 
 function cleanCode(value) {
@@ -248,7 +294,7 @@ function getStockAliases(item) {
     ...new Set(
       values
         .map(normalizeText)
-        .filter((value) => value.length >= 3)
+        .filter((value) => value.length >= 1)
     ),
   ];
 }
@@ -260,7 +306,7 @@ function findMatchedStock(article, stocks) {
 
   for (const stock of stocks) {
     const matched = stock.aliases.some(
-      (alias) => articleText.includes(alias)
+      (alias) => containsAlias(articleText, alias)
     );
 
     if (matched) {
@@ -639,7 +685,10 @@ async function processUser({
     const historySnapshot =
       await historyRef.get();
 
-    if (historySnapshot.exists) {
+    if (
+      historySnapshot.exists &&
+      Number(historySnapshot.data()?.successCount) > 0
+    ) {
       continue;
     }
 
@@ -707,7 +756,8 @@ async function processUser({
         },
       });
 
-    await historyRef.set({
+    if (result.successCount > 0) {
+      await historyRef.set({
       symbol: stock.code,
       title: article.title,
       translatedTitle,
@@ -728,7 +778,8 @@ async function processUser({
       successCount: result.successCount,
       failureCount: result.failureCount,
       sentAt: new Date().toISOString(),
-    });
+      });
+    }
 
     sent += result.successCount;
   }
