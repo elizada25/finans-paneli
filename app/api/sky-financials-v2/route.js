@@ -1,3 +1,5 @@
+import SEC_CIKS from './sec-ciks.json';
+
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
@@ -23,6 +25,7 @@ export async function GET(request) {
       NVDA: '0001045810',
       META: '0001326801',
       AAOI: '0001158114',
+      AMD: '0000002488',
       PLTR: '0001321655',
       RKLB: '0001819994',
       SOFI: '0001818874',
@@ -217,6 +220,14 @@ async function resolveCIK(symbol) {
     .trim()
     .toUpperCase()
     .replace(/\./g, '-');
+
+  const localCik =
+    SEC_CIKS[normalizedSymbol];
+
+  if (localCik) {
+    return String(localCik)
+      .padStart(10, '0');
+  }
 
   const headers = {
     'User-Agent':
