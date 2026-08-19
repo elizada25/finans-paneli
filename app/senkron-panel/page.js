@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb } from '../../lib-firebase';
 import TradingViewChart from './TradingViewChart';
 import ScannerCenter from './components/ScannerCenter';
@@ -767,27 +767,81 @@ function PortfolioSection({
   }
 
   async function sellPosition(stock) {
-    const code = String(stock.code || '').trim().toUpperCase();
-    const quantity = toNumber(stock.quantity ?? stock.lot ?? stock.amount);
-    const buyPrice = toNumber(stock.costPrice ?? stock.cost ?? stock.buyPrice);
-    const liveData = prices[`${stock.market}:${code}`] || {};
-    const suggestedSalePrice = toNumber(liveData.price ?? stock.currentPrice);
+    const code = String(stock.code || '')
+      .trim()
+      .toUpperCase();
+
+    const quantity = toNumber(
+      stock.quantity ?? stock.lot ?? stock.amount
+    );
+
+    const buyPrice = toNumber(
+      stock.costPrice ?? stock.cost ?? stock.buyPrice
+    );
+
+    if (quantity <= 0) {
+      window.alert('Satılabilecek geçerli bir lot miktarı bulunamadı.');
+      return;
+    }
+
+    const quantityInput = window.prompt(
+      `${code} için satılan lot miktarını yazın. Mevcut: ${formatNumber(quantity)}`,
+      String(quantity).replace('.', ',')
+    );
+
+    if (quantityInput === null) return;
+
+    const soldQuantity = toNumber(quantityInput);
+
+    if (soldQuantity <= 0) {
+      window.alert('Satılan lot miktarı sıfırdan büyük olmalıdır.');
+      return;
+    }
+
+    if (soldQuantity > quantity) {
+      window.alert(
+        `Satılan lot, mevcut ${formatNumber(quantity)} lottan fazla olamaz.`
+      );
+      return;
+    }
+
+    const liveData =
+      prices[`${stock.market}:${code}`] || {};
+
+    const suggestedSalePrice = toNumber(
+      liveData.price ?? stock.currentPrice
+    );
 
     const saleInput = window.prompt(
       `${code} için satış fiyatını yazın:`,
-      suggestedSalePrice > 0 ? String(suggestedSalePrice).replace('.', ',') : ''
+      suggestedSalePrice > 0
+        ? String(suggestedSalePrice).replace('.', ',')
+        : ''
     );
 
     if (saleInput === null) return;
 
     const sellPrice = toNumber(saleInput);
+
     if (sellPrice <= 0) {
       window.alert('Satış fiyatı sıfırdan büyük olmalıdır.');
       return;
     }
 
+    const remainingQuantity = Math.max(
+      0,
+      quantity - soldQuantity
+    );
+
+    const actionText =
+      remainingQuantity > 0
+        ? `${formatNumber(soldQuantity)} lot satılacak ve ${formatNumber(remainingQuantity)} lot açık pozisyonda kalacak.`
+        : `${formatNumber(quantity)} lotun tamamı satılacak ve pozisyon kapanacak.`;
+
     const confirmed = window.confirm(
-      `${code} pozisyonu kapanan pozisyonlara taşınacak. Onaylıyor musunuz?`
+      `${code}: ${actionText}
+
+Onaylıyor musunuz?`
     );
 
     if (!confirmed) return;
@@ -803,28 +857,62 @@ function PortfolioSection({
         stock.id
       );
 
-      const closedRef = collection(
-        firestoreDb,
-        'users',
-        userId,
-        'closed'
+      const closedRef = doc(
+        collection(
+          firestoreDb,
+          'users',
+          userId,
+          'closed'
+        )
       );
 
-      await addDoc(closedRef, {
+      const batch = writeBatch(firestoreDb);
+
+      batch.set(closedRef, {
         code,
         market: stock.market,
-        quantity,
+        quantity: soldQuantity,
         buyPrice,
         sellPrice,
-        profitLoss: quantity * (sellPrice - buyPrice),
+        profitLoss:
+          soldQuantity * (sellPrice - buyPrice),
         closedAt: new Date().toISOString(),
+        partialSale: remainingQuantity > 0,
       });
 
-      await deleteDoc(stockRef);
+      if (remainingQuantity > 0) {
+        let quantityField = 'lot';
+
+        if (
+          Object.prototype.hasOwnProperty.call(
+            stock,
+            'quantity'
+          )
+        ) {
+          quantityField = 'quantity';
+        } else if (
+          Object.prototype.hasOwnProperty.call(
+            stock,
+            'amount'
+          )
+        ) {
+          quantityField = 'amount';
+        }
+
+        batch.update(stockRef, {
+          [quantityField]: remainingQuantity,
+        });
+      } else {
+        batch.delete(stockRef);
+      }
+
+      await batch.commit();
     } catch (error) {
-      console.error('Pozisyon kapatma hatası:', error);
+      console.error('Pozisyon satış hatası:', error);
       window.alert(
-        `Pozisyon kapatılamadı: ${error?.message || 'Bilinmeyen hata'}`
+        `Satış kaydedilemedi: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
       );
     } finally {
       setProcessingId('');
@@ -1490,6 +1578,7 @@ function WatchlistPanel({ items, prices, userId }) {
 
 function ClosedPositionsPanel({ positions, userId }) {
   const [processing, setProcessing] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   async function addClosedPosition() {
     const codeInput = window.prompt('Hisse kodunu yazın:');
@@ -1636,7 +1725,37 @@ function ClosedPositionsPanel({ positions, userId }) {
   return (
     <article style={styles.panelCard}>
       <div style={styles.panelHeader}>
-        <h3 style={styles.panelTitle}>Kapanan Pozisyonlar</h3>
+        <button
+          type="button"
+          onClick={() => setIsExpanded((current) => !current)}
+          aria-expanded={isExpanded}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            padding: 0,
+            border: 0,
+            color: '#f8fafc',
+            background: 'transparent',
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            textAlign: 'left',
+          }}
+        >
+          <h3 style={styles.panelTitle}>
+            Kapanan Pozisyonlar
+          </h3>
+
+          <span
+            style={{
+              color: '#f0d675',
+              fontSize: 12,
+              fontWeight: 900,
+            }}
+          >
+            {isExpanded ? '▲ Kapat' : '▼ Göster'}
+          </span>
+        </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={styles.panelBadge}>{positions.length} işlem</span>
@@ -1664,6 +1783,7 @@ function ClosedPositionsPanel({ positions, userId }) {
       <div
         style={{
           ...styles.closedHeader,
+          display: isExpanded ? 'grid' : 'none',
           gridTemplateColumns: '1.3fr 0.9fr 0.9fr 0.9fr 44px',
         }}
       >
@@ -1674,7 +1794,13 @@ function ClosedPositionsPanel({ positions, userId }) {
         <span></span>
       </div>
 
-      <div style={styles.panelList}>
+      <div
+        style={
+          isExpanded
+            ? styles.panelList
+            : { display: 'none' }
+        }
+      >
         {positions.length === 0 ? (
           <div style={styles.panelEmpty}>
             Henüz kapanan pozisyon yok. “+ Ekle” düğmesiyle kayıt ekleyebilirsiniz.
