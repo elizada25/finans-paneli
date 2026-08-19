@@ -231,8 +231,7 @@ async function fetchLiquidCandidates() {
       };
     })
     .filter((item) => item.symbol && item.turnover > 0)
-    .sort((first, second) => second.turnover - first.turnover)
-    .slice(0, 24);
+    .sort((first, second) => second.turnover - first.turnover);
 }
 
 function parseYahooRows(payload) {
@@ -475,6 +474,11 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
     target2: round(last.close + riskPerShare * 3),
     riskPerShare: round(riskPerShare),
     riskReward: 2,
+    exitSignal: !fifteenTrend && !aboveVwap,
+    exitReason:
+      !fifteenTrend && !aboveVwap
+        ? '15 dakika trendi ve VWAP desteği bozuldu.'
+        : null,
     lastBarTimestamp: last.timestamp,
   };
 }
@@ -507,13 +511,40 @@ async function mapWithConcurrency(items, limit, worker) {
   return results;
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
     const startedAt = Date.now();
-    const [candidates, indexRows] = await Promise.all([
+    const { searchParams } = new URL(request.url);
+
+    const requestedSymbols = [
+      ...new Set(
+        String(searchParams.get('positions') || '')
+          .split(',')
+          .map((symbol) => symbol.trim().toUpperCase())
+          .filter((symbol) => BIST_UNIVERSE.includes(symbol))
+      ),
+    ].slice(0, 3);
+
+    const [allCandidates, indexRows] = await Promise.all([
       fetchLiquidCandidates(),
       fetchFiveMinuteRows('XU100'),
     ]);
+
+    const topCandidates = allCandidates.slice(0, 24);
+    const requestedCandidates = allCandidates.filter(
+      (candidate) => requestedSymbols.includes(candidate.symbol)
+    );
+
+    const candidateMap = new Map();
+
+    for (const candidate of [
+      ...topCandidates,
+      ...requestedCandidates,
+    ]) {
+      candidateMap.set(candidate.symbol, candidate);
+    }
+
+    const candidates = [...candidateMap.values()];
     const marketRegime = analyzeMarketRegime(indexRows);
 
     const analyses = await mapWithConcurrency(
@@ -529,7 +560,15 @@ export async function GET() {
       .filter(Boolean)
       .sort((first, second) => second.score - first.score);
 
-    const actionable = valid.slice(0, 3);
+    const positionChecks = valid.filter(
+      (item) => requestedSymbols.includes(item.symbol)
+    );
+
+    const actionable = valid
+      .filter(
+        (item) => !requestedSymbols.includes(item.symbol)
+      )
+      .slice(0, 3);
 
     return NextResponse.json({
       ok: true,
@@ -539,6 +578,7 @@ export async function GET() {
       analyzed: valid.length,
       marketRegime,
       items: actionable,
+      positionChecks,
       message: actionable.length
         ? ''
         : 'Şartları karşılayan güvenilir bir aday bulunamadı.',

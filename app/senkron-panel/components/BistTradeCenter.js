@@ -1,7 +1,9 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import BistPaperRobot from './BistPaperRobot';
 
+const ROBOT_STORAGE_KEY = 'sky-bist-paper-robot-v1';
 const TRADE_KEY_PREFIX = 'sky-bist-gunluk-islem';
 const SIGNAL_KEY_PREFIX = 'sky-bist-sinyal';
 
@@ -16,6 +18,7 @@ export default function BistTradeCenter() {
   const [error, setError] = useState('');
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [countdown, setCountdown] = useState('');
+  const [robotScan, setRobotScan] = useState(null);
   const scanInFlight = useRef(false);
   const lastAutoSlot = useRef('');
 
@@ -62,7 +65,31 @@ export default function BistTradeCenter() {
       setError('');
       setStatus('Likit BIST hisseleri ve tamamlanmış mumlar taranıyor…');
 
-      const response = await fetch('/api/bist-daytrade', { cache: 'no-store' });
+      let openSymbols = [];
+
+      try {
+        const savedRobot = JSON.parse(
+          localStorage.getItem(ROBOT_STORAGE_KEY)
+        );
+
+        openSymbols = Array.isArray(savedRobot?.positions)
+          ? savedRobot.positions
+              .map((position) => position.symbol)
+              .filter(Boolean)
+              .slice(0, 3)
+          : [];
+      } catch {
+        openSymbols = [];
+      }
+
+      const query = openSymbols.length
+        ? `?positions=${encodeURIComponent(openSymbols.join(','))}`
+        : '';
+
+      const response = await fetch(
+        `/api/bist-daytrade${query}`,
+        { cache: 'no-store' }
+      );
       const payload = await response.json();
       if (!response.ok || !payload?.ok) {
         throw new Error(payload?.error || 'Günlük trade taraması tamamlanamadı.');
@@ -70,6 +97,13 @@ export default function BistTradeCenter() {
 
       const nextItems = Array.isArray(payload.items) ? payload.items : [];
       setItems(nextItems);
+      setRobotScan({
+        generatedAt: payload.generatedAt,
+        items: nextItems,
+        positionChecks: Array.isArray(payload.positionChecks)
+          ? payload.positionChecks
+          : [],
+      });
       setSummary({
         generatedAt: payload.generatedAt,
         scanned: payload.scanned,
@@ -205,6 +239,11 @@ export default function BistTradeCenter() {
           ))}
         </div>
       ) : null}
+
+      <BistPaperRobot
+        scan={robotScan}
+        scanning={loading}
+      />
 
       <p style={styles.disclaimer}>
         Bu ekran emir vermez ve yatırım tavsiyesi değildir. Bildirim yalnızca
