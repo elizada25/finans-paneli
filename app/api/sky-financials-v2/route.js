@@ -191,7 +191,7 @@ export async function GET(request) {
       {
         headers: {
           'Cache-Control': 'no-store, max-age=0',
-          'X-Sky-Financials-Version': 'V3-period-locked',
+          'X-Sky-Financials-Version': 'V4-duration-matched',
         },
       }
     );
@@ -293,6 +293,7 @@ function getYoYMetric(
 
       for (const item of values) {
         const key = [
+          item.start || '',
           item.end,
           item.form,
           item.fp || '',
@@ -374,6 +375,28 @@ function getYoYMetric(
             return false;
           }
 
+          if (
+            !instantMetric &&
+            periodMode !== 'instant'
+          ) {
+            const currentDuration =
+              durationDays(current);
+
+            const candidateDuration =
+              durationDays(candidate);
+
+            if (
+              currentDuration <= 0 ||
+              candidateDuration <= 0 ||
+              Math.abs(
+                currentDuration -
+                candidateDuration
+              ) > 10
+            ) {
+              return false;
+            }
+          }
+
           /*
             Dönem sonu aylarını mümkün olduğunca eşleştir.
           */
@@ -398,8 +421,17 @@ function getYoYMetric(
             ? Number(previous.val)
             : null,
 
+        currentStart: current.start || null,
         currentEnd: current.end,
+        previousStart: previous?.start || null,
         previousEnd: previous?.end || null,
+
+        currentDurationDays:
+          instantMetric ? 0 : durationDays(current),
+        previousDurationDays:
+          previous && !instantMetric
+            ? durationDays(previous)
+            : 0,
 
         currentFrame: current.frame || null,
         previousFrame: previous?.frame || null,
@@ -605,14 +637,111 @@ function findSamePeriodLastYear(
   const targetFrame =
     `CY${year - 1}${suffix}`;
 
-  return (
-    values.find(
-      (item) =>
-        String(item.frame || '') ===
-        targetFrame
-    ) || null
+  const matches = values.filter(
+    (item) =>
+      item !== current &&
+      String(item.frame || '') === targetFrame
   );
+
+  if (!matches.length) return null;
+
+  const targetStart = current.start
+    ? shiftYear(current.start, -1)
+    : null;
+
+  const targetEnd = shiftYear(
+    current.end,
+    -1
+  );
+
+  if (instantMetric) {
+    return [...matches].sort((a, b) => {
+      const aExact =
+        targetEnd && a.end === targetEnd ? 1 : 0;
+
+      const bExact =
+        targetEnd && b.end === targetEnd ? 1 : 0;
+
+      if (aExact !== bExact) {
+        return bExact - aExact;
+      }
+
+      return (
+        new Date(b.filed || b.end).getTime() -
+        new Date(a.filed || a.end).getTime()
+      );
+    })[0] || null;
+  }
+
+  const currentDuration =
+    durationDays(current);
+
+  const durationMatches = matches.filter(
+    (item) => {
+      const candidateDuration =
+        durationDays(item);
+
+      return (
+        currentDuration > 0 &&
+        candidateDuration > 0 &&
+        Math.abs(
+          currentDuration -
+          candidateDuration
+        ) <= 10
+      );
+    }
+  );
+
+  return [...durationMatches].sort((a, b) => {
+    const aExactDates =
+      targetStart &&
+      targetEnd &&
+      a.start === targetStart &&
+      a.end === targetEnd
+        ? 1
+        : 0;
+
+    const bExactDates =
+      targetStart &&
+      targetEnd &&
+      b.start === targetStart &&
+      b.end === targetEnd
+        ? 1
+        : 0;
+
+    if (aExactDates !== bExactDates) {
+      return bExactDates - aExactDates;
+    }
+
+    const aSameForm =
+      a.form === current.form ? 1 : 0;
+
+    const bSameForm =
+      b.form === current.form ? 1 : 0;
+
+    if (aSameForm !== bSameForm) {
+      return bSameForm - aSameForm;
+    }
+
+    const aDifference = Math.abs(
+      durationDays(a) - currentDuration
+    );
+
+    const bDifference = Math.abs(
+      durationDays(b) - currentDuration
+    );
+
+    if (aDifference !== bDifference) {
+      return aDifference - bDifference;
+    }
+
+    return (
+      new Date(b.filed || b.end).getTime() -
+      new Date(a.filed || a.end).getTime()
+    );
+  })[0] || null;
 }
+
 
 function getLatestFiling(data) {
   const recent = data?.filings?.recent;
