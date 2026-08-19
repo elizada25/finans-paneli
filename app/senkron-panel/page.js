@@ -24,6 +24,33 @@ export default function SenkronPanelPage() {
   const [usdTry, setUsdTry] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [selectedOptionsStock, setSelectedOptionsStock] = useState(null);
+  const [istanbulClock, setIstanbulClock] = useState('');
+
+  useEffect(() => {
+    function updateIstanbulClock() {
+      setIstanbulClock(
+        new Intl.DateTimeFormat('tr-TR', {
+          timeZone: 'Europe/Istanbul',
+          weekday: 'short',
+          day: '2-digit',
+          month: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hourCycle: 'h23',
+        }).format(new Date())
+      );
+    }
+
+    updateIstanbulClock();
+
+    const clockTimer = window.setInterval(
+      updateIstanbulClock,
+      1000
+    );
+
+    return () => window.clearInterval(clockTimer);
+  }, []);
 
   useEffect(() => {
     let unsubscribePortfolio = null;
@@ -322,6 +349,44 @@ export default function SenkronPanelPage() {
           flexWrap: 'wrap',
         }}
       >
+        <div
+          title="Türkiye saati"
+          style={{
+            minHeight: '42px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            justifyContent: 'center',
+            padding: '0 13px',
+            borderRadius: '10px',
+            border: '1px solid rgba(56,189,248,0.24)',
+            background: 'rgba(56,189,248,0.07)',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          <span
+            style={{
+              color: '#7dd3fc',
+              fontSize: '9px',
+              fontWeight: 900,
+              letterSpacing: '0.8px',
+            }}
+          >
+            İSTANBUL
+          </span>
+
+          <strong
+            style={{
+              marginTop: '2px',
+              color: '#f8fafc',
+              fontSize: '12px',
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {istanbulClock || '--'}
+          </strong>
+        </div>
+
         <button
           type="button"
           onClick={() => router.push('/haber-merkezi')}
