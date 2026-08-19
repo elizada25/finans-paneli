@@ -21,6 +21,8 @@ export async function GET(request) {
       EOSE: '0001805077',
       MU: '0000723125',
       NVDA: '0001045810',
+      META: '0001326801',
+      AAOI: '0001158114',
       PLTR: '0001321655',
       RKLB: '0001819994',
       SOFI: '0001818874',
@@ -211,32 +213,128 @@ export async function GET(request) {
 }
 
 async function resolveCIK(symbol) {
-  const response = await fetch(
-    'https://www.sec.gov/files/company_tickers.json',
-    {
-      cache: 'no-store',
-      headers: {
-        'User-Agent': 'Sky-Finans/1.3',
-        Accept: 'application/json',
-      },
+  const normalizedSymbol = String(symbol || '')
+    .trim()
+    .toUpperCase()
+    .replace(/\./g, '-');
+
+  const headers = {
+    'User-Agent':
+      process.env.SEC_USER_AGENT ||
+      'Sky-Finans/1.4 financial-research-dashboard',
+    Accept: 'application/json',
+  };
+
+  /*
+    Birinci kaynak: SEC'in standart ticker listesi.
+  */
+  try {
+    const response = await fetch(
+      'https://www.sec.gov/files/company_tickers.json',
+      {
+        headers,
+        next: {
+          revalidate: 86400,
+        },
+        signal: AbortSignal.timeout(12000),
+      }
+    );
+
+    if (response.ok) {
+      const json = await response.json();
+
+      for (const row of Object.values(json || {})) {
+        const ticker = String(
+          row?.ticker || ''
+        )
+          .trim()
+          .toUpperCase()
+          .replace(/\./g, '-');
+
+        if (ticker === normalizedSymbol) {
+          return String(row?.cik_str || '')
+            .padStart(10, '0');
+        }
+      }
+    } else {
+      console.warn(
+        'SEC company_tickers yanıtı:',
+        response.status
+      );
     }
-  );
+  } catch (error) {
+    console.warn(
+      'SEC standart ticker listesi hatası:',
+      error?.message || error
+    );
+  }
 
-  if (!response.ok) return null;
+  /*
+    İkinci kaynak: SEC'in borsa bilgisi içeren
+    alternatif ticker listesi.
+  */
+  try {
+    const response = await fetch(
+      'https://www.sec.gov/files/company_tickers_exchange.json',
+      {
+        headers,
+        next: {
+          revalidate: 86400,
+        },
+        signal: AbortSignal.timeout(12000),
+      }
+    );
 
-  const json = await response.json();
+    if (!response.ok) {
+      console.warn(
+        'SEC exchange ticker yanıtı:',
+        response.status
+      );
 
-  for (const row of Object.values(json || {})) {
-    if (
-      String(row?.ticker || '').toUpperCase() === symbol
-    ) {
-      return String(row?.cik_str || '')
-        .padStart(10, '0');
+      return null;
     }
+
+    const json = await response.json();
+    const fields = Array.isArray(json?.fields)
+      ? json.fields
+      : [];
+
+    const rows = Array.isArray(json?.data)
+      ? json.data
+      : [];
+
+    const cikIndex = fields.indexOf('cik');
+    const tickerIndex = fields.indexOf('ticker');
+
+    if (cikIndex === -1 || tickerIndex === -1) {
+      return null;
+    }
+
+    for (const row of rows) {
+      if (!Array.isArray(row)) continue;
+
+      const ticker = String(
+        row[tickerIndex] || ''
+      )
+        .trim()
+        .toUpperCase()
+        .replace(/\./g, '-');
+
+      if (ticker === normalizedSymbol) {
+        return String(row[cikIndex] || '')
+          .padStart(10, '0');
+      }
+    }
+  } catch (error) {
+    console.warn(
+      'SEC alternatif ticker listesi hatası:',
+      error?.message || error
+    );
   }
 
   return null;
 }
+
 
 /*
   SEC XBRL'den son rapor dönemi ile mümkün olduğunca
