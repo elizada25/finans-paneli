@@ -1287,6 +1287,7 @@ function getUsExtendedSession() {
 function WatchlistPanel({ items, prices, userId }) {
   const [processing, setProcessing] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
+  const [watchlistOpen, setWatchlistOpen] = useState(false);
 
   async function addWatchItem() {
     const codeInput = window.prompt(
@@ -1523,7 +1524,45 @@ function WatchlistPanel({ items, prices, userId }) {
       `}</style>
 
       <div style={styles.panelHeader}>
-        <h3 style={styles.panelTitle}>Takip Listesi</h3>
+        <button
+          type="button"
+          onClick={() =>
+            setWatchlistOpen(
+              (current) => !current
+            )
+          }
+          aria-expanded={watchlistOpen}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: 0,
+            border: 0,
+            background: 'transparent',
+            color: '#f8fafc',
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+            textAlign: 'left',
+          }}
+        >
+          <h3 style={styles.panelTitle}>
+            Takip Listesi
+          </h3>
+
+          <span
+            style={{
+              color: '#f0d675',
+              fontSize: '13px',
+              transition:
+                'transform 180ms ease',
+              transform: watchlistOpen
+                ? 'rotate(180deg)'
+                : 'rotate(0deg)',
+            }}
+          >
+            ▼
+          </span>
+        </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={styles.panelBadge}>{items.length} hisse</span>
@@ -1550,7 +1589,12 @@ function WatchlistPanel({ items, prices, userId }) {
 
       <div
         className="sky-watch-header"
-        style={styles.miniTableHeader}
+        style={{
+          ...styles.miniTableHeader,
+          display: watchlistOpen
+            ? 'grid'
+            : 'none',
+        }}
       >
         <span>Hisse</span>
         <span>Son</span>
@@ -1561,7 +1605,14 @@ function WatchlistPanel({ items, prices, userId }) {
         <span></span>
       </div>
 
-      <div style={styles.panelList}>
+      <div
+        style={{
+          ...styles.panelList,
+          display: watchlistOpen
+            ? 'block'
+            : 'none',
+        }}
+      >
         {items.length === 0 ? (
           <div style={styles.panelEmpty}>
             Takip listesi boş. “+ Ekle” düğmesiyle hisse ekleyebilirsiniz.
@@ -2218,6 +2269,12 @@ async function fetchPrices(market, codes) {
       if (!code) return;
 
       result[`${market}:${code}`] = {
+        ...(
+          item &&
+          typeof item === 'object'
+            ? item
+            : {}
+        ),
         price: toNumber(
           item?.price ??
             item?.regularMarketPrice ??
@@ -2255,6 +2312,12 @@ async function fetchPrices(market, codes) {
     if (!code) return;
 
     result[`${market}:${code}`] = {
+      ...(
+        item &&
+        typeof item === 'object'
+          ? item
+          : {}
+      ),
       price: toNumber(
         item?.price ??
           item?.regularMarketPrice ??
