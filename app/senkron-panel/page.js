@@ -1465,8 +1465,7 @@ function WatchlistPanel({ items, prices, userId }) {
             minmax(76px, 0.9fr)
             minmax(76px, 0.9fr)
             minmax(74px, 0.8fr)
-            58px
-            34px !important;
+            58px !important;
         }
 
         .sky-drag-button {
@@ -1493,8 +1492,7 @@ function WatchlistPanel({ items, prices, userId }) {
               minmax(72px, 1.2fr)
               minmax(68px, 0.9fr)
               minmax(62px, 0.85fr)
-              38px
-              32px !important;
+              38px !important;
             gap: 7px !important;
           }
 
@@ -1602,7 +1600,6 @@ function WatchlistPanel({ items, prices, userId }) {
         <span className="sky-watch-high">Yüksek</span>
         <span>% Değişim</span>
         <span>Taşı</span>
-        <span></span>
       </div>
 
       <div
@@ -1705,7 +1702,51 @@ function WatchlistPanel({ items, prices, userId }) {
                 }}
               >
                 <div>
-                  <strong style={styles.listPrimary}>☆ {code}</strong>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '7px',
+                    }}
+                  >
+                    <strong style={styles.listPrimary}>
+                      ☆ {code}
+                    </strong>
+
+                    <button
+                      type="button"
+                      onPointerDown={(event) =>
+                        event.stopPropagation()
+                      }
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        removeWatchItem(item);
+                      }}
+                      disabled={processing}
+                      title={`${code} takip listesinden çıkar`}
+                      aria-label={`${code} takip listesinden çıkar`}
+                      style={{
+                        width: '25px',
+                        minWidth: '25px',
+                        height: '25px',
+                        padding: 0,
+                        border: '1px solid rgba(239,68,68,0.45)',
+                        borderRadius: '7px',
+                        background: 'rgba(127,29,29,0.35)',
+                        color: '#fca5a5',
+                        cursor: processing
+                          ? 'default'
+                          : 'pointer',
+                        opacity: processing ? 0.45 : 1,
+                        fontSize: '17px',
+                        fontWeight: 900,
+                        lineHeight: 1,
+                      }}
+                    >
+                      ×
+                    </button>
+                  </div>
+
                   <span style={styles.listSecondary}>
                     {item.market === 'bist' ? 'BIST' : 'NASDAQ'}
                   </span>
@@ -1828,24 +1869,7 @@ function WatchlistPanel({ items, prices, userId }) {
                   ☰
                 </div>
 
-                <button
-                  className="sky-remove-button"
-                  type="button"
-                  onClick={() => removeWatchItem(item)}
-                  disabled={processing}
-                  title="Takip listesinden çıkar"
-                  style={{
-                    border: '1px solid #7f1d1d',
-                    borderRadius: 7,
-                    background: '#450a0a',
-                    color: '#fecaca',
-                    cursor: processing ? 'default' : 'pointer',
-                    fontWeight: 800,
-                    height: 30,
-                  }}
-                >
-                  ×
-                </button>
+
               </div>
             );
           })
