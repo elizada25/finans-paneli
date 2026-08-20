@@ -7,7 +7,7 @@ const INTERVALS = {
   '5m': { yahoo: '5m', range: '5d' },
   '15m': { yahoo: '15m', range: '1mo' },
   '60m': { yahoo: '60m', range: '3mo' },
-  '1d': { yahoo: '1d', range: '2y' },
+  '1d': { yahoo: '1d', range: '10y' },
 };
 
 export async function GET(request) {
