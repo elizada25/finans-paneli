@@ -8,7 +8,7 @@ import {
 } from 'react';
 import {
   doc,
-  onSnapshot,
+  getDoc,
   setDoc,
 } from 'firebase/firestore';
 import { firestoreDb } from '../../lib-firebase';
@@ -88,63 +88,76 @@ export default function TradingViewChart({
   }, [userId]);
 
   useEffect(() => {
-    setSettingsReady(false);
+    let active = true;
 
-    if (!settingsRef) {
-      try {
-        const saved = JSON.parse(
-          localStorage.getItem(
-            STORAGE_KEY
-          ) || '{}'
-        );
+    async function loadSettings() {
+      setSettingsReady(false);
 
-        const savedStudies =
-          Array.isArray(saved.studies)
-            ? saved.studies.filter(
-                (item) =>
-                  VALID_STUDIES.has(item)
-              )
-            : [];
+      if (!settingsRef) {
+        try {
+          const saved = JSON.parse(
+            localStorage.getItem(
+              STORAGE_KEY
+            ) || '{}'
+          );
 
-        setStudies(savedStudies);
+          if (!active) return;
 
-        if (
-          VALID_INTERVALS.has(
-            saved.interval
-          )
-        ) {
-          setInterval(saved.interval);
-        }
+          const savedStudies =
+            Array.isArray(saved.studies)
+              ? saved.studies.filter(
+                  (item) =>
+                    VALID_STUDIES.has(item)
+                )
+              : [];
 
-        if (
-          typeof saved.symbol ===
-            'string' &&
-          saved.symbol.includes(':')
-        ) {
-          restoreTargetRef.current =
-            saved.symbol;
+          setStudies(savedStudies);
 
-          restoreCallbackRef.current?.(
-            saved.symbol
+          if (
+            VALID_INTERVALS.has(
+              saved.interval
+            )
+          ) {
+            setInterval(saved.interval);
+          }
+
+          if (
+            typeof saved.symbol ===
+              'string' &&
+            saved.symbol.includes(':')
+          ) {
+            restoreTargetRef.current =
+              saved.symbol;
+
+            restoreCallbackRef.current?.(
+              saved.symbol
+            );
+          }
+
+          setSaveStatus(
+            'Bu cihazda kaydedildi'
+          );
+        } catch {
+          if (!active) return;
+
+          setSaveStatus(
+            'Ayarlar kaydedilecek'
           );
         }
 
-        setSaveStatus(
-          'Bu cihazda kaydedildi'
-        );
-      } catch {
-        setSaveStatus(
-          'Ayarlar kaydedilecek'
-        );
+        if (active) {
+          setSettingsReady(true);
+        }
+
+        return;
       }
 
-      setSettingsReady(true);
-      return;
-    }
+      try {
+        const snapshot =
+          await getDoc(settingsRef);
 
-    const unsubscribe = onSnapshot(
-      settingsRef,
-      (snapshot) => {
+        if (!active) return;
+
         const saved = snapshot.exists()
           ? snapshot.data()
           : {};
@@ -186,10 +199,9 @@ export default function TradingViewChart({
             ? 'Firebase ile kaydedildi'
             : 'Ayarlar kaydedilecek'
         );
+      } catch (error) {
+        if (!active) return;
 
-        setSettingsReady(true);
-      },
-      (error) => {
         console.error(
           'Grafik ayarları okunamadı:',
           error
@@ -198,11 +210,18 @@ export default function TradingViewChart({
         setSaveStatus(
           'Kayıt bağlantısı kurulamadı'
         );
+      }
+
+      if (active) {
         setSettingsReady(true);
       }
-    );
+    }
 
-    return unsubscribe;
+    loadSettings();
+
+    return () => {
+      active = false;
+    };
   }, [settingsRef]);
 
   useEffect(() => {
