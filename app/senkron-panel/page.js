@@ -1232,6 +1232,58 @@ function NewsPanel({ stocks }) {
   );
 }
 
+function getUsExtendedSession() {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      weekday: 'short',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date())
+      .filter(
+        (part) => part.type !== 'literal'
+      )
+      .map(
+        (part) => [part.type, part.value]
+      )
+  );
+
+  if (
+    ['Sat', 'Sun'].includes(parts.weekday)
+  ) {
+    return 'closed';
+  }
+
+  const minutes =
+    Number(parts.hour) * 60 +
+    Number(parts.minute);
+
+  if (
+    minutes >= 4 * 60 &&
+    minutes < 9 * 60 + 30
+  ) {
+    return 'pre';
+  }
+
+  if (
+    minutes >= 9 * 60 + 30 &&
+    minutes < 16 * 60
+  ) {
+    return 'regular';
+  }
+
+  if (
+    minutes >= 16 * 60 &&
+    minutes < 20 * 60
+  ) {
+    return 'after';
+  }
+
+  return 'closed';
+}
+
 function WatchlistPanel({ items, prices, userId }) {
   const [processing, setProcessing] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
@@ -1522,6 +1574,44 @@ function WatchlistPanel({ items, prices, userId }) {
             const previousClose = toNumber(data.previousClose);
             const dayLow = toNumber(data.dayLow);
             const dayHigh = toNumber(data.dayHigh);
+            const preMarketPrice =
+              toNumber(data.preMarketPrice);
+            const preMarketChange =
+              Number(
+                data.preMarketChangePercent
+              );
+            const afterMarketPrice =
+              toNumber(data.afterMarketPrice);
+            const afterMarketChange =
+              Number(
+                data.afterMarketChangePercent
+              );
+
+            const usSession =
+              item.market === 'us'
+                ? getUsExtendedSession()
+                : 'regular';
+
+            const extendedLabel =
+              usSession === 'pre'
+                ? 'PRE'
+                : usSession === 'after'
+                  ? 'AFTER'
+                  : '';
+
+            const extendedPrice =
+              usSession === 'pre'
+                ? preMarketPrice
+                : usSession === 'after'
+                  ? afterMarketPrice
+                  : 0;
+
+            const extendedChange =
+              usSession === 'pre'
+                ? preMarketChange
+                : usSession === 'after'
+                  ? afterMarketChange
+                  : null;
 
             const change =
               price > 0 && previousClose > 0
@@ -1570,9 +1660,82 @@ function WatchlistPanel({ items, prices, userId }) {
                   </span>
                 </div>
 
-                <span style={styles.watchPrice}>
-                  {price > 0 ? formatMoney(price, currency) : '—'}
-                </span>
+                <div
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'flex-start',
+                    gap: '4px',
+                    minWidth: 0,
+                  }}
+                >
+                  <span style={styles.watchPrice}>
+                    {price > 0
+                      ? formatMoney(
+                          price,
+                          currency
+                        )
+                      : '—'}
+                  </span>
+
+                  {item.market === 'us' &&
+                  extendedLabel &&
+                  extendedPrice > 0 ? (
+                    <span
+                      title="Yakın zamanlı uzatılmış seans verisi"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        maxWidth: '100%',
+                        padding: '3px 5px',
+                        borderRadius: '6px',
+                        color:
+                          Number.isFinite(
+                            extendedChange
+                          ) &&
+                          extendedChange < 0
+                            ? '#fca5a5'
+                            : '#86efac',
+                        background:
+                          extendedLabel === 'PRE'
+                            ? 'rgba(56,189,248,0.10)'
+                            : 'rgba(168,85,247,0.10)',
+                        border:
+                          extendedLabel === 'PRE'
+                            ? '1px solid rgba(56,189,248,0.20)'
+                            : '1px solid rgba(168,85,247,0.20)',
+                        fontSize: '8px',
+                        fontWeight: 850,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      <b
+                        style={{
+                          color:
+                            extendedLabel === 'PRE'
+                              ? '#7dd3fc'
+                              : '#d8b4fe',
+                        }}
+                      >
+                        {extendedLabel}
+                      </b>
+
+                      {formatMoney(
+                        extendedPrice,
+                        currency
+                      )}
+
+                      {Number.isFinite(
+                        extendedChange
+                      )
+                        ? formatPercent(
+                            extendedChange
+                          )
+                        : ''}
+                    </span>
+                  ) : null}
+                </div>
 
                 <span className="sky-watch-low" style={styles.watchPrice}>
                   {dayLow > 0 ? formatMoney(dayLow, currency) : '—'}

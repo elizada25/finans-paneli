@@ -48,6 +48,16 @@ export async function POST(request) {
             'change_abs',
             'low',
             'high',
+            ...(
+              market === 'us'
+                ? [
+                    'premarket_close',
+                    'premarket_change',
+                    'postmarket_close',
+                    'postmarket_change',
+                  ]
+                : []
+            ),
           ],
         }),
       }
@@ -73,6 +83,22 @@ export async function POST(request) {
       const dailyChange = Number(row.d?.[1] || 0);
       const dayLow = Number(row.d?.[2]);
       const dayHigh = Number(row.d?.[3]);
+      const preMarketPrice =
+        market === 'us'
+          ? Number(row.d?.[4])
+          : null;
+      const preMarketChangePercent =
+        market === 'us'
+          ? Number(row.d?.[5])
+          : null;
+      const afterMarketPrice =
+        market === 'us'
+          ? Number(row.d?.[6])
+          : null;
+      const afterMarketChangePercent =
+        market === 'us'
+          ? Number(row.d?.[7])
+          : null;
 
       if (
         code &&
@@ -87,8 +113,36 @@ export async function POST(request) {
                   (livePrice - dailyChange)) *
                 100
               : 0,
-          dayLow: Number.isFinite(dayLow) ? dayLow : null,
-          dayHigh: Number.isFinite(dayHigh) ? dayHigh : null,
+          dayLow:
+            Number.isFinite(dayLow)
+              ? dayLow
+              : null,
+          dayHigh:
+            Number.isFinite(dayHigh)
+              ? dayHigh
+              : null,
+          preMarketPrice:
+            Number.isFinite(preMarketPrice)
+              ? preMarketPrice
+              : null,
+          preMarketChangePercent:
+            Number.isFinite(
+              preMarketChangePercent
+            )
+              ? preMarketChangePercent
+              : null,
+          afterMarketPrice:
+            Number.isFinite(afterMarketPrice)
+              ? afterMarketPrice
+              : null,
+          afterMarketChangePercent:
+            Number.isFinite(
+              afterMarketChangePercent
+            )
+              ? afterMarketChangePercent
+              : null,
+          extendedHoursFetchedAt:
+            new Date().toISOString(),
         };
       }
     }
