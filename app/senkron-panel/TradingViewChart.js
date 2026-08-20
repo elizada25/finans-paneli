@@ -445,6 +445,92 @@ function applyData(rows, series) {
   }
 }
 
+
+function fitRecentChartData(
+  chart,
+  rowCount,
+  width
+) {
+  if (!chart || rowCount <= 0) return;
+
+  const visibleBars = Math.max(
+    120,
+    Math.min(
+      rowCount,
+      Math.floor(
+        Math.max(width || 1200, 700) / 6
+      )
+    )
+  );
+
+  chart.timeScale().setVisibleLogicalRange({
+    from: Math.max(
+      0,
+      rowCount - visibleBars
+    ),
+    to: rowCount + 6,
+  });
+}
+
+function resizeChartPanes(
+  chart,
+  host
+) {
+  if (!chart || !host) return;
+
+  try {
+    const panes = chart.panes();
+
+    if (!panes.length) return;
+
+    const totalHeight = Math.max(
+      host.clientHeight,
+      420
+    );
+
+    if (panes.length === 1) {
+      panes[0].setHeight(totalHeight);
+      return;
+    }
+
+    const priceHeight = Math.round(
+      totalHeight * (
+        panes.length > 2
+          ? 0.68
+          : 0.78
+      )
+    );
+
+    const volumeHeight = Math.round(
+      totalHeight * 0.12
+    );
+
+    panes[0].setHeight(priceHeight);
+    panes[1].setHeight(volumeHeight);
+
+    const remainingHeight = Math.max(
+      90,
+      Math.floor(
+        (
+          totalHeight -
+          priceHeight -
+          volumeHeight
+        ) /
+        Math.max(1, panes.length - 2)
+      )
+    );
+
+    panes.slice(2).forEach((pane) => {
+      pane.setHeight(remainingHeight);
+    });
+  } catch (error) {
+    console.warn(
+      'Grafik bölümleri boyutlandırılamadı:',
+      error
+    );
+  }
+}
+
 function savedInterval(value) {
   const mapping = {
     '5': '5m',
@@ -1068,13 +1154,25 @@ export default function TradingViewChart({
       series
     );
 
-    chart.timeScale().fitContent();
+    window.requestAnimationFrame(() => {
+      resizeChartPanes(chart, host);
+
+      fitRecentChartData(
+        chart,
+        rowsRef.current.length,
+        host.clientWidth
+      );
+    });
 
     const resizeObserver =
       new ResizeObserver(() => {
         chart.applyOptions({
           width: host.clientWidth,
           height: host.clientHeight,
+        });
+
+        window.requestAnimationFrame(() => {
+          resizeChartPanes(chart, host);
         });
       });
 
@@ -1111,9 +1209,16 @@ export default function TradingViewChart({
           height: host.clientHeight,
         });
 
-        chart
-          .timeScale()
-          .fitContent();
+        resizeChartPanes(
+          chart,
+          host
+        );
+
+        fitRecentChartData(
+          chart,
+          rowsRef.current.length,
+          host.clientWidth
+        );
       },
       180
     );
