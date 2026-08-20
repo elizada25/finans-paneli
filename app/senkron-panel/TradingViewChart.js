@@ -453,23 +453,23 @@ function fitRecentChartData(
 ) {
   if (!chart || rowCount <= 0) return;
 
-  const visibleBars = Math.max(
-    120,
-    Math.min(
-      rowCount,
-      Math.floor(
-        Math.max(width || 1200, 700) / 6
-      )
-    )
-  );
+  const barSpacing =
+    width >= 1600
+      ? 7
+      : width >= 1000
+        ? 6
+        : 5;
 
-  chart.timeScale().setVisibleLogicalRange({
-    from: Math.max(
-      0,
-      rowCount - visibleBars
-    ),
-    to: rowCount + 6,
+  const timeScale =
+    chart.timeScale();
+
+  timeScale.applyOptions({
+    barSpacing,
+    minBarSpacing: 2,
+    rightOffset: 8,
   });
+
+  timeScale.scrollToRealTime();
 }
 
 function resizeChartPanes(
