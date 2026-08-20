@@ -445,6 +445,326 @@ function applyData(rows, series) {
   }
 }
 
+
+function drawingId() {
+  return (
+    globalThis.crypto?.randomUUID?.() ||
+    `drawing-${Date.now()}-${Math.random()}`
+  );
+}
+
+function createSvgNode(name, attributes = {}) {
+  const element = document.createElementNS(
+    'http://www.w3.org/2000/svg',
+    name
+  );
+
+  Object.entries(attributes).forEach(
+    ([key, value]) => {
+      element.setAttribute(
+        key,
+        String(value)
+      );
+    }
+  );
+
+  return element;
+}
+
+function renderDrawings(
+  chart,
+  candleSeries,
+  svg,
+  drawings
+) {
+  if (
+    !chart ||
+    !candleSeries ||
+    !svg
+  ) {
+    return;
+  }
+
+  const width =
+    svg.clientWidth || 0;
+  const height =
+    svg.clientHeight || 0;
+
+  if (!width || !height) return;
+
+  svg.setAttribute(
+    'viewBox',
+    `0 0 ${width} ${height}`
+  );
+
+  svg.innerHTML = '';
+
+  function appendLine({
+    x1,
+    y1,
+    x2,
+    y2,
+    color,
+    width: lineWidth = 2,
+    dash = '',
+  }) {
+    const line = createSvgNode(
+      'line',
+      {
+        x1,
+        y1,
+        x2,
+        y2,
+        stroke: color,
+        'stroke-width': lineWidth,
+        'stroke-linecap': 'round',
+        'vector-effect':
+          'non-scaling-stroke',
+      }
+    );
+
+    if (dash) {
+      line.setAttribute(
+        'stroke-dasharray',
+        dash
+      );
+    }
+
+    svg.appendChild(line);
+  }
+
+  function appendText({
+    x,
+    y,
+    text,
+    color,
+  }) {
+    const label = createSvgNode(
+      'text',
+      {
+        x,
+        y,
+        fill: color,
+        'font-size': 11,
+        'font-weight': 800,
+        'font-family':
+          'system-ui, sans-serif',
+      }
+    );
+
+    label.textContent = text;
+    svg.appendChild(label);
+  }
+
+  function appendPoint(x, y, color) {
+    svg.appendChild(
+      createSvgNode('circle', {
+        cx: x,
+        cy: y,
+        r: 4,
+        fill: color,
+        stroke: '#07101c',
+        'stroke-width': 2,
+      })
+    );
+  }
+
+  for (const drawing of drawings) {
+    if (
+      drawing.type === 'support' ||
+      drawing.type === 'resistance'
+    ) {
+      const y =
+        candleSeries.priceToCoordinate(
+          drawing.price
+        );
+
+      if (!Number.isFinite(y)) {
+        continue;
+      }
+
+      const color =
+        drawing.type === 'support'
+          ? '#22c55e'
+          : '#ef4444';
+
+      appendLine({
+        x1: 0,
+        y1: y,
+        x2: width,
+        y2: y,
+        color,
+        width: 2,
+        dash: '8 5',
+      });
+
+      appendText({
+        x: 9,
+        y: Math.max(13, y - 6),
+        text:
+          drawing.type === 'support'
+            ? `Destek ${Number(
+                drawing.price
+              ).toFixed(2)}`
+            : `Direnç ${Number(
+                drawing.price
+              ).toFixed(2)}`,
+        color,
+      });
+
+      continue;
+    }
+
+    const startX =
+      chart.timeScale().timeToCoordinate(
+        drawing.start?.time
+      );
+
+    const endX =
+      chart.timeScale().timeToCoordinate(
+        drawing.end?.time
+      );
+
+    const startY =
+      candleSeries.priceToCoordinate(
+        drawing.start?.price
+      );
+
+    const endY =
+      candleSeries.priceToCoordinate(
+        drawing.end?.price
+      );
+
+    if (
+      !Number.isFinite(startX) ||
+      !Number.isFinite(endX) ||
+      !Number.isFinite(startY) ||
+      !Number.isFinite(endY)
+    ) {
+      continue;
+    }
+
+    if (drawing.type === 'trend') {
+      appendLine({
+        x1: startX,
+        y1: startY,
+        x2: endX,
+        y2: endY,
+        color: '#38bdf8',
+        width: 3,
+      });
+
+      appendPoint(
+        startX,
+        startY,
+        '#38bdf8'
+      );
+
+      appendPoint(
+        endX,
+        endY,
+        '#38bdf8'
+      );
+
+      continue;
+    }
+
+    if (drawing.type === 'fibonacci') {
+      const levels = [
+        0,
+        0.236,
+        0.382,
+        0.5,
+        0.618,
+        0.786,
+        1,
+      ];
+
+      const colors = [
+        '#94a3b8',
+        '#22c55e',
+        '#38bdf8',
+        '#eab308',
+        '#f97316',
+        '#ec4899',
+        '#a855f7',
+      ];
+
+      const left =
+        Math.min(startX, endX);
+      const right =
+        Math.max(startX, endX);
+
+      levels.forEach(
+        (level, index) => {
+          const price =
+            drawing.start.price +
+            (
+              drawing.end.price -
+              drawing.start.price
+            ) *
+              level;
+
+          const y =
+            candleSeries.priceToCoordinate(
+              price
+            );
+
+          if (!Number.isFinite(y)) {
+            return;
+          }
+
+          appendLine({
+            x1: left,
+            y1: y,
+            x2: right,
+            y2: y,
+            color: colors[index],
+            width:
+              level === 0 ||
+              level === 1
+                ? 2
+                : 1,
+          });
+
+          appendText({
+            x: left + 5,
+            y: Math.max(12, y - 4),
+            text:
+              `${level}  ${Number(
+                price
+              ).toFixed(2)}`,
+            color: colors[index],
+          });
+        }
+      );
+
+      appendLine({
+        x1: startX,
+        y1: startY,
+        x2: endX,
+        y2: endY,
+        color:
+          'rgba(240,214,117,0.55)',
+        width: 1,
+        dash: '5 4',
+      });
+
+      appendPoint(
+        startX,
+        startY,
+        '#f0d675'
+      );
+
+      appendPoint(
+        endX,
+        endY,
+        '#f0d675'
+      );
+    }
+  }
+}
+
 function savedInterval(value) {
   const mapping = {
     '5': '5m',
@@ -468,9 +788,15 @@ export default function TradingViewChart({
   userId,
   onRestoreSymbol,
 }) {
+  const rootRef = useRef(null);
   const chartHostRef = useRef(null);
+  const drawingOverlayRef = useRef(null);
+  const chartRef = useRef(null);
   const rowsRef = useRef([]);
   const seriesRef = useRef(null);
+  const drawingsRef = useRef([]);
+  const activeToolRef = useRef(null);
+  const pendingPointRef = useRef(null);
   const restoreCallbackRef =
     useRef(onRestoreSymbol);
   const restoreTargetRef = useRef(null);
@@ -496,10 +822,20 @@ export default function TradingViewChart({
     useState('');
   const [saveStatus, setSaveStatus] =
     useState('Ayarlar yükleniyor…');
+  const [drawings, setDrawings] =
+    useState([]);
+  const [activeTool, setActiveTool] =
+    useState(null);
+  const [drawingHint, setDrawingHint] =
+    useState('');
+  const [fullscreen, setFullscreen] =
+    useState(false);
 
   restoreCallbackRef.current =
     onRestoreSymbol;
   rowsRef.current = rows;
+  drawingsRef.current = drawings;
+  activeToolRef.current = activeTool;
 
   const settingsRef = useMemo(() => {
     if (!userId) return null;
@@ -554,6 +890,25 @@ export default function TradingViewChart({
         setInterval(
           savedInterval(saved.interval)
         );
+
+        if (
+          Array.isArray(saved.drawings)
+        ) {
+          setDrawings(
+            saved.drawings.filter(
+              (drawing) =>
+                drawing &&
+                [
+                  'support',
+                  'resistance',
+                  'trend',
+                  'fibonacci',
+                ].includes(
+                  drawing.type
+                )
+            )
+          );
+        }
 
         if (
           typeof saved.symbol ===
@@ -620,6 +975,7 @@ export default function TradingViewChart({
           interval,
           indicators:
             selectedIndicators,
+          drawings,
           updatedAt:
             new Date().toISOString(),
         };
@@ -669,6 +1025,7 @@ export default function TradingViewChart({
     symbol,
     interval,
     selectedIndicators,
+    drawings,
     settingsReady,
     settingsRef,
   ]);
@@ -823,6 +1180,8 @@ export default function TradingViewChart({
         locale: 'tr-TR',
       },
     });
+
+    chartRef.current = chart;
 
     const series = {};
 
@@ -1046,19 +1405,162 @@ export default function TradingViewChart({
 
     chart.timeScale().fitContent();
 
+    const redraw = () => {
+      renderDrawings(
+        chart,
+        series.candles,
+        drawingOverlayRef.current,
+        drawingsRef.current
+      );
+    };
+
+    const handleChartClick = (param) => {
+      const tool =
+        activeToolRef.current;
+
+      if (
+        !tool ||
+        !param?.point ||
+        param.time === undefined ||
+        param.time === null
+      ) {
+        return;
+      }
+
+      const mainPaneHeight =
+        chart.panes()?.[0]?.getHeight?.() ||
+        chartHostRef.current?.clientHeight ||
+        0;
+
+      if (
+        param.point.y < 0 ||
+        param.point.y > mainPaneHeight
+      ) {
+        setDrawingHint(
+          'Çizim noktası ana fiyat grafiğinde seçilmelidir.'
+        );
+        return;
+      }
+
+      const price = Number(
+        series.candles.coordinateToPrice(
+          param.point.y
+        )
+      );
+
+      if (
+        !Number.isFinite(price) ||
+        price <= 0
+      ) {
+        return;
+      }
+
+      const point = {
+        time: param.time,
+        price,
+      };
+
+      if (
+        tool === 'support' ||
+        tool === 'resistance'
+      ) {
+        setDrawings((current) => [
+          ...current,
+          {
+            id: drawingId(),
+            type: tool,
+            price,
+          },
+        ]);
+
+        pendingPointRef.current = null;
+        setActiveTool(null);
+        setDrawingHint(
+          tool === 'support'
+            ? 'Destek çizgisi kaydedildi.'
+            : 'Direnç çizgisi kaydedildi.'
+        );
+
+        return;
+      }
+
+      if (!pendingPointRef.current) {
+        pendingPointRef.current =
+          point;
+
+        setDrawingHint(
+          tool === 'fibonacci'
+            ? 'Şimdi Fibonacci bitiş noktasını seçin.'
+            : 'Şimdi trend çizgisinin bitiş noktasını seçin.'
+        );
+
+        return;
+      }
+
+      setDrawings((current) => [
+        ...current,
+        {
+          id: drawingId(),
+          type: tool,
+          start:
+            pendingPointRef.current,
+          end: point,
+        },
+      ]);
+
+      pendingPointRef.current = null;
+      setActiveTool(null);
+
+      setDrawingHint(
+        tool === 'fibonacci'
+          ? 'Fibonacci çizimi kaydedildi.'
+          : 'Trend çizgisi kaydedildi.'
+      );
+    };
+
+    chart.subscribeClick(
+      handleChartClick
+    );
+
+    chart
+      .timeScale()
+      .subscribeVisibleLogicalRangeChange(
+        redraw
+      );
+
+    window.requestAnimationFrame(
+      redraw
+    );
+
     const resizeObserver =
       new ResizeObserver(() => {
         chart.applyOptions({
           width: host.clientWidth,
           height: host.clientHeight,
         });
+
+        window.requestAnimationFrame(
+          redraw
+        );
       });
 
     resizeObserver.observe(host);
 
     return () => {
       resizeObserver.disconnect();
+
+      chart.unsubscribeClick(
+        handleChartClick
+      );
+
+      chart
+        .timeScale()
+        .unsubscribeVisibleLogicalRangeChange(
+          redraw
+        );
+
       seriesRef.current = null;
+      chartRef.current = null;
       chart.remove();
     };
   }, [
@@ -1068,7 +1570,64 @@ export default function TradingViewChart({
 
   useEffect(() => {
     applyData(rows, seriesRef.current);
+
+    window.requestAnimationFrame(() => {
+      renderDrawings(
+        chartRef.current,
+        seriesRef.current?.candles,
+        drawingOverlayRef.current,
+        drawingsRef.current
+      );
+    });
   }, [rows]);
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => {
+      renderDrawings(
+        chartRef.current,
+        seriesRef.current?.candles,
+        drawingOverlayRef.current,
+        drawings
+      );
+    });
+  }, [drawings]);
+
+  useEffect(() => {
+    pendingPointRef.current = null;
+    setActiveTool(null);
+    setDrawingHint('');
+  }, [symbol]);
+
+  useEffect(() => {
+    if (!fullscreen) return;
+
+    const previousOverflow =
+      document.body.style.overflow;
+
+    document.body.style.overflow =
+      'hidden';
+
+    function closeWithEscape(event) {
+      if (event.key === 'Escape') {
+        setFullscreen(false);
+      }
+    }
+
+    window.addEventListener(
+      'keydown',
+      closeWithEscape
+    );
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow;
+
+      window.removeEventListener(
+        'keydown',
+        closeWithEscape
+      );
+    };
+  }, [fullscreen]);
 
   function toggleIndicator(key) {
     setSelectedIndicators(
@@ -1081,11 +1640,81 @@ export default function TradingViewChart({
     );
   }
 
+  function chooseDrawingTool(tool) {
+    pendingPointRef.current = null;
+
+    if (activeTool === tool) {
+      setActiveTool(null);
+      setDrawingHint('');
+      return;
+    }
+
+    setActiveTool(tool);
+
+    if (tool === 'support') {
+      setDrawingHint(
+        'Destek fiyatını grafikte seçin.'
+      );
+    } else if (
+      tool === 'resistance'
+    ) {
+      setDrawingHint(
+        'Direnç fiyatını grafikte seçin.'
+      );
+    } else if (
+      tool === 'trend'
+    ) {
+      setDrawingHint(
+        'Trend çizgisinin başlangıç noktasını seçin.'
+      );
+    } else {
+      setDrawingHint(
+        'Fibonacci başlangıç noktasını seçin.'
+      );
+    }
+  }
+
+  function undoDrawing() {
+    setDrawings((current) =>
+      current.slice(0, -1)
+    );
+
+    pendingPointRef.current = null;
+    setActiveTool(null);
+    setDrawingHint(
+      'Son çizim kaldırıldı.'
+    );
+  }
+
+  function clearDrawings() {
+    if (!drawings.length) return;
+
+    const confirmed = window.confirm(
+      'Bu hisseye ait bütün çizimler silinsin mi?'
+    );
+
+    if (!confirmed) return;
+
+    setDrawings([]);
+    pendingPointRef.current = null;
+    setActiveTool(null);
+    setDrawingHint(
+      'Bütün çizimler temizlendi.'
+    );
+  }
+
   const latest =
     rows[rows.length - 1];
 
   return (
-    <div className="sky-own-chart">
+    <div
+      ref={rootRef}
+      className={
+        fullscreen
+          ? 'sky-own-chart fullscreen'
+          : 'sky-own-chart'
+      }
+    >
       <style jsx>{`
         .sky-own-chart {
           width: 100%;
@@ -1177,10 +1806,79 @@ export default function TradingViewChart({
           color: #fca5a5;
         }
 
-        .chartHost {
+        .toolLabel {
+          color: #94a3b8;
+          font-size: 10px;
+          font-weight: 850;
+        }
+
+        button.support.active {
+          border-color:
+            rgba(34, 197, 94, 0.7);
+          color: #86efac;
+          background:
+            rgba(34, 197, 94, 0.14);
+        }
+
+        button.resistance.active {
+          border-color:
+            rgba(239, 68, 68, 0.7);
+          color: #fca5a5;
+          background:
+            rgba(239, 68, 68, 0.14);
+        }
+
+        .drawingHint {
+          color: #f0d675;
+          font-weight: 800;
+        }
+
+        .chartStage {
+          position: relative;
           width: 100%;
           flex: 1;
           min-height: 620px;
+          overflow: hidden;
+        }
+
+        .chartHost {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .drawingOverlay {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          overflow: visible;
+        }
+
+        .drawingActive {
+          cursor: crosshair;
+        }
+
+        .sky-own-chart.fullscreen {
+          position: fixed;
+          inset: 0;
+          z-index: 999999;
+          width: 100vw;
+          height: 100vh;
+          height: 100dvh;
+          min-height: 100vh;
+          padding:
+            env(safe-area-inset-top)
+            env(safe-area-inset-right)
+            env(safe-area-inset-bottom)
+            env(safe-area-inset-left);
+          background: #070d16;
+        }
+
+        .fullscreen .toolbar {
+          border-radius: 0;
         }
 
         @media (max-width: 700px) {
@@ -1188,8 +1886,12 @@ export default function TradingViewChart({
             min-height: 680px;
           }
 
-          .chartHost {
+          .chartStage {
             min-height: 570px;
+          }
+
+          .drawingTools {
+            width: 100%;
           }
 
           button,
@@ -1230,6 +1932,92 @@ export default function TradingViewChart({
           )}
         </div>
 
+        <div className="buttonGroup drawingTools">
+          <span className="toolLabel">
+            Çizim:
+          </span>
+
+          <button
+            type="button"
+            className={
+              activeTool === 'support'
+                ? 'active support'
+                : 'support'
+            }
+            onClick={() =>
+              chooseDrawingTool(
+                'support'
+              )
+            }
+          >
+            ━ Destek
+          </button>
+
+          <button
+            type="button"
+            className={
+              activeTool ===
+              'resistance'
+                ? 'active resistance'
+                : 'resistance'
+            }
+            onClick={() =>
+              chooseDrawingTool(
+                'resistance'
+              )
+            }
+          >
+            ━ Direnç
+          </button>
+
+          <button
+            type="button"
+            className={
+              activeTool === 'trend'
+                ? 'active'
+                : ''
+            }
+            onClick={() =>
+              chooseDrawingTool('trend')
+            }
+          >
+            ╱ Trend
+          </button>
+
+          <button
+            type="button"
+            className={
+              activeTool ===
+              'fibonacci'
+                ? 'active'
+                : ''
+            }
+            onClick={() =>
+              chooseDrawingTool(
+                'fibonacci'
+              )
+            }
+          >
+            Φ Fibonacci
+          </button>
+
+          <button
+            type="button"
+            disabled={!drawings.length}
+            onClick={undoDrawing}
+          >
+            ↶ Geri al
+          </button>
+
+          <button
+            type="button"
+            disabled={!drawings.length}
+            onClick={clearDrawings}
+          >
+            Temizle
+          </button>
+        </div>
+
         <div className="buttonGroup">
           <select
             value={interval}
@@ -1262,6 +2050,20 @@ export default function TradingViewChart({
               ? 'Yükleniyor…'
               : '↻ Yenile'}
           </button>
+
+          <button
+            type="button"
+            className="fullscreenButton"
+            onClick={() =>
+              setFullscreen(
+                (current) => !current
+              )
+            }
+          >
+            {fullscreen
+              ? '✕ Tam ekrandan çık'
+              : '⛶ Tam ekran'}
+          </button>
         </div>
 
         <div className="information">
@@ -1290,6 +2092,16 @@ export default function TradingViewChart({
             Yakın zamanlı veri
           </span>
 
+          {drawingHint ? (
+            <span className="drawingHint">
+              ✎ {drawingHint}
+            </span>
+          ) : null}
+
+          <span>
+            {drawings.length} kayıtlı çizim
+          </span>
+
           {error ? (
             <span className="error">
               {error}
@@ -1299,9 +2111,23 @@ export default function TradingViewChart({
       </div>
 
       <div
-        ref={chartHostRef}
-        className="chartHost"
-      />
+        className={
+          activeTool
+            ? 'chartStage drawingActive'
+            : 'chartStage'
+        }
+      >
+        <div
+          ref={chartHostRef}
+          className="chartHost"
+        />
+
+        <svg
+          ref={drawingOverlayRef}
+          className="drawingOverlay"
+          aria-hidden="true"
+        />
+      </div>
     </div>
   );
 }
