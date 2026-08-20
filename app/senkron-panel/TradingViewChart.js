@@ -1164,6 +1164,17 @@ export default function TradingViewChart({
       crosshair: {
         mode: CrosshairMode.Normal,
       },
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: false,
+      },
+      handleScale: {
+        axisPressedMouseMove: true,
+        mouseWheel: true,
+        pinch: true,
+      },
       rightPriceScale: {
         borderColor:
           'rgba(148,163,184,0.18)',
@@ -1420,9 +1431,7 @@ export default function TradingViewChart({
 
       if (
         !tool ||
-        !param?.point ||
-        param.time === undefined ||
-        param.time === null
+        !param?.point
       ) {
         return;
       }
@@ -1455,11 +1464,6 @@ export default function TradingViewChart({
         return;
       }
 
-      const point = {
-        time: param.time,
-        price,
-      };
-
       if (
         tool === 'support' ||
         tool === 'resistance'
@@ -1483,6 +1487,29 @@ export default function TradingViewChart({
 
         return;
       }
+
+      const pointTime =
+        param.time ??
+        chart
+          .timeScale()
+          .coordinateToTime(
+            param.point.x
+          );
+
+      if (
+        pointTime === undefined ||
+        pointTime === null
+      ) {
+        setDrawingHint(
+          'Trend veya Fibonacci için mumların bulunduğu alandan bir nokta seçin.'
+        );
+        return;
+      }
+
+      const point = {
+        time: pointTime,
+        price,
+      };
 
       if (!pendingPointRef.current) {
         pendingPointRef.current =
@@ -1844,6 +1871,7 @@ export default function TradingViewChart({
         .chartHost {
           position: absolute;
           inset: 0;
+          z-index: 1;
           width: 100%;
           height: 100%;
         }
@@ -1851,6 +1879,7 @@ export default function TradingViewChart({
         .drawingOverlay {
           position: absolute;
           inset: 0;
+          z-index: 3;
           width: 100%;
           height: 100%;
           pointer-events: none;
@@ -1865,10 +1894,12 @@ export default function TradingViewChart({
           position: fixed;
           inset: 0;
           z-index: 999999;
+          box-sizing: border-box;
           width: 100vw;
           height: 100vh;
           height: 100dvh;
-          min-height: 100vh;
+          min-height: 0;
+          overflow: hidden;
           padding:
             env(safe-area-inset-top)
             env(safe-area-inset-right)
@@ -1878,7 +1909,18 @@ export default function TradingViewChart({
         }
 
         .fullscreen .toolbar {
+          flex: 0 0 auto;
+          max-height: 34vh;
+          overflow-y: auto;
           border-radius: 0;
+        }
+
+        .fullscreen .chartStage {
+          flex: 1 1 auto;
+          min-height: 0;
+          height: auto;
+          touch-action: none;
+          overscroll-behavior: contain;
         }
 
         @media (max-width: 700px) {
