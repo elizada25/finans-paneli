@@ -1190,7 +1190,38 @@ export default function TradingViewChart({
   ]);
 
   useEffect(() => {
-    applyData(rows, seriesRef.current);
+    const chart = chartRef.current;
+    const host = chartHostRef.current;
+    const series = seriesRef.current;
+
+    applyData(rows, series);
+
+    if (
+      !chart ||
+      !host ||
+      rows.length === 0
+    ) {
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(
+      () => {
+        resizeChartPanes(
+          chart,
+          host
+        );
+
+        fitRecentChartData(
+          chart,
+          rows.length,
+          host.clientWidth
+        );
+      }
+    );
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
   }, [rows]);
 
   useEffect(() => {
