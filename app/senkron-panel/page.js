@@ -2973,7 +2973,7 @@ const styles = {
   },
   fullChartWrapper: {
     width: '100%',
-    height: '560px',
+    height: '760px',
     background: '#17130c',
     border: '1px solid rgba(212,175,55,0.22)',
     borderRadius: '16px',
