@@ -7,7 +7,7 @@ const ROBOT_STORAGE_KEY = 'sky-bist-paper-robot-v1';
 const TRADE_KEY_PREFIX = 'sky-bist-gunluk-islem';
 const SIGNAL_KEY_PREFIX = 'sky-bist-sinyal';
 
-export default function BistTradeCenter() {
+export default function BistTradeCenter({ user }) {
   const [riskAmount, setRiskAmount] = useState('500');
   const [maxTrades, setMaxTrades] = useState('2');
   const [dailyTradeCount, setDailyTradeCount] = useState(0);
@@ -240,10 +240,7 @@ export default function BistTradeCenter() {
         </div>
       ) : null}
 
-      <BistPaperRobot
-        scan={robotScan}
-        scanning={loading}
-      />
+      <BistPaperRobot user={user} />
 
       <p style={styles.disclaimer}>
         Bu ekran emir vermez ve yatırım tavsiyesi değildir. Bildirim yalnızca

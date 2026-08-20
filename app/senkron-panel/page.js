@@ -682,7 +682,7 @@ export default function SenkronPanelPage() {
       </section>
 
       <NasdaqSectorFlow />
-      <BistTradeCenter />
+      <BistTradeCenter user={user} />
       <ScannerCenter />
 
       <section style={styles.fullChartSection}>

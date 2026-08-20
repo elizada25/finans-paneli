@@ -1,17 +1,22 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
+import {
+  doc,
+  onSnapshot,
+  setDoc,
+  updateDoc,
+} from 'firebase/firestore';
+import { firestoreDb } from '../../../lib-firebase';
 
 const STORAGE_KEY = 'sky-bist-paper-robot-v1';
 const STARTING_CASH = 100000;
 const TEST_DAYS = 30;
-const MAX_OPEN_POSITIONS = 3;
-const MAX_DAILY_ENTRIES = 3;
-const RISK_PER_TRADE = 1000;
-const MAX_POSITION_RATE = 0.30;
-const CASH_RESERVE_RATE = 0.10;
-const COMMISSION_RATE = 0.0015;
-const SLIPPAGE_RATE = 0.0005;
 
 function initialRobot() {
   return {
@@ -24,26 +29,19 @@ function initialRobot() {
     trades: [],
     dailyEntries: {},
     lastProcessed: null,
+    lastRunAt: null,
+    updatedAt: null,
   };
 }
 
 function number(value) {
-  const result = Number(value);
-  return Number.isFinite(result) ? result : 0;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function round(value, digits = 2) {
   const factor = 10 ** digits;
   return Math.round(number(value) * factor) / factor;
-}
-
-function dateKey(value = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Europe/Istanbul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(value);
 }
 
 function money(value) {
@@ -53,7 +51,7 @@ function money(value) {
   })} TL`;
 }
 
-function shortDate(value) {
+function shortDate(value, includeTime = false) {
   if (!value) return '-';
 
   return new Intl.DateTimeFormat('tr-TR', {
@@ -61,15 +59,43 @@ function shortDate(value) {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
+    ...(includeTime
+      ? {
+          hour: '2-digit',
+          minute: '2-digit',
+        }
+      : {}),
   }).format(new Date(value));
 }
 
-function loadRobot() {
-  try {
-    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+function totalEquity(robot) {
+  return (
+    number(robot.cash) +
+    (robot.positions || []).reduce(
+      (total, position) =>
+        total +
+        number(position.quantity) *
+          number(
+            position.lastPrice ||
+              position.entryPrice
+          ),
+      0
+    )
+  );
+}
 
-    if (!saved || typeof saved !== 'object') {
-      return initialRobot();
+function readLocalRobot() {
+  try {
+    const saved = JSON.parse(
+      localStorage.getItem(STORAGE_KEY)
+    );
+
+    if (
+      !saved ||
+      typeof saved !== 'object' ||
+      !saved.startedAt
+    ) {
+      return null;
     }
 
     return {
@@ -88,280 +114,135 @@ function loadRobot() {
           : {},
     };
   } catch {
-    return initialRobot();
+    return null;
   }
 }
 
-function totalEquity(robot) {
-  return (
-    number(robot.cash) +
-    robot.positions.reduce(
-      (total, position) =>
-        total +
-        number(position.quantity) *
-          number(position.lastPrice || position.entryPrice),
-      0
-    )
-  );
-}
-
-function closePosition(robot, position, price, reason, timestamp) {
-  const grossSale =
-    number(position.quantity) *
-    number(price) *
-    (1 - SLIPPAGE_RATE);
-
-  const saleCommission = grossSale * COMMISSION_RATE;
-  const netSale = grossSale - saleCommission;
-  const totalCost =
-    number(position.cost) +
-    number(position.buyCommission);
-
-  const profitLoss = netSale - totalCost;
-
-  robot.cash = round(number(robot.cash) + netSale);
-  robot.trades.unshift({
-    id: `${position.symbol}-${timestamp}`,
-    symbol: position.symbol,
-    quantity: position.quantity,
-    entryPrice: position.entryPrice,
-    exitPrice: round(price),
-    openedAt: position.openedAt,
-    closedAt: timestamp,
-    reason,
-    profitLoss: round(profitLoss),
-    returnPercent:
-      totalCost > 0
-        ? round((profitLoss / totalCost) * 100)
-        : 0,
-  });
-}
-
-function processScan(current, scan) {
-  if (
-    !current.active ||
-    !scan?.generatedAt ||
-    current.lastProcessed === scan.generatedAt
-  ) {
-    return current;
-  }
-
-  const next = {
-    ...current,
-    positions: current.positions.map((position) => ({
-      ...position,
-    })),
-    trades: [...current.trades],
-    dailyEntries: { ...current.dailyEntries },
-    lastProcessed: scan.generatedAt,
-  };
-
-  const checks = new Map(
-    (scan.positionChecks || []).map((item) => [
-      item.symbol,
-      item,
-    ])
-  );
-
-  const now = new Date(scan.generatedAt);
-  const expired =
-    next.endsAt &&
-    now.getTime() >= new Date(next.endsAt).getTime();
-
-  const remainingPositions = [];
-
-  for (const position of next.positions) {
-    const check = checks.get(position.symbol);
-
-    if (!check || !number(check.price)) {
-      remainingPositions.push(position);
-      continue;
-    }
-
-    const currentPrice = number(check.price);
-    const updated = {
-      ...position,
-      lastPrice: currentPrice,
-      lastCheckedAt: scan.generatedAt,
-    };
-
-    if (
-      currentPrice >= number(position.target1) &&
-      number(updated.stop) < number(position.entryPrice)
-    ) {
-      updated.stop = position.entryPrice;
-      updated.stopMovedToEntry = true;
-    }
-
-    let exitReason = '';
-
-    if (expired) {
-      exitReason = '30 günlük test süresi tamamlandı';
-    } else if (currentPrice <= number(updated.stop)) {
-      exitReason = updated.stopMovedToEntry
-        ? 'Maliyet stopu çalıştı'
-        : 'Koruyucu stop çalıştı';
-    } else if (currentPrice >= number(position.target2)) {
-      exitReason = 'İkinci hedefe ulaştı';
-    } else if (check.exitSignal) {
-      exitReason =
-        check.exitReason ||
-        'Teknik çıkış sinyali oluştu';
-    }
-
-    if (exitReason) {
-      closePosition(
-        next,
-        updated,
-        currentPrice,
-        exitReason,
-        scan.generatedAt
-      );
-    } else {
-      remainingPositions.push(updated);
-    }
-  }
-
-  next.positions = remainingPositions;
-
-  if (expired) {
-    if (next.positions.length === 0) {
-      next.active = false;
-    }
-
-    return next;
-  }
-
-  const today = dateKey(now);
-  let todayCount = number(next.dailyEntries[today]);
-
-  const candidates = (scan.items || []).filter(
-    (item) => item.setup === 'İŞLEM SİNYALİ'
-  );
-
-  for (const item of candidates) {
-    if (
-      next.positions.length >= MAX_OPEN_POSITIONS ||
-      todayCount >= MAX_DAILY_ENTRIES
-    ) {
-      break;
-    }
-
-    if (
-      next.positions.some(
-        (position) => position.symbol === item.symbol
-      )
-    ) {
-      continue;
-    }
-
-    const alreadyTradedToday = next.trades.some(
-      (trade) =>
-        trade.symbol === item.symbol &&
-        dateKey(new Date(trade.closedAt)) === today
-    );
-
-    if (alreadyTradedToday) continue;
-
-    const entry = number(item.entry);
-    const riskPerShare = number(item.riskPerShare);
-
-    if (entry <= 0 || riskPerShare <= 0) continue;
-
-    const equity = totalEquity(next);
-    const reserve = equity * CASH_RESERVE_RATE;
-    const usableCash = Math.max(
-      0,
-      number(next.cash) - reserve
-    );
-
-    const maximumPosition =
-      equity * MAX_POSITION_RATE;
-
-    const riskLot = Math.floor(
-      RISK_PER_TRADE / riskPerShare
-    );
-
-    const allocationLot = Math.floor(
-      maximumPosition / entry
-    );
-
-    const cashLot = Math.floor(
-      usableCash /
-        (entry *
-          (1 + SLIPPAGE_RATE) *
-          (1 + COMMISSION_RATE))
-    );
-
-    const quantity = Math.max(
-      0,
-      Math.min(riskLot, allocationLot, cashLot)
-    );
-
-    if (quantity < 1) continue;
-
-    const executionPrice =
-      entry * (1 + SLIPPAGE_RATE);
-
-    const cost = quantity * executionPrice;
-    const buyCommission = cost * COMMISSION_RATE;
-    const totalDebit = cost + buyCommission;
-
-    if (totalDebit > next.cash) continue;
-
-    next.cash = round(next.cash - totalDebit);
-    next.positions.push({
-      symbol: item.symbol,
-      quantity,
-      entryPrice: round(executionPrice),
-      signalPrice: round(entry),
-      stop: round(item.stop),
-      target1: round(item.target1),
-      target2: round(item.target2),
-      cost: round(cost),
-      buyCommission: round(buyCommission),
-      openedAt: scan.generatedAt,
-      lastCheckedAt: scan.generatedAt,
-      lastPrice: round(entry),
-      score: item.score,
-      stopMovedToEntry: false,
-    });
-
-    todayCount += 1;
-  }
-
-  next.dailyEntries[today] = todayCount;
-  return next;
-}
-
-export default function BistPaperRobot({
-  scan,
-  scanning,
-}) {
+export default function BistPaperRobot({ user }) {
   const [robot, setRobot] = useState(initialRobot);
   const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
+  const [syncStatus, setSyncStatus] = useState(
+    'Firebase bağlantısı hazırlanıyor…'
+  );
+  const migrationAttempted = useRef(false);
 
   useEffect(() => {
-    setRobot(loadRobot());
-    setReady(true);
-  }, []);
+    if (!user?.uid) return undefined;
 
-  useEffect(() => {
-    if (!ready) return;
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify(robot)
+    migrationAttempted.current = false;
+
+    const robotRef = doc(
+      firestoreDb,
+      'users',
+      user.uid,
+      'paperTrading',
+      'bist30Day'
     );
-  }, [ready, robot]);
 
-  useEffect(() => {
-    if (!ready || !scan) return;
+    const unsubscribe = onSnapshot(
+      robotRef,
+      async (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
 
-    setRobot((current) =>
-      processScan(current, scan)
+          setRobot({
+            ...initialRobot(),
+            ...data,
+            positions: Array.isArray(data.positions)
+              ? data.positions
+              : [],
+            trades: Array.isArray(data.trades)
+              ? data.trades
+              : [],
+            dailyEntries:
+              data.dailyEntries &&
+              typeof data.dailyEntries === 'object'
+                ? data.dailyEntries
+                : {},
+          });
+
+          localStorage.removeItem(STORAGE_KEY);
+          setSyncStatus(
+            'Firebase ile eşitlendi'
+          );
+          setReady(true);
+          return;
+        }
+
+        if (migrationAttempted.current) {
+          setReady(true);
+          return;
+        }
+
+        migrationAttempted.current = true;
+        const localRobot = readLocalRobot();
+
+        if (localRobot) {
+          setSyncStatus(
+            'Bu cihazdaki test Firebase’e aktarılıyor…'
+          );
+
+          try {
+            await setDoc(robotRef, {
+              ...localRobot,
+              storageMode: 'firestore',
+              migratedFromDeviceAt:
+                new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            });
+
+            localStorage.removeItem(STORAGE_KEY);
+          } catch (error) {
+            console.error(
+              'Robot aktarım hatası:',
+              error
+            );
+            setSyncStatus(
+              `Aktarım hatası: ${
+                error?.message || 'Bilinmeyen hata'
+              }`
+            );
+            setReady(true);
+          }
+
+          return;
+        }
+
+        setRobot(initialRobot());
+        setSyncStatus(
+          'Firebase hazır • Henüz test başlatılmadı'
+        );
+        setReady(true);
+      },
+      (error) => {
+        console.error(
+          'Robot senkronizasyon hatası:',
+          error
+        );
+        setSyncStatus(
+          `Firebase hatası: ${
+            error?.message || 'Bağlantı kurulamadı'
+          }`
+        );
+        setReady(true);
+      }
     );
-  }, [ready, scan]);
+
+    return unsubscribe;
+  }, [user?.uid]);
+
+  const robotRef = useMemo(() => {
+    if (!user?.uid) return null;
+
+    return doc(
+      firestoreDb,
+      'users',
+      user.uid,
+      'paperTrading',
+      'bist30Day'
+    );
+  }, [user?.uid]);
 
   const equity = useMemo(
     () => totalEquity(robot),
@@ -371,13 +252,17 @@ export default function BistPaperRobot({
   const profitLoss =
     equity - number(robot.initialCash);
 
-  const winningTrades = robot.trades.filter(
+  const winningTrades = (
+    robot.trades || []
+  ).filter(
     (trade) => number(trade.profitLoss) > 0
   ).length;
 
-  function startTest() {
+  async function startTest() {
+    if (!robotRef) return;
+
     const accepted = window.confirm(
-      '100.000 TL sanal sermayeyle 30 günlük testi başlatalım mı?\n\nGerçek emir gönderilmeyecektir.'
+      '100.000 TL sanal sermayeyle 30 günlük sunucu testini başlatalım mı?\n\nTelefon veya bilgisayar açık kalmak zorunda değildir. Gerçek emir gönderilmez.'
     );
 
     if (!accepted) return;
@@ -388,39 +273,59 @@ export default function BistPaperRobot({
         TEST_DAYS * 24 * 60 * 60 * 1000
     );
 
-    setRobot({
+    await setDoc(robotRef, {
       ...initialRobot(),
       active: true,
       startedAt: startedAt.toISOString(),
       endsAt: endsAt.toISOString(),
+      storageMode: 'firestore',
+      createdAt: startedAt.toISOString(),
+      updatedAt: startedAt.toISOString(),
+    });
+  }
+
+  async function stopTest() {
+    if (!robotRef) return;
+
+    const accepted = window.confirm(
+      'Robotu durdurmak istiyor musunuz?\n\nAçık sanal pozisyonlar silinmeyecek.'
+    );
+
+    if (!accepted) return;
+
+    await updateDoc(robotRef, {
+      active: false,
+      stoppedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  async function resetTest() {
+    if (!robotRef) return;
+
+    const accepted = window.confirm(
+      'Bütün sanal işlem geçmişi ve sonuçlar sıfırlanacak. Emin misiniz?'
+    );
+
+    if (!accepted) return;
+
+    await setDoc(robotRef, {
+      ...initialRobot(),
+      storageMode: 'firestore',
+      resetAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
     });
 
-    setOpen(true);
+    localStorage.removeItem(STORAGE_KEY);
   }
 
-  function stopTest() {
-    const accepted = window.confirm(
-      'Robotu durdurmak istiyor musunuz?\n\nAçık sanal pozisyonlar silinmez; yalnızca yeni işlem açılması durur.'
+  if (!ready) {
+    return (
+      <div style={styles.loading}>
+        🤖 {syncStatus}
+      </div>
     );
-
-    if (!accepted) return;
-
-    setRobot((current) => ({
-      ...current,
-      active: false,
-    }));
   }
-
-  function resetTest() {
-    const accepted = window.confirm(
-      'Sanal robotun bütün işlem geçmişi ve sonuçları silinecek. Emin misiniz?'
-    );
-
-    if (!accepted) return;
-    setRobot(initialRobot());
-  }
-
-  if (!ready) return null;
 
   return (
     <div style={styles.robotWrap}>
@@ -431,8 +336,9 @@ export default function BistPaperRobot({
       >
         <div>
           <strong style={styles.robotTitle}>
-            🤖 30 Günlük Sanal Trade Robotu
+            🤖 30 Günlük Sunucu Trade Robotu
           </strong>
+
           <span style={styles.robotSubtitle}>
             {robot.active
               ? `${robot.positions.length}/3 açık pozisyon • ${money(equity)}`
@@ -449,6 +355,11 @@ export default function BistPaperRobot({
 
       {open ? (
         <div style={styles.robotBody}>
+          <div style={styles.syncLine}>
+            <span style={styles.syncDot} />
+            {syncStatus}
+          </div>
+
           <div style={styles.actionLine}>
             {!robot.startedAt ? (
               <button
@@ -483,14 +394,6 @@ export default function BistPaperRobot({
             >
               Sonuçları Sıfırla
             </button>
-
-            <span style={styles.scanState}>
-              {scanning
-                ? 'Robot yeni sinyalleri kontrol ediyor…'
-                : robot.active
-                  ? 'Her taramada otomatik çalışır'
-                  : 'Robot şu anda pasif'}
-            </span>
           </div>
 
           <div style={styles.stats}>
@@ -498,7 +401,10 @@ export default function BistPaperRobot({
               label="Başlangıç"
               value={money(robot.initialCash)}
             />
-            <Stat label="Nakit" value={money(robot.cash)} />
+            <Stat
+              label="Nakit"
+              value={money(robot.cash)}
+            />
             <Stat
               label="Toplam değer"
               value={money(equity)}
@@ -538,6 +444,14 @@ export default function BistPaperRobot({
             <span>Hisse başına en fazla %30</span>
             <span>En az %10 nakit</span>
             <span>İşlem riski en fazla 1.000 TL</span>
+          </div>
+
+          <div style={styles.lastRun}>
+            <strong>Son sunucu kontrolü:</strong>{' '}
+            {shortDate(robot.lastRunAt, true)}
+            {robot.lastSessionDate
+              ? ` • Seans ${robot.lastSessionDate}`
+              : ''}
           </div>
 
           <h4 style={styles.subheading}>
@@ -598,8 +512,8 @@ export default function BistPaperRobot({
             </div>
           ) : (
             <p style={styles.emptyText}>
-              Açık sanal pozisyon yok. Robot yalnızca
-              “İŞLEM SİNYALİ” oluşursa alım yapar.
+              Açık sanal pozisyon yok. Robot sadece
+              güçlü “İŞLEM SİNYALİ” oluşursa alım yapar.
             </p>
           )}
 
@@ -609,25 +523,32 @@ export default function BistPaperRobot({
 
           {robot.trades.length ? (
             <div style={styles.history}>
-              {robot.trades.slice(0, 20).map((trade) => (
-                <div key={trade.id} style={styles.historyRow}>
-                  <strong>{trade.symbol}</strong>
-                  <span>{trade.quantity} lot</span>
-                  <span>{trade.reason}</span>
-                  <span
-                    style={{
-                      color:
-                        trade.profitLoss >= 0
-                          ? '#4ade80'
-                          : '#f87171',
-                    }}
+              {robot.trades
+                .slice(0, 20)
+                .map((trade) => (
+                  <div
+                    key={trade.id}
+                    style={styles.historyRow}
                   >
-                    {money(trade.profitLoss)}
-                    {' • '}
-                    %{number(trade.returnPercent).toFixed(2)}
-                  </span>
-                </div>
-              ))}
+                    <strong>{trade.symbol}</strong>
+                    <span>{trade.quantity} lot</span>
+                    <span>{trade.reason}</span>
+                    <span
+                      style={{
+                        color:
+                          trade.profitLoss >= 0
+                            ? '#4ade80'
+                            : '#f87171',
+                      }}
+                    >
+                      {money(trade.profitLoss)}
+                      {' • '}
+                      %{number(
+                        trade.returnPercent
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                ))}
             </div>
           ) : (
             <p style={styles.emptyText}>
@@ -636,9 +557,9 @@ export default function BistPaperRobot({
           )}
 
           <p style={styles.warning}>
-            Robot yalnızca sanal kayıt oluşturur. Gerçek
-            alım-satım emri göndermez. Komisyon ve kayma
-            yaklaşık olarak hesaba katılır.
+            Robot GitHub Actions ve Firebase üzerinden
+            çalışır. Telefon veya bilgisayar açık kalmak
+            zorunda değildir. Gerçek emir göndermez.
           </p>
         </div>
       ) : null}
@@ -663,6 +584,15 @@ function Stat({ label, value, tone }) {
 }
 
 const styles = {
+  loading: {
+    marginTop: '16px',
+    padding: '14px',
+    borderRadius: '12px',
+    color: '#7dd3fc',
+    background: 'rgba(56,189,248,0.07)',
+    border: '1px solid rgba(56,189,248,0.20)',
+    fontSize: '12px',
+  },
   robotWrap: {
     marginTop: '16px',
     overflow: 'hidden',
@@ -703,6 +633,21 @@ const styles = {
     padding: '15px',
     borderTop: '1px solid rgba(148,163,184,0.12)',
   },
+  syncLine: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '7px',
+    marginBottom: '11px',
+    color: '#86efac',
+    fontSize: '10px',
+  },
+  syncDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    background: '#4ade80',
+    boxShadow: '0 0 10px #4ade80',
+  },
   actionLine: {
     display: 'flex',
     alignItems: 'center',
@@ -739,10 +684,6 @@ const styles = {
     fontWeight: 800,
     cursor: 'pointer',
   },
-  scanState: {
-    color: '#94a3b8',
-    fontSize: '11px',
-  },
   stats: {
     display: 'grid',
     gridTemplateColumns:
@@ -761,9 +702,17 @@ const styles = {
   testInfo: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: '7px',
+    gap: '7px 13px',
     marginTop: '11px',
     color: '#94a3b8',
+    fontSize: '10px',
+  },
+  lastRun: {
+    marginTop: '11px',
+    padding: '9px',
+    borderRadius: '9px',
+    color: '#bfdbfe',
+    background: 'rgba(59,130,246,0.08)',
     fontSize: '10px',
   },
   subheading: {
@@ -805,7 +754,7 @@ const styles = {
   historyRow: {
     display: 'grid',
     gridTemplateColumns:
-      'minmax(55px,0.5fr) minmax(55px,0.5fr) minmax(150px,1.5fr) minmax(120px,1fr)',
+      'minmax(55px,.5fr) minmax(55px,.5fr) minmax(150px,1.5fr) minmax(120px,1fr)',
     gap: '8px',
     padding: '9px',
     borderRadius: '8px',
