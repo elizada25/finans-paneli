@@ -816,6 +816,8 @@ export default function TradingViewChart({
   const drawingSeriesRef = useRef([]);
   const activeDrawingToolRef = useRef(null);
   const pendingDrawingPointRef = useRef(null);
+  const previewLineRef = useRef(null);
+  const previewStartPointRef = useRef(null);
 
   restoreCallbackRef.current =
     onRestoreSymbol;
@@ -1312,6 +1314,110 @@ export default function TradingViewChart({
     );
 
 
+
+    function hideDrawingPreview() {
+      const line = previewLineRef.current;
+
+      if (!line) return;
+
+      line.setAttribute(
+        'visibility',
+        'hidden'
+      );
+    }
+
+    function handleDrawingPreview(param) {
+      const tool =
+        activeDrawingToolRef.current;
+      const line =
+        previewLineRef.current;
+
+      if (
+        !tool ||
+        !line ||
+        !param?.point
+      ) {
+        hideDrawingPreview();
+        return;
+      }
+
+      const point = param.point;
+
+      if (
+        point.y < 0 ||
+        point.y >
+          host.clientHeight * 0.72
+      ) {
+        hideDrawingPreview();
+        return;
+      }
+
+      if (
+        tool === 'support' ||
+        tool === 'resistance'
+      ) {
+        line.setAttribute('x1', '0');
+        line.setAttribute(
+          'x2',
+          String(host.clientWidth)
+        );
+        line.setAttribute(
+          'y1',
+          String(point.y)
+        );
+        line.setAttribute(
+          'y2',
+          String(point.y)
+        );
+        line.setAttribute(
+          'stroke',
+          tool === 'support'
+            ? '#22c55e'
+            : '#ef4444'
+        );
+        line.setAttribute(
+          'visibility',
+          'visible'
+        );
+        return;
+      }
+
+      const start =
+        previewStartPointRef.current;
+
+      if (!start) {
+        hideDrawingPreview();
+        return;
+      }
+
+      line.setAttribute(
+        'x1',
+        String(start.x)
+      );
+      line.setAttribute(
+        'y1',
+        String(start.y)
+      );
+      line.setAttribute(
+        'x2',
+        String(point.x)
+      );
+      line.setAttribute(
+        'y2',
+        String(point.y)
+      );
+      line.setAttribute(
+        'stroke',
+        tool === 'fibonacci'
+          ? '#f0d675'
+          : '#38bdf8'
+      );
+      line.setAttribute(
+        'visibility',
+        'visible'
+      );
+    }
+
     function handleChartClick(param) {
       const tool =
         activeDrawingToolRef.current;
@@ -1373,7 +1479,9 @@ export default function TradingViewChart({
           );
 
           activeDrawingToolRef.current = null;
+          previewStartPointRef.current = null;
           setActiveDrawingTool(null);
+          hideDrawingPreview();
           setDrawingStatus(
             tool === 'support'
               ? 'Destek çizgisi eklendi'
@@ -1388,6 +1496,10 @@ export default function TradingViewChart({
         if (!firstPoint) {
           pendingDrawingPointRef.current =
             point;
+          previewStartPointRef.current = {
+            x: param.point.x,
+            y: param.point.y,
+          };
 
           setDrawingStatus(
             'İlk nokta seçildi; ikinci noktaya tıklayın'
@@ -1411,8 +1523,10 @@ export default function TradingViewChart({
         );
 
         pendingDrawingPointRef.current = null;
+        previewStartPointRef.current = null;
         activeDrawingToolRef.current = null;
         setActiveDrawingTool(null);
+        hideDrawingPreview();
 
         setDrawingStatus(
           tool === 'trend'
@@ -1433,6 +1547,10 @@ export default function TradingViewChart({
 
     chart.subscribeClick(
       handleChartClick
+    );
+
+    chart.subscribeCrosshairMove(
+      handleDrawingPreview
     );
 
     series.volume = chart.addSeries(
@@ -1691,6 +1809,10 @@ export default function TradingViewChart({
         handleChartClick
       );
 
+      chart.unsubscribeCrosshairMove(
+        handleDrawingPreview
+      );
+
       drawingSeriesRef.current = [];
       seriesRef.current = null;
       chartRef.current = null;
@@ -1839,6 +1961,16 @@ export default function TradingViewChart({
 
     pendingDrawingPointRef.current =
       null;
+    previewStartPointRef.current =
+      null;
+
+    if (previewLineRef.current) {
+      previewLineRef.current.setAttribute(
+        'visibility',
+        'hidden'
+      );
+    }
+
     activeDrawingToolRef.current =
       nextTool;
     setActiveDrawingTool(nextTool);
@@ -2024,10 +2156,30 @@ export default function TradingViewChart({
           padding-top: 2px;
         }
 
-        .chartHost {
+        .chartStage {
+          position: relative;
           width: 100%;
           flex: 1;
           min-height: 0;
+          overflow: hidden;
+        }
+
+        .chartHost {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          min-height: 0;
+        }
+
+        .drawingPreview {
+          position: absolute;
+          inset: 0;
+          z-index: 5;
+          width: 100%;
+          height: 100%;
+          pointer-events: none;
+          overflow: visible;
         }
 
         .sky-own-chart.fullscreen {
@@ -2048,10 +2200,14 @@ export default function TradingViewChart({
           overflow-y: auto;
         }
 
-        .fullscreen .chartHost {
+        .fullscreen .chartStage {
           flex: 1 1 auto;
           min-height: 0;
-          height: auto;
+        }
+
+        .fullscreen .chartHost {
+          height: 100%;
+          min-height: 0;
         }
 
         @media (max-width: 700px) {
@@ -2233,10 +2389,29 @@ export default function TradingViewChart({
         </div>
       </div>
 
-      <div
-        ref={chartHostRef}
-        className="chartHost"
-      />
+      <div className="chartStage">
+        <div
+          ref={chartHostRef}
+          className="chartHost"
+        />
+
+        <svg
+          className="drawingPreview"
+          aria-hidden="true"
+        >
+          <line
+            ref={previewLineRef}
+            x1="0"
+            y1="0"
+            x2="0"
+            y2="0"
+            stroke="#38bdf8"
+            strokeWidth="3"
+            strokeDasharray="8 6"
+            visibility="hidden"
+          />
+        </svg>
+      </div>
     </div>
   );
 }
