@@ -496,6 +496,8 @@ export default function TradingViewChart({
     useState('');
   const [saveStatus, setSaveStatus] =
     useState('Ayarlar yükleniyor…');
+  const [fullscreen, setFullscreen] =
+    useState(false);
 
   restoreCallbackRef.current =
     onRestoreSymbol;
@@ -1070,6 +1072,37 @@ export default function TradingViewChart({
     applyData(rows, seriesRef.current);
   }, [rows]);
 
+  useEffect(() => {
+    if (!fullscreen) return;
+
+    const previousOverflow =
+      document.body.style.overflow;
+
+    document.body.style.overflow =
+      'hidden';
+
+    function closeFullscreen(event) {
+      if (event.key === 'Escape') {
+        setFullscreen(false);
+      }
+    }
+
+    window.addEventListener(
+      'keydown',
+      closeFullscreen
+    );
+
+    return () => {
+      document.body.style.overflow =
+        previousOverflow;
+
+      window.removeEventListener(
+        'keydown',
+        closeFullscreen
+      );
+    };
+  }, [fullscreen]);
+
   function toggleIndicator(key) {
     setSelectedIndicators(
       (current) =>
@@ -1085,7 +1118,13 @@ export default function TradingViewChart({
     rows[rows.length - 1];
 
   return (
-    <div className="sky-own-chart">
+    <div
+      className={
+        fullscreen
+          ? 'sky-own-chart fullscreen'
+          : 'sky-own-chart'
+      }
+    >
       <style jsx>{`
         .sky-own-chart {
           width: 100%;
@@ -1183,6 +1222,30 @@ export default function TradingViewChart({
           min-height: 620px;
         }
 
+        .sky-own-chart.fullscreen {
+          position: fixed;
+          inset: 0;
+          z-index: 999999;
+          box-sizing: border-box;
+          width: 100vw;
+          height: 100vh;
+          min-height: 0;
+          overflow: hidden;
+          background: #070d16;
+        }
+
+        .fullscreen .toolbar {
+          flex: 0 0 auto;
+          max-height: 35vh;
+          overflow-y: auto;
+        }
+
+        .fullscreen .chartHost {
+          flex: 1 1 auto;
+          min-height: 0;
+          height: auto;
+        }
+
         @media (max-width: 700px) {
           .sky-own-chart {
             min-height: 680px;
@@ -1261,6 +1324,19 @@ export default function TradingViewChart({
             {loading
               ? 'Yükleniyor…'
               : '↻ Yenile'}
+          </button>
+
+          <button
+            type="button"
+            onClick={() =>
+              setFullscreen(
+                (current) => !current
+              )
+            }
+          >
+            {fullscreen
+              ? '✕ Tam ekrandan çık'
+              : '⛶ Tam ekran'}
           </button>
         </div>
 
