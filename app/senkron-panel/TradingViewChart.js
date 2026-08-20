@@ -469,6 +469,7 @@ export default function TradingViewChart({
   onRestoreSymbol,
 }) {
   const chartHostRef = useRef(null);
+  const chartRef = useRef(null);
   const rowsRef = useRef([]);
   const seriesRef = useRef(null);
   const restoreCallbackRef =
@@ -826,6 +827,8 @@ export default function TradingViewChart({
       },
     });
 
+    chartRef.current = chart;
+
     const series = {};
 
     series.candles = chart.addSeries(
@@ -1039,6 +1042,25 @@ export default function TradingViewChart({
       );
     }
 
+    try {
+      const panes = chart.panes();
+
+      panes.forEach((pane, index) => {
+        pane.setStretchFactor(
+          index === 0
+            ? 8
+            : index === 1
+              ? 1
+              : 2
+        );
+      });
+    } catch (paneError) {
+      console.warn(
+        'Grafik bölüm oranları ayarlanamadı:',
+        paneError
+      );
+    }
+
     seriesRef.current = series;
 
     applyData(
@@ -1061,6 +1083,7 @@ export default function TradingViewChart({
     return () => {
       resizeObserver.disconnect();
       seriesRef.current = null;
+      chartRef.current = null;
       chart.remove();
     };
   }, [
@@ -1071,6 +1094,33 @@ export default function TradingViewChart({
   useEffect(() => {
     applyData(rows, seriesRef.current);
   }, [rows]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(
+      () => {
+        const chart =
+          chartRef.current;
+
+        const host =
+          chartHostRef.current;
+
+        if (!chart || !host) return;
+
+        chart.applyOptions({
+          width: host.clientWidth,
+          height: host.clientHeight,
+        });
+
+        chart
+          .timeScale()
+          .fitContent();
+      },
+      180
+    );
+
+    return () =>
+      window.clearTimeout(timer);
+  }, [fullscreen]);
 
   useEffect(() => {
     if (!fullscreen) return;
