@@ -812,6 +812,8 @@ export default function TradingViewChart({
     useState(false);
   const [drawingStatus, setDrawingStatus] =
     useState('Çizim aracı seçilmedi');
+  const [selectedDrawingId, setSelectedDrawingId] =
+    useState('');
 
   const drawingSeriesRef = useRef([]);
   const activeDrawingToolRef = useRef(null);
@@ -1312,6 +1314,147 @@ export default function TradingViewChart({
     );
 
 
+
+    series.drawingPreview =
+      chart.addSeries(
+        LineSeries,
+        {
+          color: '#f0d675',
+          title: 'Önizleme',
+          lineWidth: 3,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+          autoscaleInfoProvider:
+            () => null,
+        },
+        0
+      );
+
+    function clearDrawingPreview() {
+      try {
+        series.drawingPreview.setData(
+          []
+        );
+      } catch {}
+    }
+
+    function handleDrawingPreview(param) {
+      const tool =
+        activeDrawingToolRef.current;
+
+      if (
+        !tool ||
+        !param?.point ||
+        param.time == null
+      ) {
+        clearDrawingPreview();
+        return;
+      }
+
+      try {
+        const panes = chart.panes();
+        const pricePaneHeight =
+          panes?.[0]?.getHeight?.() ||
+          host.clientHeight * 0.68;
+
+        if (
+          param.point.y < 0 ||
+          param.point.y > pricePaneHeight
+        ) {
+          clearDrawingPreview();
+          return;
+        }
+
+        const price =
+          series.candles.coordinateToPrice(
+            param.point.y
+          );
+
+        if (!Number.isFinite(price)) {
+          clearDrawingPreview();
+          return;
+        }
+
+        const previewPoint = {
+          time: param.time,
+          value: price,
+        };
+
+        if (
+          tool === 'support' ||
+          tool === 'resistance'
+        ) {
+          series.drawingPreview.applyOptions({
+            color:
+              tool === 'support'
+                ? '#22c55e'
+                : '#ef4444',
+            title:
+              tool === 'support'
+                ? 'Destek önizleme'
+                : 'Direnç önizleme',
+          });
+
+          series.drawingPreview.setData([
+            {
+              time: rowsRef.current[0]?.time,
+              value: price,
+            },
+            {
+              time:
+                rowsRef.current[
+                  rowsRef.current.length - 1
+                ]?.time,
+              value: price,
+            },
+          ]);
+
+          return;
+        }
+
+        const firstPoint =
+          pendingDrawingPointRef.current;
+
+        if (!firstPoint) {
+          clearDrawingPreview();
+          return;
+        }
+
+        series.drawingPreview.applyOptions({
+          color:
+            tool === 'fibonacci'
+              ? '#f0d675'
+              : '#38bdf8',
+          title:
+            tool === 'fibonacci'
+              ? 'Fibonacci önizleme'
+              : 'Trend önizleme',
+        });
+
+        const previewData = [
+          {
+            time: firstPoint.time,
+            value: firstPoint.price,
+          },
+          previewPoint,
+        ].sort(
+          (a, b) =>
+            drawingTimeNumber(a.time) -
+            drawingTimeNumber(b.time)
+        );
+
+        series.drawingPreview.setData(
+          previewData
+        );
+      } catch (error) {
+        console.warn(
+          'Çizim önizlemesi gösterilemedi:',
+          error
+        );
+      }
+    }
+
     function handleChartClick(param) {
       const tool =
         activeDrawingToolRef.current;
@@ -1374,6 +1517,7 @@ export default function TradingViewChart({
 
           activeDrawingToolRef.current = null;
           setActiveDrawingTool(null);
+          clearDrawingPreview();
           setDrawingStatus(
             tool === 'support'
               ? 'Destek çizgisi eklendi'
@@ -1413,6 +1557,7 @@ export default function TradingViewChart({
         pendingDrawingPointRef.current = null;
         activeDrawingToolRef.current = null;
         setActiveDrawingTool(null);
+        clearDrawingPreview();
 
         setDrawingStatus(
           tool === 'trend'
@@ -1433,6 +1578,10 @@ export default function TradingViewChart({
 
     chart.subscribeClick(
       handleChartClick
+    );
+
+    chart.subscribeCrosshairMove(
+      handleDrawingPreview
     );
 
     series.volume = chart.addSeries(
@@ -1691,6 +1840,10 @@ export default function TradingViewChart({
         handleChartClick
       );
 
+      chart.unsubscribeCrosshairMove(
+        handleDrawingPreview
+      );
+
       drawingSeriesRef.current = [];
       seriesRef.current = null;
       chartRef.current = null;
@@ -1843,6 +1996,12 @@ export default function TradingViewChart({
       nextTool;
     setActiveDrawingTool(nextTool);
 
+    try {
+      seriesRef.current
+        ?.drawingPreview
+        ?.setData([]);
+    } catch {}
+
     if (!nextTool) {
       setDrawingStatus(
         'Çizim aracı kapatıldı'
@@ -1858,6 +2017,37 @@ export default function TradingViewChart({
           : tool === 'trend'
             ? 'Trend başlangıç noktasına tıklayın'
             : 'Fibonacci başlangıç noktasına tıklayın'
+    );
+  }
+
+
+  function deleteSelectedDrawing() {
+    if (!selectedDrawingId) return;
+
+    setDrawings(
+      (current) =>
+        current.filter(
+          (drawing) =>
+            drawing.id !==
+            selectedDrawingId
+        )
+    );
+
+    setSelectedDrawingId('');
+    pendingDrawingPointRef.current =
+      null;
+    activeDrawingToolRef.current =
+      null;
+    setActiveDrawingTool(null);
+
+    try {
+      seriesRef.current
+        ?.drawingPreview
+        ?.setData([]);
+    } catch {}
+
+    setDrawingStatus(
+      'Seçilen çizim silindi'
     );
   }
 
@@ -2124,6 +2314,51 @@ export default function TradingViewChart({
               {label}
             </button>
           ))}
+
+          <select
+            value={selectedDrawingId}
+            onChange={(event) =>
+              setSelectedDrawingId(
+                event.target.value
+              )
+            }
+            disabled={!drawings.length}
+            title="Silinecek çizimi seç"
+          >
+            <option value="">
+              Çizim seç…
+            </option>
+
+            {drawings.map(
+              (drawing, index) => {
+                const labels = {
+                  support: 'Destek',
+                  resistance: 'Direnç',
+                  trend: 'Trend',
+                  fibonacci: 'Fibonacci',
+                };
+
+                return (
+                  <option
+                    key={drawing.id}
+                    value={drawing.id}
+                  >
+                    {index + 1}.{' '}
+                    {labels[drawing.type] ||
+                      'Çizim'}
+                  </option>
+                );
+              }
+            )}
+          </select>
+
+          <button
+            type="button"
+            disabled={!selectedDrawingId}
+            onClick={deleteSelectedDrawing}
+          >
+            Seçileni sil
+          </button>
 
           <button
             type="button"
