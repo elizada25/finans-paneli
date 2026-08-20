@@ -24,6 +24,7 @@ export default function SenkronPanelPage() {
   const [usdTry, setUsdTry] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [selectedOptionsStock, setSelectedOptionsStock] = useState(null);
+  const [chartSymbol, setChartSymbol] = useState('NASDAQ:EOSE');
   const [istanbulClock, setIstanbulClock] = useState('');
 
   useEffect(() => {
@@ -674,6 +675,35 @@ export default function SenkronPanelPage() {
           items={watchlist}
           prices={prices}
           userId={user.uid}
+          onSelectChart={(item) => {
+            const selectedCode = String(
+              item?.code || ''
+            )
+              .trim()
+              .toUpperCase();
+
+            if (!selectedCode) return;
+
+            const prefix =
+              item.market === 'bist'
+                ? 'BIST'
+                : 'NASDAQ';
+
+            setChartSymbol(
+              `${prefix}:${selectedCode}`
+            );
+
+            window.setTimeout(() => {
+              document
+                .getElementById(
+                  'sky-live-chart'
+                )
+                ?.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'start',
+                });
+            }, 100);
+          }}
         />
         <ClosedPositionsPanel
           positions={closedPositions}
@@ -685,14 +715,26 @@ export default function SenkronPanelPage() {
       <BistTradeCenter user={user} />
       <ScannerCenter />
 
-      <section style={styles.fullChartSection}>
+      <section
+        id="sky-live-chart"
+        style={styles.fullChartSection}
+      >
         <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>Canlı Grafik</h2>
-          <span style={styles.stockCount}>EOSE</span>
+          <h2 style={styles.sectionTitle}>
+            Gelişmiş Grafik
+          </h2>
+
+          <span style={styles.stockCount}>
+            {chartSymbol.split(':').pop()}
+          </span>
         </div>
 
         <div style={styles.fullChartWrapper}>
-          <TradingViewChart symbol="NASDAQ:EOSE" />
+          <TradingViewChart
+            symbol={chartSymbol}
+            userId={user.uid}
+            onRestoreSymbol={setChartSymbol}
+          />
         </div>
       </section>
 
@@ -1284,7 +1326,12 @@ function getUsExtendedSession() {
   return 'closed';
 }
 
-function WatchlistPanel({ items, prices, userId }) {
+function WatchlistPanel({
+  items,
+  prices,
+  userId,
+  onSelectChart,
+}) {
   const [processing, setProcessing] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
@@ -1709,9 +1756,40 @@ function WatchlistPanel({ items, prices, userId }) {
                       gap: '7px',
                     }}
                   >
-                    <strong style={styles.listPrimary}>
+                    <button
+                    type="button"
+                    draggable={false}
+                    onPointerDown={(event) =>
+                      event.stopPropagation()
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onSelectChart?.(item);
+                    }}
+                    title={`${code} grafiğini aç`}
+                    style={{
+                      padding: 0,
+                      border: 0,
+                      background: 'transparent',
+                      color: '#f8fafc',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <strong
+                      style={{
+                        ...styles.listPrimary,
+                        color: '#7dd3fc',
+                        textDecoration: 'underline',
+                        textDecorationColor:
+                          'rgba(125,211,252,0.35)',
+                        textUnderlineOffset: '3px',
+                      }}
+                    >
                       ☆ {code}
                     </strong>
+                  </button>
 
                     <button
                       type="button"
