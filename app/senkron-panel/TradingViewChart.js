@@ -531,6 +531,225 @@ function resizeChartPanes(
   }
 }
 
+
+function drawingTimeNumber(time) {
+  if (Number.isFinite(Number(time))) {
+    return Number(time);
+  }
+
+  if (typeof time === 'string') {
+    return new Date(time).getTime();
+  }
+
+  if (
+    time &&
+    Number.isFinite(time.year) &&
+    Number.isFinite(time.month) &&
+    Number.isFinite(time.day)
+  ) {
+    return Date.UTC(
+      time.year,
+      time.month - 1,
+      time.day
+    );
+  }
+
+  return 0;
+}
+
+function drawingSeriesOptions({
+  color,
+  title,
+  width = 2,
+}) {
+  return {
+    color,
+    title,
+    lineWidth: width,
+    priceLineVisible: false,
+    lastValueVisible: false,
+    crosshairMarkerVisible: false,
+    autoscaleInfoProvider: () => null,
+  };
+}
+
+function createDrawingSeries(
+  chart,
+  rows,
+  drawings
+) {
+  if (
+    !chart ||
+    !rows.length ||
+    !Array.isArray(drawings)
+  ) {
+    return [];
+  }
+
+  const created = [];
+  const firstTime = rows[0].time;
+  const lastTime =
+    rows[rows.length - 1].time;
+
+  function addLine(data, options) {
+    const valid = data
+      .filter(
+        (item) =>
+          item?.time != null &&
+          Number.isFinite(item?.value)
+      )
+      .sort(
+        (a, b) =>
+          drawingTimeNumber(a.time) -
+          drawingTimeNumber(b.time)
+      );
+
+    if (valid.length < 2) return;
+
+    try {
+      const line = chart.addSeries(
+        LineSeries,
+        drawingSeriesOptions(options),
+        0
+      );
+
+      line.setData(valid);
+      created.push(line);
+    } catch (error) {
+      console.warn(
+        'Çizgi oluşturulamadı:',
+        error
+      );
+    }
+  }
+
+  drawings.forEach((drawing) => {
+    const points =
+      Array.isArray(drawing?.points)
+        ? drawing.points
+        : [];
+
+    if (
+      (
+        drawing.type === 'support' ||
+        drawing.type === 'resistance'
+      ) &&
+      Number.isFinite(points[0]?.price)
+    ) {
+      addLine(
+        [
+          {
+            time: firstTime,
+            value: points[0].price,
+          },
+          {
+            time: lastTime,
+            value: points[0].price,
+          },
+        ],
+        {
+          color:
+            drawing.type === 'support'
+              ? '#22c55e'
+              : '#ef4444',
+          title:
+            drawing.type === 'support'
+              ? 'Destek'
+              : 'Direnç',
+          width: 2,
+        }
+      );
+
+      return;
+    }
+
+    if (
+      drawing.type === 'trend' &&
+      points.length >= 2
+    ) {
+      addLine(
+        points.slice(0, 2).map(
+          (point) => ({
+            time: point.time,
+            value: point.price,
+          })
+        ),
+        {
+          color: '#38bdf8',
+          title: 'Trend',
+          width: 3,
+        }
+      );
+
+      return;
+    }
+
+    if (
+      drawing.type === 'fibonacci' &&
+      points.length >= 2
+    ) {
+      const first = points[0];
+      const second = points[1];
+
+      if (
+        !Number.isFinite(first.price) ||
+        !Number.isFinite(second.price)
+      ) {
+        return;
+      }
+
+      const levels = [
+        [0, '#f8fafc'],
+        [0.236, '#60a5fa'],
+        [0.382, '#22d3ee'],
+        [0.5, '#facc15'],
+        [0.618, '#fb923c'],
+        [0.786, '#f472b6'],
+        [1, '#f8fafc'],
+      ];
+
+      levels.forEach(
+        ([level, color]) => {
+          const price =
+            first.price +
+            (
+              second.price -
+              first.price
+            ) *
+              level;
+
+          addLine(
+            [
+              {
+                time: first.time,
+                value: price,
+              },
+              {
+                time: second.time,
+                value: price,
+              },
+            ],
+            {
+              color,
+              title:
+                `Fib ${(
+                  Number(level) * 100
+                ).toFixed(1)}%`,
+              width:
+                level === 0 ||
+                level === 1
+                  ? 2
+                  : 1,
+            }
+          );
+        }
+      );
+    }
+  });
+
+  return created;
+}
+
 function savedInterval(value) {
   const mapping = {
     '5': '5m',
@@ -585,10 +804,24 @@ export default function TradingViewChart({
     useState('Ayarlar yükleniyor…');
   const [fullscreen, setFullscreen] =
     useState(false);
+  const [activeDrawingTool, setActiveDrawingTool] =
+    useState(null);
+  const [drawings, setDrawings] =
+    useState([]);
+  const [drawingsReady, setDrawingsReady] =
+    useState(false);
+  const [drawingStatus, setDrawingStatus] =
+    useState('Çizim aracı seçilmedi');
+
+  const drawingSeriesRef = useRef([]);
+  const activeDrawingToolRef = useRef(null);
+  const pendingDrawingPointRef = useRef(null);
 
   restoreCallbackRef.current =
     onRestoreSymbol;
   rowsRef.current = rows;
+  activeDrawingToolRef.current =
+    activeDrawingTool;
 
   const settingsRef = useMemo(() => {
     if (!userId) return null;
@@ -601,6 +834,155 @@ export default function TradingViewChart({
       'tradingview-chart'
     );
   }, [userId]);
+
+
+  const drawingsRef = useMemo(() => {
+    if (!userId) return null;
+
+    const drawingKey = String(symbol)
+      .replace(/[^A-Z0-9.-]+/gi, '_')
+      .slice(0, 80);
+
+    return doc(
+      firestoreDb,
+      'users',
+      userId,
+      'chartDrawings',
+      drawingKey
+    );
+  }, [userId, symbol]);
+
+  useEffect(() => {
+    let active = true;
+
+    setDrawingsReady(false);
+    setDrawings([]);
+    pendingDrawingPointRef.current = null;
+    setActiveDrawingTool(null);
+    setDrawingStatus(
+      'Çizimler yükleniyor…'
+    );
+
+    async function loadDrawings() {
+      try {
+        let savedDrawings = [];
+
+        if (drawingsRef) {
+          const snapshot =
+            await getDoc(drawingsRef);
+
+          savedDrawings =
+            snapshot.exists() &&
+            Array.isArray(
+              snapshot.data()?.drawings
+            )
+              ? snapshot.data().drawings
+              : [];
+        } else {
+          const localKey =
+            `sky-chart-drawings-v2-${symbol}`;
+
+          const localValue =
+            JSON.parse(
+              localStorage.getItem(
+                localKey
+              ) || '[]'
+            );
+
+          savedDrawings =
+            Array.isArray(localValue)
+              ? localValue
+              : [];
+        }
+
+        if (!active) return;
+
+        setDrawings(savedDrawings);
+        setDrawingStatus(
+          savedDrawings.length
+            ? `${savedDrawings.length} çizim yüklendi`
+            : 'Kayıtlı çizim yok'
+        );
+      } catch (error) {
+        console.error(
+          'Çizimler yüklenemedi:',
+          error
+        );
+
+        if (active) {
+          setDrawingStatus(
+            'Çizimler yüklenemedi'
+          );
+        }
+      } finally {
+        if (active) {
+          setDrawingsReady(true);
+        }
+      }
+    }
+
+    loadDrawings();
+
+    return () => {
+      active = false;
+    };
+  }, [drawingsRef, symbol]);
+
+  useEffect(() => {
+    if (!drawingsReady) return;
+
+    const timer = window.setTimeout(
+      async () => {
+        try {
+          setDrawingStatus(
+            'Çizimler kaydediliyor…'
+          );
+
+          if (drawingsRef) {
+            await setDoc(
+              drawingsRef,
+              {
+                symbol,
+                drawings,
+                updatedAt:
+                  new Date().toISOString(),
+              },
+              { merge: true }
+            );
+          } else {
+            localStorage.setItem(
+              `sky-chart-drawings-v2-${symbol}`,
+              JSON.stringify(drawings)
+            );
+          }
+
+          setDrawingStatus(
+            drawings.length
+              ? `${drawings.length} çizim kaydedildi`
+              : 'Kayıtlı çizim yok'
+          );
+        } catch (error) {
+          console.error(
+            'Çizimler kaydedilemedi:',
+            error
+          );
+
+          setDrawingStatus(
+            'Çizimler kaydedilemedi'
+          );
+        }
+      },
+      450
+    );
+
+    return () =>
+      window.clearTimeout(timer);
+  }, [
+    drawings,
+    drawingsReady,
+    drawingsRef,
+    symbol,
+  ]);
 
   useEffect(() => {
     let active = true;
@@ -929,6 +1311,130 @@ export default function TradingViewChart({
       0
     );
 
+
+    function handleChartClick(param) {
+      const tool =
+        activeDrawingToolRef.current;
+
+      if (
+        !tool ||
+        !param?.point ||
+        param.time == null
+      ) {
+        return;
+      }
+
+      try {
+        const panes = chart.panes();
+        const pricePaneHeight =
+          panes?.[0]?.getHeight?.() ||
+          host.clientHeight * 0.68;
+
+        if (
+          param.point.y < 0 ||
+          param.point.y > pricePaneHeight
+        ) {
+          setDrawingStatus(
+            'Fiyat grafiği üzerinde tıklayın'
+          );
+          return;
+        }
+
+        const price =
+          series.candles.coordinateToPrice(
+            param.point.y
+          );
+
+        if (!Number.isFinite(price)) {
+          return;
+        }
+
+        const point = {
+          time: param.time,
+          price:
+            Math.round(price * 10000) /
+            10000,
+        };
+
+        if (
+          tool === 'support' ||
+          tool === 'resistance'
+        ) {
+          setDrawings(
+            (current) => [
+              ...current,
+              {
+                id:
+                  `${Date.now()}-${Math.random()}`,
+                type: tool,
+                points: [point],
+              },
+            ]
+          );
+
+          activeDrawingToolRef.current = null;
+          setActiveDrawingTool(null);
+          setDrawingStatus(
+            tool === 'support'
+              ? 'Destek çizgisi eklendi'
+              : 'Direnç çizgisi eklendi'
+          );
+          return;
+        }
+
+        const firstPoint =
+          pendingDrawingPointRef.current;
+
+        if (!firstPoint) {
+          pendingDrawingPointRef.current =
+            point;
+
+          setDrawingStatus(
+            'İlk nokta seçildi; ikinci noktaya tıklayın'
+          );
+          return;
+        }
+
+        setDrawings(
+          (current) => [
+            ...current,
+            {
+              id:
+                `${Date.now()}-${Math.random()}`,
+              type: tool,
+              points: [
+                firstPoint,
+                point,
+              ],
+            },
+          ]
+        );
+
+        pendingDrawingPointRef.current = null;
+        activeDrawingToolRef.current = null;
+        setActiveDrawingTool(null);
+
+        setDrawingStatus(
+          tool === 'trend'
+            ? 'Trend çizgisi eklendi'
+            : 'Fibonacci seviyeleri eklendi'
+        );
+      } catch (error) {
+        console.error(
+          'Grafik çizim tıklaması hatası:',
+          error
+        );
+
+        setDrawingStatus(
+          'Çizim noktası seçilemedi'
+        );
+      }
+    }
+
+    chart.subscribeClick(
+      handleChartClick
+    );
+
     series.volume = chart.addSeries(
       HistogramSeries,
       {
@@ -1180,6 +1686,12 @@ export default function TradingViewChart({
 
     return () => {
       resizeObserver.disconnect();
+
+      chart.unsubscribeClick(
+        handleChartClick
+      );
+
+      drawingSeriesRef.current = [];
       seriesRef.current = null;
       chartRef.current = null;
       chart.remove();
@@ -1223,6 +1735,35 @@ export default function TradingViewChart({
       window.cancelAnimationFrame(frame);
     };
   }, [rows]);
+
+
+  useEffect(() => {
+    const chart = chartRef.current;
+
+    if (!chart) return;
+
+    drawingSeriesRef.current.forEach(
+      (drawingSeries) => {
+        try {
+          chart.removeSeries(
+            drawingSeries
+          );
+        } catch {}
+      }
+    );
+
+    drawingSeriesRef.current =
+      createDrawingSeries(
+        chart,
+        rows,
+        drawings
+      );
+  }, [
+    drawings,
+    rows,
+    selectedIndicators,
+    interval,
+  ]);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -1289,6 +1830,77 @@ export default function TradingViewChart({
     };
   }, [fullscreen]);
 
+
+  function selectDrawingTool(tool) {
+    const nextTool =
+      activeDrawingTool === tool
+        ? null
+        : tool;
+
+    pendingDrawingPointRef.current =
+      null;
+    activeDrawingToolRef.current =
+      nextTool;
+    setActiveDrawingTool(nextTool);
+
+    if (!nextTool) {
+      setDrawingStatus(
+        'Çizim aracı kapatıldı'
+      );
+      return;
+    }
+
+    setDrawingStatus(
+      tool === 'support'
+        ? 'Destek seviyesi için grafiğe tıklayın'
+        : tool === 'resistance'
+          ? 'Direnç seviyesi için grafiğe tıklayın'
+          : tool === 'trend'
+            ? 'Trend başlangıç noktasına tıklayın'
+            : 'Fibonacci başlangıç noktasına tıklayın'
+    );
+  }
+
+  function undoDrawing() {
+    pendingDrawingPointRef.current =
+      null;
+    activeDrawingToolRef.current =
+      null;
+    setActiveDrawingTool(null);
+
+    setDrawings(
+      (current) =>
+        current.slice(
+          0,
+          Math.max(0, current.length - 1)
+        )
+    );
+
+    setDrawingStatus(
+      'Son çizim geri alındı'
+    );
+  }
+
+  function clearDrawings() {
+    if (
+      !window.confirm(
+        `${symbol} için tüm çizimler silinsin mi?`
+      )
+    ) {
+      return;
+    }
+
+    pendingDrawingPointRef.current =
+      null;
+    activeDrawingToolRef.current =
+      null;
+    setActiveDrawingTool(null);
+    setDrawings([]);
+    setDrawingStatus(
+      'Çizimler temizlendi'
+    );
+  }
+
   function toggleIndicator(key) {
     setSelectedIndicators(
       (current) =>
@@ -1315,7 +1927,7 @@ export default function TradingViewChart({
         .sky-own-chart {
           width: 100%;
           height: 100%;
-          min-height: 720px;
+          min-height: 0;
           display: flex;
           flex-direction: column;
           gap: 9px;
@@ -1402,10 +2014,20 @@ export default function TradingViewChart({
           color: #fca5a5;
         }
 
+        .drawingActive {
+          color: #f0d675;
+          font-weight: 800;
+        }
+
+        .drawingTools {
+          width: 100%;
+          padding-top: 2px;
+        }
+
         .chartHost {
           width: 100%;
           flex: 1;
-          min-height: 620px;
+          min-height: 0;
         }
 
         .sky-own-chart.fullscreen {
@@ -1434,11 +2056,11 @@ export default function TradingViewChart({
 
         @media (max-width: 700px) {
           .sky-own-chart {
-            min-height: 680px;
+            min-height: 0;
           }
 
           .chartHost {
-            min-height: 570px;
+            min-height: 0;
           }
 
           button,
@@ -1477,6 +2099,47 @@ export default function TradingViewChart({
               </button>
             )
           )}
+        </div>
+
+
+        <div className="buttonGroup drawingTools">
+          {[
+            ['support', '— Destek'],
+            ['resistance', '— Direnç'],
+            ['trend', '╱ Trend'],
+            ['fibonacci', 'Fib Fibonacci'],
+          ].map(([tool, label]) => (
+            <button
+              key={tool}
+              type="button"
+              className={
+                activeDrawingTool === tool
+                  ? 'active'
+                  : ''
+              }
+              onClick={() =>
+                selectDrawingTool(tool)
+              }
+            >
+              {label}
+            </button>
+          ))}
+
+          <button
+            type="button"
+            disabled={!drawings.length}
+            onClick={undoDrawing}
+          >
+            ↶ Geri al
+          </button>
+
+          <button
+            type="button"
+            disabled={!drawings.length}
+            onClick={clearDrawings}
+          >
+            Temizle
+          </button>
         </div>
 
         <div className="buttonGroup">
@@ -1550,6 +2213,16 @@ export default function TradingViewChart({
 
           <span>
             Yakın zamanlı veri
+          </span>
+
+          <span
+            className={
+              activeDrawingTool
+                ? 'drawingActive'
+                : ''
+            }
+          >
+            ✎ {drawingStatus}
           </span>
 
           {error ? (
