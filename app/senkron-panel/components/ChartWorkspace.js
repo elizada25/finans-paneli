@@ -566,7 +566,6 @@ function ChartTile({
     config.indicators,
     config.drawings,
     fullscreen,
-    onChange,
   ]);
 
   function applySymbol() {
