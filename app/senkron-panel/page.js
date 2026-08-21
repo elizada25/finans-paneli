@@ -24,6 +24,7 @@ export default function SenkronPanelPage() {
   const [usdTry, setUsdTry] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [selectedOptionsStock, setSelectedOptionsStock] = useState(null);
+  const [activeSection, setActiveSection] = useState('overview');
   const [istanbulClock, setIstanbulClock] = useState('');
 
   useEffect(() => {
@@ -334,7 +335,7 @@ export default function SenkronPanelPage() {
         <p style={styles.smallLabel}>SKY FİNANS</p>
 
         <h1 style={styles.pageTitle}>
-          Portföyüm
+          Finans Kontrol Merkezi
         </h1>
 
         <p style={styles.userText}>{user.email}</p>
@@ -422,12 +423,107 @@ export default function SenkronPanelPage() {
       </div>
     </header>
 
-    <SkyAI
-          bistStocks={bistStocks}
-          usStocks={usStocks}
-          prices={prices}
-          watchlist={watchlist}
-        />
+    <nav
+      aria-label="Panel bölümleri"
+      style={{
+        width: '100%',
+        maxWidth: '1600px',
+        margin: '0 auto 20px',
+        padding: '9px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '7px',
+        overflowX: 'auto',
+        border:
+          '1px solid rgba(148,163,184,0.16)',
+        borderRadius: '14px',
+        background:
+          'rgba(15,23,42,0.92)',
+        boxSizing: 'border-box',
+        scrollbarWidth: 'thin',
+      }}
+    >
+      {[
+        ['overview', '⌂ Özet'],
+        ['portfolio', '▣ Portföy'],
+        ['watchlist', '☆ Takip & Alarmlar'],
+        ['trade', '↗ Trade Merkezi'],
+        ['market', '◉ Piyasa Merkezi'],
+        ['ai', '✦ SKY AI'],
+      ].map(([key, label]) => {
+        const selected =
+          activeSection === key;
+
+        return (
+          <button
+            key={key}
+            type="button"
+            onClick={() =>
+              setActiveSection(key)
+            }
+            aria-pressed={selected}
+            style={{
+              minHeight: '38px',
+              padding: '0 13px',
+              flex: '0 0 auto',
+              border: selected
+                ? '1px solid rgba(212,175,55,0.65)'
+                : '1px solid rgba(148,163,184,0.15)',
+              borderRadius: '9px',
+              color: selected
+                ? '#111827'
+                : '#cbd5e1',
+              background: selected
+                ? 'linear-gradient(135deg,#d4af37,#f0d675)'
+                : 'rgba(255,255,255,0.035)',
+              fontFamily: 'inherit',
+              fontSize: '11px',
+              fontWeight: 900,
+              whiteSpace: 'nowrap',
+              cursor: 'pointer',
+            }}
+          >
+            {label}
+          </button>
+        );
+      })}
+
+      <button
+        type="button"
+        onClick={() =>
+          router.push('/sirket-analiz')
+        }
+        style={{
+          minHeight: '38px',
+          padding: '0 13px',
+          flex: '0 0 auto',
+          border:
+            '1px solid rgba(56,189,248,0.28)',
+          borderRadius: '9px',
+          color: '#7dd3fc',
+          background:
+            'rgba(56,189,248,0.08)',
+          fontFamily: 'inherit',
+          fontSize: '11px',
+          fontWeight: 900,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+        }}
+      >
+        ◇ Şirket Analizi
+      </button>
+    </nav>
+
+    {activeSection === 'ai' ? (
+      <SkyAI
+        bistStocks={bistStocks}
+        usStocks={usStocks}
+        prices={prices}
+        watchlist={watchlist}
+      />
+    ) : null}
+    {activeSection === 'portfolio' ? (
+      <>
     <section
   style={{
     marginTop: 18,
@@ -581,7 +677,11 @@ export default function SenkronPanelPage() {
     </button>
   </div>
 </section>
+      </>
+    ) : null}
       {status ? <div style={styles.infoBox}>{status}</div> : null}
+      {activeSection === 'overview' ? (
+        <>
       <section style={styles.summaryGrid}>
         <SummaryCard
           title="BIST Toplam Değer"
@@ -639,6 +739,8 @@ export default function SenkronPanelPage() {
           }
         />
       </section>
+        </>
+      ) : null}
 
       <div style={styles.priceBar}>
         <span>{priceStatus || 'Canlı fiyat bekleniyor…'}</span>
@@ -650,52 +752,75 @@ export default function SenkronPanelPage() {
           Fiyatları Yenile
         </button>
       </div>
-      <PortfolioSection
-        title="BIST Portföyü"
-        currency="TRY"
-        stocks={bistStocks}
-        prices={prices}
-        userId={user.uid}
-        onOpenOptions={setSelectedOptionsStock}
-      />
+      {activeSection === 'portfolio' ? (
+        <>
+          <PortfolioSection
+            title="BIST Portföyü"
+            currency="TRY"
+            stocks={bistStocks}
+            prices={prices}
+            userId={user.uid}
+            onOpenOptions={setSelectedOptionsStock}
+          />
 
-      <PortfolioSection
-        title="NASDAQ Portföyü"
-        currency="USD"
-        stocks={usStocks}
-        prices={prices}
-        userId={user.uid}
-        onOpenOptions={setSelectedOptionsStock}
-      />
+          <PortfolioSection
+            title="NASDAQ Portföyü"
+            currency="USD"
+            stocks={usStocks}
+            prices={prices}
+            userId={user.uid}
+            onOpenOptions={setSelectedOptionsStock}
+          />
 
-      <section style={styles.dashboardPanels}>
-        <NewsPanel stocks={stocks} />
-        <WatchlistPanel
-          items={watchlist}
-          prices={prices}
-          userId={user.uid}
-        />
-        <ClosedPositionsPanel
-          positions={closedPositions}
-          userId={user.uid}
-        />
-      </section>
+          <section style={styles.dashboardPanels}>
+            <ClosedPositionsPanel
+              positions={closedPositions}
+              userId={user.uid}
+            />
+          </section>
+        </>
+      ) : null}
 
-      <NasdaqSectorFlow />
-      <BistTradeCenter user={user} />
-      <ScannerCenter />
+      {activeSection === 'watchlist' ? (
+        <section style={styles.dashboardPanels}>
+          <WatchlistPanel
+            items={watchlist}
+            prices={prices}
+            userId={user.uid}
+          />
+        </section>
+      ) : null}
 
-      <section
-        style={{
-          width: '100%',
-          maxWidth: '1600px',
-          margin: '0 auto 28px',
-          display: 'flex',
-          justifyContent: 'flex-start',
-        }}
-      >
-        <StickyNote userId={user.uid} />
-      </section>
+      {activeSection === 'market' ? (
+        <section style={styles.dashboardPanels}>
+          <NewsPanel stocks={stocks} />
+        </section>
+      ) : null}
+
+      {activeSection === 'market' ? (
+        <NasdaqSectorFlow />
+      ) : null}
+
+      {activeSection === 'trade' ? (
+        <>
+          <BistTradeCenter user={user} />
+          <ScannerCenter />
+        </>
+      ) : null}
+
+      {activeSection === 'overview' ? (
+        <section
+          style={{
+            width: '100%',
+            maxWidth: '1600px',
+            margin: '0 auto 28px',
+            display: 'flex',
+            justifyContent: 'flex-start',
+          }}
+        >
+          <StickyNote userId={user.uid} />
+        </section>
+      ) : null}
 
       {selectedOptionsStock && (
         <OptionsPressureModal

@@ -170,13 +170,6 @@ export default function HaberMerkeziPage() {
           </Link>
 
           <div className="topActions">
-            <Link
-              href="/finans-akademisi"
-              className="academyLink"
-            >
-              🎓 Finans Akademisi
-            </Link>
-
             <div className="liveBadge">
               <span className="liveDot" />
               Canlı haber akışı

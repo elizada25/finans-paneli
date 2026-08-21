@@ -265,9 +265,6 @@ export default function CompanyAnalysisPage() {
               Haber Merkezi
             </Link>
 
-            <Link href="/finans-akademisi">
-              Finans Akademisi
-            </Link>
           </div>
 
           <span className="liveBadge">
@@ -644,27 +641,6 @@ export default function CompanyAnalysisPage() {
                   Teknik piyasa verisi alınamadı.
                 </p>
               )}
-            </section>
-
-            <section className="learningCard">
-              <div>
-                <p className="eyebrow">
-                  ÖĞRENEREK ANALİZ ET
-                </p>
-                <h2>
-                  Bu raporu anlamakta zorlandın mı?
-                </h2>
-                <p>
-                  Finans Akademisi’nde bilanço,
-                  nakit akışı, RSI, hareketli
-                  ortalamalar ve risk konularını
-                  kısa derslerle öğrenebilirsin.
-                </p>
-              </div>
-
-              <Link href="/finans-akademisi">
-                🎓 Finans Akademisine Git
-              </Link>
             </section>
 
             <footer className="footer">
