@@ -668,10 +668,7 @@ export default function SenkronPanelPage() {
         onOpenOptions={setSelectedOptionsStock}
       />
 
-      <section
-        className="sky-dashboard-panels"
-        style={styles.dashboardPanels}
-      >
+      <section style={styles.dashboardPanels}>
         <NewsPanel stocks={stocks} />
         <WatchlistPanel
           items={watchlist}
@@ -1649,16 +1646,6 @@ function WatchlistPanel({
   return (
     <article style={styles.panelCard} className="sky-watch-card">
       <style jsx global>{`
-        .sky-dashboard-panels > * {
-          min-width: 0;
-        }
-
-        @media (max-width: 1150px) {
-          .sky-dashboard-panels {
-            grid-template-columns: 1fr !important;
-          }
-        }
-
         .sky-watch-header,
         .sky-watch-row {
           grid-template-columns:
@@ -1969,13 +1956,16 @@ function WatchlistPanel({
                       display: 'flex',
                       alignItems: 'center',
                       gap: '6px',
-                    flexWrap: 'nowrap',
+                      rowGap: '6px',
+                      flexWrap: 'wrap',
                     }}
                   >
                     <strong
                       style={{
                         ...styles.listPrimary,
                         color: '#f8fafc',
+                        flexBasis: '100%',
+                        width: '100%',
                       }}
                     >
                       ☆ {code}
@@ -3083,8 +3073,7 @@ const styles = {
     maxWidth: '1600px',
     margin: '0 auto 28px',
     display: 'grid',
-    gridTemplateColumns:
-      'minmax(210px, 0.55fr) minmax(620px, 2fr) minmax(210px, 0.55fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
     gap: '18px',
     alignItems: 'stretch',
   },
