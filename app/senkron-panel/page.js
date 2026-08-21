@@ -1982,6 +1982,9 @@ function WatchlistPanel({
 
 
 
+
+
+
         /* SKY-WATCHLIST-TWO-PANE-START */
         .sky-watch-card {
           width: 100% !important;
