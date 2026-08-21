@@ -2018,7 +2018,7 @@ function WatchlistPanel({
           border-bottom:
             1px solid rgba(148,163,184,0.24) !important;
           color: #94a3b8 !important;
-          font-size: 7px !important;
+          font-size: 9px !important;
           font-weight: 900 !important;
         }
 
@@ -2107,14 +2107,14 @@ function WatchlistPanel({
 
         .sky-watch-row strong {
           overflow: hidden !important;
-          font-size: 9px !important;
+          font-size: 12px !important;
           line-height: 1 !important;
           text-overflow: ellipsis !important;
           white-space: nowrap !important;
         }
 
         .sky-watch-row span {
-          font-size: 7px !important;
+          font-size: 10px !important;
           line-height: 1 !important;
           white-space: nowrap !important;
         }
