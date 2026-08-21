@@ -912,6 +912,58 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
           text-align: center;
         }
 
+        /* BUDGET-TEXT-SIZE-V4 */
+        .formLabel {
+          font-size: 13px;
+        }
+
+        input,
+        select {
+          font-size: 14px;
+          font-weight: 650;
+        }
+
+        .useLiveRate {
+          font-size: 12px;
+        }
+
+        .categoryRow {
+          font-size: 13px;
+        }
+
+        .categoryRow strong {
+          font-size: 13px;
+        }
+
+        .expenseHeader {
+          font-size: 12px;
+        }
+
+        .expenseRow {
+          font-size: 13px;
+        }
+
+        .expenseRow strong {
+          font-size: 13px;
+        }
+
+        .monthCapitalStrip span {
+          font-size: 11px;
+        }
+
+        .monthCapitalStrip strong {
+          font-size: 14px;
+        }
+
+        .barItem span {
+          font-size: 10px;
+        }
+
+        .summaryCard span {
+          font-size: 12px;
+        }
+        /* BUDGET-TEXT-SIZE-V4-END */
+
         @media (max-width: 1000px) {
           .summaryGrid {
             grid-template-columns: repeat(2, minmax(0, 1fr));
