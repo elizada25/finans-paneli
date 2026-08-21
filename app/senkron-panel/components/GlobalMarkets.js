@@ -38,11 +38,22 @@ function formatPercent(value) {
 function formatClock(value) {
   if (!value) return '—';
 
-  return new Intl.DateTimeFormat('tr-TR', {
-    timeZone: 'Europe/Istanbul',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(value));
+  try {
+    return new Intl.DateTimeFormat(
+      'tr-TR',
+      {
+        timeZone: 'Europe/Istanbul',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      }
+    ).format(new Date(value));
+  } catch {
+    return '—';
+  }
 }
 
 function marketStatus(value) {
@@ -404,6 +415,125 @@ export default function GlobalMarkets() {
             grid-template-columns: 1fr;
           }
         }
+
+        /* Dünya piyasaları tek sütun ve satır görünümü */
+        .grid {
+          display: flex !important;
+          flex-direction: column !important;
+          gap: 7px !important;
+        }
+
+        .card {
+          display: grid !important;
+          grid-template-columns:
+            minmax(190px, 1.45fr)
+            minmax(110px, 0.7fr)
+            minmax(90px, 0.6fr)
+            minmax(125px, 0.75fr)
+            minmax(170px, 0.9fr) !important;
+          align-items: center !important;
+          gap: 14px !important;
+          min-height: 67px !important;
+          padding: 12px 16px !important;
+        }
+
+        .cardTop,
+        .priceRow {
+          display: contents !important;
+        }
+
+        .cardTop > div {
+          grid-column: 1;
+        }
+
+        .price {
+          grid-column: 2;
+          font-size: 16px !important;
+        }
+
+        .change {
+          grid-column: 3;
+          font-size: 13px !important;
+        }
+
+        .status {
+          grid-column: 4;
+        }
+
+        .details {
+          display: block !important;
+          grid-column: 5;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: 0 !important;
+          color: #cbd5e1 !important;
+          text-align: right;
+        }
+
+        .details span {
+          display: none !important;
+        }
+
+        .details span:last-child {
+          display: block !important;
+          font-size: 10px !important;
+          font-weight: 750;
+          white-space: nowrap;
+        }
+
+        .investing {
+          display: none !important;
+        }
+
+        .failed {
+          grid-column: 2 / 6;
+        }
+
+        @media (max-width: 700px) {
+          .card {
+            grid-template-columns:
+              minmax(0, 1fr)
+              auto !important;
+            gap: 6px 10px !important;
+            padding: 12px !important;
+          }
+
+          .cardTop > div {
+            grid-column: 1;
+            grid-row: 1;
+          }
+
+          .status {
+            grid-column: 2;
+            grid-row: 1;
+            text-align: right;
+          }
+
+          .price {
+            grid-column: 1;
+            grid-row: 2;
+          }
+
+          .change {
+            grid-column: 2;
+            grid-row: 2;
+            text-align: right;
+          }
+
+          .details {
+            grid-column: 1 / -1;
+            grid-row: 3;
+            padding-top: 7px !important;
+            border-top:
+              1px solid rgba(148,163,184,0.09) !important;
+            text-align: left;
+          }
+
+          .failed {
+            grid-column: 1 / -1;
+          }
+        }
+
       `}</style>
 
       <div className="hero">

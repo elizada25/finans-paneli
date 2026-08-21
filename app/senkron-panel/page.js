@@ -449,8 +449,7 @@ export default function SenkronPanelPage() {
         ['portfolio', '▣ Portföy'],
         ['ai', '✦ SKY AI'],
         ['trade', '↗ Trade Merkezi'],
-        ['global', '◈ Piyasalar'],
-              ['market', '◉ NASDAQ'],
+        ['market', '◉ NASDAQ'],
       ].map(([key, label]) => {
         const selected =
           activeSection === key;
@@ -513,6 +512,41 @@ export default function SenkronPanelPage() {
       >
         ◇ Şirket Analizi
       </button>
+      <button
+        type="button"
+        onClick={() =>
+          setActiveSection('global')
+        }
+        aria-pressed={
+          activeSection === 'global'
+        }
+        style={{
+          minHeight: '38px',
+          padding: '0 13px',
+          flex: '0 0 auto',
+          border:
+            activeSection === 'global'
+              ? '1px solid rgba(212,175,55,0.65)'
+              : '1px solid rgba(56,189,248,0.28)',
+          borderRadius: '9px',
+          color:
+            activeSection === 'global'
+              ? '#111827'
+              : '#7dd3fc',
+          background:
+            activeSection === 'global'
+              ? 'linear-gradient(135deg,#d4af37,#f0d675)'
+              : 'rgba(56,189,248,0.07)',
+          fontFamily: 'inherit',
+          fontSize: '11px',
+          fontWeight: 900,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+        }}
+      >
+        ◈ Piyasalar
+      </button>
+
       <button
         type="button"
         onClick={() =>
@@ -856,7 +890,7 @@ export default function SenkronPanelPage() {
         <section
           style={{
             width: '100%',
-            maxWidth: '520px',
+            maxWidth: '1600px',
             margin: '0 0 28px',
           }}
         >
@@ -1498,7 +1532,7 @@ function WatchlistPanel({
 }) {
   const [processing, setProcessing] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
-  const [watchlistOpen, setWatchlistOpen] = useState(false);
+  const [watchlistOpen, setWatchlistOpen] = useState(true);
   const [priceAlerts, setPriceAlerts] = useState([]);
 
   useEffect(() => {
