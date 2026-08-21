@@ -635,6 +635,100 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
           font-size: 17px;
         }
 
+        /* BUDGET-COLOR-V3-START */
+        .summaryCard {
+          position: relative;
+          overflow: hidden;
+        }
+
+        .summaryCard::before {
+          position: absolute;
+          top: 0;
+          right: 0;
+          left: 0;
+          height: 3px;
+          content: '';
+          background: var(--accent);
+        }
+
+        .summaryCard:nth-child(1) {
+          --accent: #facc15;
+          background: linear-gradient(145deg, rgba(250, 204, 21, 0.11), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(2) {
+          --accent: #38bdf8;
+          background: linear-gradient(145deg, rgba(56, 189, 248, 0.11), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(3) {
+          --accent: #c084fc;
+          background: linear-gradient(145deg, rgba(192, 132, 252, 0.11), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(4) {
+          --accent: #2dd4bf;
+          background: linear-gradient(145deg, rgba(45, 212, 191, 0.10), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(5) {
+          --accent: #60a5fa;
+          background: linear-gradient(145deg, rgba(96, 165, 250, 0.10), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(6) {
+          --accent: #fb923c;
+          background: linear-gradient(145deg, rgba(251, 146, 60, 0.10), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(7) {
+          --accent: #f472b6;
+          background: linear-gradient(145deg, rgba(244, 114, 182, 0.10), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(8) {
+          --accent: #a78bfa;
+          background: linear-gradient(145deg, rgba(167, 139, 250, 0.10), #17130c 62%);
+        }
+
+        .summaryCard:nth-child(1) strong { color: #fde047; }
+        .summaryCard:nth-child(2) strong { color: #7dd3fc; }
+        .summaryCard:nth-child(3) strong { color: #d8b4fe; }
+        .summaryCard:nth-child(4) strong { color: #5eead4; }
+        .summaryCard:nth-child(5) strong { color: #93c5fd; }
+        .summaryCard:nth-child(6) strong { color: #fdba74; }
+        .summaryCard:nth-child(7) strong { color: #f9a8d4; }
+
+        .mainGrid > .card:first-child {
+          background:
+            radial-gradient(circle at 0 0, rgba(250, 204, 21, 0.10), transparent 34%),
+            #17130c;
+        }
+
+        .mainGrid > .card:last-child {
+          background:
+            radial-gradient(circle at 100% 0, rgba(56, 189, 248, 0.09), transparent 34%),
+            #17130c;
+        }
+
+        .mainGrid > .card:first-child h3 {
+          color: #fde68a;
+        }
+
+        .mainGrid > .card:last-child h3 {
+          color: #7dd3fc;
+        }
+
+        .monthCapitalStrip > div {
+          padding-left: 8px;
+          border-left: 3px solid #38bdf8;
+        }
+
+        .monthCapitalStrip > div:nth-child(2) { border-left-color: #facc15; }
+        .monthCapitalStrip > div:nth-child(3) { border-left-color: #2dd4bf; }
+        .monthCapitalStrip > div:nth-child(4) { border-left-color: #c084fc; }
+        /* BUDGET-COLOR-V3-END */
+
         .negative {
           color: #f87171 !important;
         }
@@ -1178,7 +1272,7 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
           </div>
 
           <div className="barChart">
-            {monthlyTotals.map((item) => (
+            {monthlyTotals.map((item, index) => (
               <button
                 key={item.month}
                 type="button"
@@ -1199,6 +1293,13 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
                       (item.total / maximumMonthlyExpense) * 145
                     )}px`,
                     opacity: selectedMonth === item.month ? 1 : 0.68,
+                    background: `linear-gradient(180deg, ${
+                      COLORS[index % COLORS.length]
+                    }, ${COLORS[index % COLORS.length]}99)`,
+                    boxShadow:
+                      selectedMonth === item.month
+                        ? `0 0 16px ${COLORS[index % COLORS.length]}66`
+                        : 'none',
                   }}
                 />
                 <span>{item.label.slice(0, 3)}</span>
