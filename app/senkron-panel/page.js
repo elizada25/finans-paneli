@@ -471,6 +471,10 @@ export default function SenkronPanelPage() {
               minHeight: '38px',
               padding: '0 13px',
               flex: '0 0 auto',
+              order:
+                key === 'finance'
+                  ? 90
+                  : 0,
               border: selected
                 ? '1px solid rgba(212,175,55,0.65)'
                 : '1px solid rgba(148,163,184,0.15)',
@@ -599,6 +603,7 @@ export default function SenkronPanelPage() {
           minHeight: '38px',
           padding: '0 13px',
           flex: '0 0 auto',
+          order: 100,
           border:
             activeSection === 'notes'
               ? '1px solid rgba(212,175,55,0.65)'
