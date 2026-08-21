@@ -13,6 +13,8 @@ import BistTradeCenter from './components/BistTradeCenter';
 import NasdaqSectorFlow from './components/NasdaqSectorFlow';
 import StickyNote from './components/StickyNote';
 import GlobalMarkets from './components/GlobalMarkets';
+import BistWatchlist from './components/BistWatchlist';
+import ChartWorkspace from './components/ChartWorkspace';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -447,6 +449,7 @@ export default function SenkronPanelPage() {
       {[
         ['overview', '⌂ Özet'],
         ['portfolio', '▣ Portföy'],
+        ['bist-watch', '▤ BIST Takip'],
         ['ai', '✦ SKY AI'],
         ['trade', '↗ Trade Merkezi'],
         ['market', '◉ NASDAQ'],
@@ -545,6 +548,41 @@ export default function SenkronPanelPage() {
         }}
       >
         ◈ Piyasalar
+      </button>
+
+      <button
+        type="button"
+        onClick={() =>
+          setActiveSection('charts')
+        }
+        aria-pressed={
+          activeSection === 'charts'
+        }
+        style={{
+          minHeight: '38px',
+          padding: '0 13px',
+          flex: '0 0 auto',
+          border:
+            activeSection === 'charts'
+              ? '1px solid rgba(212,175,55,0.65)'
+              : '1px solid rgba(56,189,248,0.28)',
+          borderRadius: '9px',
+          color:
+            activeSection === 'charts'
+              ? '#111827'
+              : '#7dd3fc',
+          background:
+            activeSection === 'charts'
+              ? 'linear-gradient(135deg,#d4af37,#f0d675)'
+              : 'rgba(56,189,248,0.07)',
+          fontFamily: 'inherit',
+          fontSize: '11px',
+          fontWeight: 900,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+        }}
+      >
+        ▦ Grafikler
       </button>
 
       <button
@@ -886,6 +924,10 @@ export default function SenkronPanelPage() {
         </>
       ) : null}
 
+      {activeSection === 'bist-watch' ? (
+        <BistWatchlist userId={user.uid} />
+      ) : null}
+
       {activeSection === 'overview' ? (
         <section
           style={{
@@ -910,6 +952,10 @@ export default function SenkronPanelPage() {
 
       {activeSection === 'global' ? (
         <GlobalMarkets />
+      ) : null}
+
+      {activeSection === 'charts' ? (
+        <ChartWorkspace userId={user.uid} />
       ) : null}
 
       {activeSection === 'market' ? (
