@@ -1346,14 +1346,15 @@ function WatchlistPanel({
         '2 = Fiyat bunun ALTINA düşünce',
         '3 = Günlük yükseliş yüzdesi',
         '4 = Günlük düşüş yüzdesi',
-        '5 = Bu hissedeki TÜM alarmları sil',
+        '5 = Fiyat buna EŞİT olunca / hedefe ulaşınca',
+        '6 = Bu hissedeki TÜM alarmları sil',
       ].join('\n'),
       '1'
     );
 
     if (choice === null) return;
 
-    if (String(choice).trim() === '5') {
+    if (String(choice).trim() === '6') {
       const confirmed = window.confirm(
         `${code} için kurulan tüm alarmlar silinsin mi?`
       );
@@ -1402,6 +1403,10 @@ function WatchlistPanel({
         field: 'percentDown',
         label: 'düşüş yüzdesi',
       },
+      '5': {
+        field: 'priceReached',
+        label: 'hedef fiyat',
+      },
     };
 
     const rule =
@@ -1409,7 +1414,7 @@ function WatchlistPanel({
 
     if (!rule) {
       window.alert(
-        '1, 2, 3, 4 veya 5 yazmalısınız.'
+        '1, 2, 3, 4, 5 veya 6 yazmalısınız.'
       );
       return;
     }
@@ -1437,6 +1442,26 @@ function WatchlistPanel({
       return;
     }
 
+    const currentPrice = toNumber(
+      prices[
+        `${item.market}:${code}`
+      ]?.price
+    );
+
+    /*
+      Hedef mevcut fiyatın üzerindeyse yukarı,
+      altındaysa aşağı yönlü alarm kurulur.
+      Böylece fiyat hedefi atlayarak geçse bile
+      bildirim kaçırılmaz.
+    */
+    const savedField =
+      rule.field === 'priceReached'
+        ? currentPrice > 0 &&
+          target < currentPrice
+          ? 'priceBelow'
+          : 'priceAbove'
+        : rule.field;
+
     setProcessing(true);
 
     try {
@@ -1452,7 +1477,7 @@ function WatchlistPanel({
           symbol: code,
           market,
           enabled: true,
-          [rule.field]: target,
+          [savedField]: target,
           updatedAt:
             new Date().toISOString(),
         },
