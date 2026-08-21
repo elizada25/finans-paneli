@@ -486,7 +486,7 @@ export default function SenkronPanelPage() {
                 ? 'linear-gradient(135deg,#d4af37,#f0d675)'
                 : 'rgba(255,255,255,0.035)',
               fontFamily: 'inherit',
-              fontSize: '11px',
+              fontSize: '14px',
               fontWeight: 900,
               whiteSpace: 'nowrap',
               cursor: 'pointer',
@@ -513,7 +513,7 @@ export default function SenkronPanelPage() {
           background:
             'rgba(56,189,248,0.08)',
           fontFamily: 'inherit',
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 900,
           whiteSpace: 'nowrap',
           cursor: 'pointer',
@@ -547,7 +547,7 @@ export default function SenkronPanelPage() {
               ? 'linear-gradient(135deg,#d4af37,#f0d675)'
               : 'rgba(56,189,248,0.07)',
           fontFamily: 'inherit',
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 900,
           whiteSpace: 'nowrap',
           cursor: 'pointer',
@@ -582,7 +582,7 @@ export default function SenkronPanelPage() {
               ? 'linear-gradient(135deg,#d4af37,#f0d675)'
               : 'rgba(56,189,248,0.07)',
           fontFamily: 'inherit',
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 900,
           whiteSpace: 'nowrap',
           cursor: 'pointer',
@@ -618,7 +618,7 @@ export default function SenkronPanelPage() {
               ? 'linear-gradient(135deg,#d4af37,#f0d675)'
               : 'rgba(251,191,36,0.07)',
           fontFamily: 'inherit',
-          fontSize: '11px',
+          fontSize: '14px',
           fontWeight: 900,
           whiteSpace: 'nowrap',
           cursor: 'pointer',

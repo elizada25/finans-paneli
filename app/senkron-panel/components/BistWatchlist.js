@@ -46,7 +46,7 @@ const cellStyle = {
   minWidth: 0,
   overflow: 'hidden',
   color: '#e2e8f0',
-  fontSize: '10px',
+  fontSize: '13px',
   lineHeight: 1,
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -293,7 +293,7 @@ export default function BistWatchlist({ userId }) {
             borderBottom:
               '1px solid rgba(148,163,184,0.25)',
             color: '#94a3b8',
-            fontSize: '9px',
+            fontSize: '12px',
             fontWeight: 900,
             boxSizing: 'border-box',
           }}
@@ -336,7 +336,7 @@ export default function BistWatchlist({ userId }) {
                 style={{
                   ...cellStyle,
                   color: '#f8fafc',
-                  fontSize: '12px',
+                  fontSize: '14px',
                   fontWeight: 900,
                 }}
               >
@@ -449,7 +449,7 @@ export default function BistWatchlist({ userId }) {
           <span
             style={{
               color: '#94a3b8',
-              fontSize: '10px',
+              fontSize: '13px',
             }}
           >
             {updatedAt
@@ -468,7 +468,7 @@ export default function BistWatchlist({ userId }) {
           <span
             style={{
               color: '#94a3b8',
-              fontSize: '10px',
+              fontSize: '13px',
             }}
           >
             {items.length} hisse
@@ -534,7 +534,7 @@ export default function BistWatchlist({ userId }) {
           style={{
             padding: '28px',
             color: '#94a3b8',
-            fontSize: '11px',
+            fontSize: '14px',
             textAlign: 'center',
           }}
         >
