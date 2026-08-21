@@ -13,6 +13,7 @@ import BistTradeCenter from './components/BistTradeCenter';
 import NasdaqSectorFlow from './components/NasdaqSectorFlow';
 import StickyNote from './components/StickyNote';
 import GlobalMarkets from './components/GlobalMarkets';
+import PersonalFinance from './components/PersonalFinance';
 import BistWatchlist from './components/BistWatchlist';
 import ChartWorkspace from './components/ChartWorkspace';
 export default function SenkronPanelPage() {
@@ -449,6 +450,7 @@ export default function SenkronPanelPage() {
       {[
         ['overview', '⌂ Özet'],
         ['portfolio', '▣ Portföy'],
+        ['finance', '₺ Bütçe'],
         ['bist-watch', '▤ BIST Takip'],
         ['ai', '✦ SKY AI'],
         ['trade', '↗ Trade Merkezi'],
@@ -620,6 +622,10 @@ export default function SenkronPanelPage() {
         📌 Notlar
       </button>
     </nav>
+
+    {activeSection === 'finance' ? (
+      <PersonalFinance userId={user.uid} />
+    ) : null}
 
     {activeSection === 'ai' ? (
       <SkyAI
