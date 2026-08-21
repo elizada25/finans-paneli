@@ -890,8 +890,8 @@ export default function SenkronPanelPage() {
         <section
           style={{
             width: '100%',
-            maxWidth: '1600px',
-            margin: '0 0 28px',
+            maxWidth: '900px',
+            margin: '0 auto 28px',
           }}
         >
           <WatchlistPanel
