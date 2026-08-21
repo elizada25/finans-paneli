@@ -643,6 +643,12 @@ export default function GlobalMarkets() {
         }
         /* SKY-MARKETS-SAFE-TABLE-END */
 
+
+        /* SKY-MARKET-STATUS-HIDE */
+        .status {
+          display: none !important;
+        }
+
       `}</style>
 
       <div className="hero">
