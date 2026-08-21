@@ -35,6 +35,8 @@ const MONTHS = [
 
 const CATEGORIES = [
   'Faturalar',
+  'Kredi Kartı',
+  'Banka / Kredi',
   'Kart / Banka',
   'Market',
   'Yakıt',
@@ -104,7 +106,7 @@ function yearMonthId(year, month) {
   return `${year}-${String(month).padStart(2, '0')}`;
 }
 
-export default function PersonalFinance({ userId }) {
+export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
   const now = new Date();
   const [expenses, setExpenses] = useState([]);
   const [capital, setCapital] = useState([]);
@@ -119,6 +121,7 @@ export default function PersonalFinance({ userId }) {
   const [expenseForm, setExpenseForm] = useState({
     name: '',
     category: 'Faturalar',
+    institution: '',
     amount: '',
   });
   const [capitalForm, setCapitalForm] = useState({
@@ -245,6 +248,40 @@ export default function PersonalFinance({ userId }) {
     [capital, selectedYear]
   );
 
+  const selectedCapital = useMemo(
+    () =>
+      capital.find(
+        (item) =>
+          Number(item.year) === Number(selectedYear) &&
+          Number(item.month) === Number(selectedMonth)
+      ) || null,
+    [capital, selectedYear, selectedMonth]
+  );
+
+  const selectedCapitalUsd =
+    selectedCapital && numeric(selectedCapital.usdTry) > 0
+      ? numeric(selectedCapital.totalTry) / numeric(selectedCapital.usdTry)
+      : 0;
+
+  const selectedCapitalAtLiveUsd =
+    selectedCapital && numeric(liveUsdTry) > 0
+      ? numeric(selectedCapital.totalTry) / numeric(liveUsdTry)
+      : 0;
+
+  useEffect(() => {
+    setCapitalForm({
+      totalTry: selectedCapital
+        ? String(selectedCapital.totalTry ?? '')
+        : '',
+      usdTry: selectedCapital
+        ? String(selectedCapital.usdTry ?? '')
+        : '',
+      note: selectedCapital
+        ? String(selectedCapital.note || '')
+        : '',
+    });
+  }, [selectedCapital, selectedYear, selectedMonth]);
+
   const summary = useMemo(() => {
     const totalExpense = monthlyTotals.reduce(
       (sum, item) => sum + item.total,
@@ -369,6 +406,17 @@ export default function PersonalFinance({ userId }) {
       return;
     }
 
+    const bankCategory = [
+      'Kredi Kartı',
+      'Banka / Kredi',
+      'Kart / Banka',
+    ].includes(expenseForm.category);
+
+    if (bankCategory && !expenseForm.institution.trim()) {
+      setMessage('Banka veya kredi kartı adını yazmalısınız.');
+      return;
+    }
+
     setProcessing(true);
 
     try {
@@ -385,12 +433,18 @@ export default function PersonalFinance({ userId }) {
           yearMonth: Number(selectedYear) * 100 + Number(selectedMonth),
           name,
           category: expenseForm.category,
+          institution: expenseForm.institution.trim().toUpperCase(),
           amount,
           createdAt: new Date().toISOString(),
         }
       );
 
-      setExpenseForm((current) => ({ ...current, name: '', amount: '' }));
+      setExpenseForm((current) => ({
+        ...current,
+        name: '',
+        institution: '',
+        amount: '',
+      }));
       setMessage(`${name} gideri kaydedildi.`);
     } catch (error) {
       console.error('Gider ekleme hatası:', error);
@@ -551,7 +605,7 @@ export default function PersonalFinance({ userId }) {
 
         .summaryGrid {
           display: grid;
-          grid-template-columns: repeat(5, minmax(0, 1fr));
+          grid-template-columns: repeat(4, minmax(0, 1fr));
           gap: 10px;
           margin-bottom: 12px;
         }
@@ -618,6 +672,35 @@ export default function PersonalFinance({ userId }) {
           margin-top: 18px;
           padding-top: 16px;
           border-top: 1px solid rgba(148, 163, 184, 0.13);
+        }
+
+        .monthCapitalStrip {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 7px;
+          margin-bottom: 10px;
+          padding: 9px;
+          border: 1px solid rgba(56, 189, 248, 0.18);
+          border-radius: 10px;
+          background: rgba(56, 189, 248, 0.045);
+        }
+
+        .monthCapitalStrip span {
+          color: #94a3b8;
+          font-size: 9px;
+        }
+
+        .monthCapitalStrip strong {
+          display: block;
+          margin-top: 3px;
+          color: #f8fafc;
+          font-size: 12px;
+        }
+
+        .useLiveRate {
+          min-height: 30px;
+          margin-top: 4px;
+          font-size: 9px;
         }
 
         .barChart {
@@ -690,7 +773,12 @@ export default function PersonalFinance({ userId }) {
         .expenseHeader,
         .expenseRow {
           display: grid;
-          grid-template-columns: minmax(120px, 1.2fr) minmax(115px, 1fr) 100px 34px;
+          grid-template-columns:
+            minmax(110px, 1.1fr)
+            minmax(105px, 0.9fr)
+            minmax(110px, 1fr)
+            100px
+            34px;
           align-items: center;
           gap: 8px;
           min-width: 480px;
@@ -737,6 +825,10 @@ export default function PersonalFinance({ userId }) {
 
           .mainGrid {
             grid-template-columns: 1fr;
+          }
+
+          .monthCapitalStrip {
+            grid-template-columns: 1fr 1fr;
           }
         }
 
@@ -812,17 +904,58 @@ export default function PersonalFinance({ userId }) {
 
       <div className="summaryGrid">
         <div className="summaryCard">
-          <span>Güncel sermaye</span>
+          <span>
+            {MONTHS[selectedMonth - 1]} sermayesi (TL)
+          </span>
           <strong>
-            {summary.latestCapital
-              ? formatTry(summary.latestCapital.totalTry)
+            {selectedCapital
+              ? formatTry(selectedCapital.totalTry)
               : '—'}
           </strong>
         </div>
 
         <div className="summaryCard">
-          <span>Güncel sermaye (USD)</span>
-          <strong>{summary.capitalUsd ? formatUsd(summary.capitalUsd) : '—'}</strong>
+          <span>
+            {MONTHS[selectedMonth - 1]} kayıtlı USD/TRY
+          </span>
+          <strong>
+            {selectedCapital && numeric(selectedCapital.usdTry) > 0
+              ? numeric(selectedCapital.usdTry).toLocaleString('tr-TR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 4,
+                })
+              : '—'}
+          </strong>
+        </div>
+
+        <div className="summaryCard">
+          <span>
+            {MONTHS[selectedMonth - 1]} sermayesi (USD)
+          </span>
+          <strong>
+            {selectedCapitalUsd ? formatUsd(selectedCapitalUsd) : '—'}
+          </strong>
+        </div>
+
+        <div className="summaryCard">
+          <span>Güncel USD/TRY</span>
+          <strong>
+            {numeric(liveUsdTry) > 0
+              ? numeric(liveUsdTry).toLocaleString('tr-TR', {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 4,
+                })
+              : '—'}
+          </strong>
+        </div>
+
+        <div className="summaryCard">
+          <span>Güncel kura göre sermaye (USD)</span>
+          <strong>
+            {selectedCapitalAtLiveUsd
+              ? formatUsd(selectedCapitalAtLiveUsd)
+              : '—'}
+          </strong>
         </div>
 
         <div className="summaryCard">
@@ -836,7 +969,7 @@ export default function PersonalFinance({ userId }) {
         </div>
 
         <div className="summaryCard">
-          <span>Sermaye değişimi</span>
+          <span>Yıllık sermaye değişimi</span>
           <strong
             className={
               Number(summary.capitalChange) >= 0 ? 'positive' : 'negative'
@@ -883,6 +1016,34 @@ export default function PersonalFinance({ userId }) {
                   </option>
                 ))}
               </select>
+            </label>
+
+            <label className="formLabel">
+              {[
+                'Kredi Kartı',
+                'Banka / Kredi',
+                'Kart / Banka',
+              ].includes(expenseForm.category)
+                ? 'Banka / kredi kartı adı'
+                : 'Kurum / satıcı (isteğe bağlı)'}
+              <input
+                value={expenseForm.institution}
+                onChange={(event) =>
+                  setExpenseForm((current) => ({
+                    ...current,
+                    institution: event.target.value,
+                  }))
+                }
+                placeholder={
+                  [
+                    'Kredi Kartı',
+                    'Banka / Kredi',
+                    'Kart / Banka',
+                  ].includes(expenseForm.category)
+                    ? 'Garanti Bonus, İş Bankası Maximum…'
+                    : 'TEDAŞ, Migros, Shell…'
+                }
+              />
             </label>
 
             <label className="formLabel">
@@ -936,6 +1097,25 @@ export default function PersonalFinance({ userId }) {
                 }
                 placeholder="0,00"
               />
+              <button
+                type="button"
+                className="useLiveRate"
+                disabled={numeric(liveUsdTry) <= 0}
+                onClick={() =>
+                  setCapitalForm((current) => ({
+                    ...current,
+                    usdTry: String(liveUsdTry),
+                  }))
+                }
+              >
+                Güncel kuru kullan
+                {numeric(liveUsdTry) > 0
+                  ? ` (${numeric(liveUsdTry).toLocaleString('tr-TR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 4,
+                    })})`
+                  : ''}
+              </button>
             </label>
 
             <label className="formLabel">
@@ -960,6 +1140,42 @@ export default function PersonalFinance({ userId }) {
 
         <div className="card">
           <h3>{selectedYear} aylık harcama görünümü</h3>
+
+          <div className="monthCapitalStrip">
+            <div>
+              <span>Seçili dönem</span>
+              <strong>
+                {MONTHS[selectedMonth - 1]} {selectedYear}
+              </strong>
+            </div>
+            <div>
+              <span>Sermaye (TL)</span>
+              <strong>
+                {selectedCapital
+                  ? formatTry(selectedCapital.totalTry)
+                  : 'Kayıt yok'}
+              </strong>
+            </div>
+            <div>
+              <span>Kayıtlı USD/TRY</span>
+              <strong>
+                {selectedCapital && numeric(selectedCapital.usdTry) > 0
+                  ? numeric(selectedCapital.usdTry).toLocaleString('tr-TR', {
+                      minimumFractionDigits: 2,
+                      maximumFractionDigits: 4,
+                    })
+                  : 'Kayıt yok'}
+              </strong>
+            </div>
+            <div>
+              <span>Sermaye (USD)</span>
+              <strong>
+                {selectedCapitalUsd
+                  ? formatUsd(selectedCapitalUsd)
+                  : 'Kayıt yok'}
+              </strong>
+            </div>
+          </div>
 
           <div className="barChart">
             {monthlyTotals.map((item) => (
@@ -1016,6 +1232,7 @@ export default function PersonalFinance({ userId }) {
             <div className="expenseHeader">
               <span>Gider</span>
               <span>Kategori</span>
+              <span>Banka / kurum</span>
               <span style={{ textAlign: 'right' }}>Tutar</span>
               <span />
             </div>
@@ -1031,6 +1248,12 @@ export default function PersonalFinance({ userId }) {
                 <div className="expenseRow" key={item.id}>
                   <span>{item.name}</span>
                   <span style={{ color: '#94a3b8' }}>{item.category}</span>
+                  <span style={{ color: '#94a3b8' }}>
+                    {item.institution ||
+                      (item.category === 'Kart / Banka'
+                        ? item.name
+                        : '—')}
+                  </span>
                   <strong>{formatTry(item.amount)}</strong>
                   <button
                     type="button"

@@ -629,7 +629,10 @@ export default function SenkronPanelPage() {
     </nav>
 
     {activeSection === 'finance' ? (
-      <PersonalFinance userId={user.uid} />
+      <PersonalFinance
+        userId={user.uid}
+        liveUsdTry={usdTry}
+      />
     ) : null}
 
     {activeSection === 'ai' ? (
