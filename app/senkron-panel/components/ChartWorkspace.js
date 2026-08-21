@@ -219,6 +219,111 @@ function ChartTile({
           : 'chartTile'
       }
     >
+      {/* SKY-CHART-TILE-DIRECT-FIX */}
+      <style jsx>{`
+        .chartTile {
+          width: 100%;
+          min-width: 0;
+          height: 390px;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          border: 1px solid
+            rgba(56,189,248,0.28);
+          border-radius: 12px;
+          background: #070d16;
+          box-sizing: border-box;
+        }
+
+        .chartTile.fullscreen {
+          position: fixed;
+          inset: 0;
+          z-index: 999999;
+          width: 100vw;
+          height: 100vh;
+          border: 0;
+          border-radius: 0;
+          background: #070d16;
+        }
+
+        .tileToolbar {
+          flex: 0 0 auto;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          padding: 7px;
+          border-bottom: 1px solid
+            rgba(148,163,184,0.16);
+          background:
+            rgba(15,23,42,0.98);
+        }
+
+        input,
+        select,
+        button {
+          min-width: 0;
+          height: 29px;
+          padding: 0 7px;
+          border: 1px solid
+            rgba(148,163,184,0.25);
+          border-radius: 6px;
+          color: #e2e8f0;
+          background: #111827;
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 800;
+        }
+
+        input {
+          width: 85px;
+          text-transform: uppercase;
+        }
+
+        button {
+          cursor: pointer;
+        }
+
+        .chartInfo {
+          flex: 0 0 25px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 0 8px;
+          color: #64748b;
+          font-size: 10px;
+        }
+
+        .chartInfo strong {
+          color: #7dd3fc;
+        }
+
+        .error {
+          color: #fca5a5;
+        }
+
+        .chartHost {
+          width: 100%;
+          flex: 1 1 auto;
+          min-height: 300px;
+          position: relative;
+        }
+
+        .fullscreen .chartHost {
+          flex: 1 1 auto;
+          min-height: 0;
+        }
+
+        @media (max-width: 850px) {
+          .chartTile {
+            height: 360px;
+          }
+
+          .tileToolbar {
+            flex-wrap: wrap;
+          }
+        }
+      `}</style>
+
       <div className="tileToolbar">
         <select
           value={config.market}

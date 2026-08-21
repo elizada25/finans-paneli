@@ -222,10 +222,14 @@ export default function BistWatchlist({ userId }) {
   }
 
   const half = Math.ceil(items.length / 2);
-  const panes = [
-    items.slice(0, half),
-    items.slice(half),
-  ];
+
+  const panes =
+    items.length > 10
+      ? [
+          items.slice(0, half),
+          items.slice(half),
+        ]
+      : [items];
 
   function renderTable(list, paneIndex) {
     return (
@@ -358,6 +362,12 @@ export default function BistWatchlist({ userId }) {
             repeat(2, minmax(510px, 1fr));
           gap: 24px;
           min-width: 1050px;
+        }
+
+        .tables.single {
+          grid-template-columns:
+            minmax(510px, 800px);
+          min-width: 510px;
         }
 
         table {
@@ -512,7 +522,13 @@ export default function BistWatchlist({ userId }) {
       </div>
 
       {items.length ? (
-        <div className="tables">
+        <div
+          className={
+            panes.length === 1
+              ? 'tables single'
+              : 'tables'
+          }
+        >
           {panes.map(renderTable)}
         </div>
       ) : (
