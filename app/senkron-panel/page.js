@@ -1649,108 +1649,62 @@ function WatchlistPanel({
         .sky-watch-header,
         .sky-watch-row {
           grid-template-columns:
-            minmax(90px, 1.4fr)
-            minmax(76px, 0.9fr)
-            minmax(76px, 0.9fr)
-            minmax(76px, 0.9fr)
-            minmax(74px, 0.8fr)
-            58px !important;
+            minmax(92px, 1.15fr)
+            minmax(105px, 1fr)
+            minmax(72px, 0.75fr)
+            66px !important;
+          gap: 9px !important;
+          align-items: center !important;
         }
 
-        .sky-drag-button {
-          width: 52px !important;
-          height: 34px !important;
-          font-size: 20px !important;
+        .sky-watch-row {
+          padding: 10px 0 !important;
         }
 
+        .sky-watch-actions {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+          gap: 5px;
+        }
+
+        .sky-alert-icon,
         .sky-remove-button {
-          width: 32px !important;
-          min-width: 32px !important;
+          width: 29px !important;
+          min-width: 29px !important;
+          height: 29px !important;
+          min-height: 29px !important;
           padding: 0 !important;
-        }
-
-        .sky-watch-symbol-actions {
-          align-content: flex-start;
-        }
-
-        .sky-alert-button {
-          height: 27px !important;
-          min-height: 27px !important;
-          padding: 0 7px !important;
-          font-size: 9px !important;
+          border-radius: 7px !important;
           line-height: 1 !important;
-        }
-
-        @media (max-width: 1100px) and (min-width: 601px) {
-          .sky-watch-header,
-          .sky-watch-row {
-            grid-template-columns:
-              minmax(170px, 1.35fr)
-              minmax(115px, 0.9fr)
-              minmax(95px, 0.75fr)
-              52px !important;
-            gap: 11px !important;
-          }
-
-          .sky-watch-low,
-          .sky-watch-high {
-            display: none !important;
-          }
-
-          .sky-watch-row {
-            align-items: center !important;
-          }
         }
 
         @media (max-width: 600px) {
           .sky-watch-card {
-            padding: 14px !important;
+            padding: 13px !important;
             overflow: hidden;
           }
 
           .sky-watch-header,
           .sky-watch-row {
             grid-template-columns:
-              minmax(120px, 1.3fr)
-              minmax(74px, 0.9fr)
-              minmax(64px, 0.75fr)
-              36px !important;
-            gap: 7px !important;
-          }
-
-          .sky-watch-low,
-          .sky-watch-high {
-            display: none !important;
+              minmax(72px, 1fr)
+              minmax(90px, 1fr)
+              minmax(60px, 0.75fr)
+              61px !important;
+            gap: 6px !important;
           }
 
           .sky-watch-row {
-            padding: 12px 0 !important;
+            padding: 9px 0 !important;
           }
 
-          .sky-drag-button {
-            width: 36px !important;
-            height: 32px !important;
-            border-radius: 7px !important;
-            font-size: 18px !important;
-            letter-spacing: 0 !important;
-          }
-
-          .sky-alert-button {
-            height: 25px !important;
-            min-height: 25px !important;
-            padding: 0 5px !important;
-            font-size: 8px !important;
-          }
-
-          .sky-watch-symbol-actions {
-            gap: 4px !important;
-            row-gap: 5px !important;
-          }
-
+          .sky-alert-icon,
           .sky-remove-button {
             width: 27px !important;
             min-width: 27px !important;
-            height: 25px !important;
+            height: 27px !important;
+            min-height: 27px !important;
           }
         }
       `}</style>
@@ -1830,10 +1784,8 @@ function WatchlistPanel({
       >
         <span>Hisse</span>
         <span>Son</span>
-        <span className="sky-watch-low">Düşük</span>
-        <span className="sky-watch-high">Yüksek</span>
         <span>% Değişim</span>
-        <span>Taşı</span>
+        <span>İşlem</span>
       </div>
 
       <div
@@ -1854,8 +1806,6 @@ function WatchlistPanel({
             const data = prices[`${item.market}:${code}`] || {};
             const price = toNumber(data.price);
             const previousClose = toNumber(data.previousClose);
-            const dayLow = toNumber(data.dayLow);
-            const dayHigh = toNumber(data.dayHigh);
             const preMarketPrice =
               toNumber(data.preMarketPrice);
             const preMarketChange =
@@ -1950,106 +1900,14 @@ function WatchlistPanel({
                 }}
               >
                 <div>
-                  <div
-                    className="sky-watch-symbol-actions"
+                  <strong
                     style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      rowGap: '6px',
-                      flexWrap: 'wrap',
+                      ...styles.listPrimary,
+                      color: '#f8fafc',
                     }}
                   >
-                    <strong
-                      style={{
-                        ...styles.listPrimary,
-                        color: '#f8fafc',
-                        flexBasis: '100%',
-                        width: '100%',
-                      }}
-                    >
-                      ☆ {code}
-                    </strong>
-
-                    <button
-                      className="sky-alert-button"
-                      type="button"
-                      onPointerDown={(event) =>
-                        event.stopPropagation()
-                      }
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        configurePriceAlert(item);
-                      }}
-                      disabled={processing}
-                      title={
-                        activeAlert
-                          ? `${code} alarmını düzenle veya sil`
-                          : `${code} için alarm kur`
-                      }
-                      style={{
-                        minHeight: '25px',
-                        padding: '0 7px',
-                        border:
-                          activeAlert
-                            ? '1px solid rgba(74,222,128,0.50)'
-                            : '1px solid rgba(212,175,55,0.42)',
-                        borderRadius: '7px',
-                        background:
-                          activeAlert
-                            ? 'rgba(34,197,94,0.13)'
-                            : 'rgba(212,175,55,0.10)',
-                        color:
-                          activeAlert
-                            ? '#86efac'
-                            : '#f0d675',
-                        cursor:
-                          processing
-                            ? 'default'
-                            : 'pointer',
-                        opacity:
-                          processing ? 0.55 : 1,
-                        fontSize: '9px',
-                        fontWeight: 900,
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      🔔 {activeAlert ? 'Kurulu' : 'Alarm'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onPointerDown={(event) =>
-                        event.stopPropagation()
-                      }
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        removeWatchItem(item);
-                      }}
-                      disabled={processing}
-                      title={`${code} takip listesinden çıkar`}
-                      aria-label={`${code} takip listesinden çıkar`}
-                      style={{
-                        width: '25px',
-                        minWidth: '25px',
-                        height: '25px',
-                        padding: 0,
-                        border: '1px solid rgba(239,68,68,0.45)',
-                        borderRadius: '7px',
-                        background: 'rgba(127,29,29,0.35)',
-                        color: '#fca5a5',
-                        cursor: processing
-                          ? 'default'
-                          : 'pointer',
-                        opacity: processing ? 0.45 : 1,
-                        fontSize: '17px',
-                        fontWeight: 900,
-                        lineHeight: 1,
-                      }}
-                    >
-                      ×
-                    </button>
-                  </div>
+                    ☆ {code}
+                  </strong>
 
                   <span style={styles.listSecondary}>
                     {item.market === 'bist' ? 'BIST' : 'NASDAQ'}
@@ -2133,14 +1991,6 @@ function WatchlistPanel({
                   ) : null}
                 </div>
 
-                <span className="sky-watch-low" style={styles.watchPrice}>
-                  {dayLow > 0 ? formatMoney(dayLow, currency) : '—'}
-                </span>
-
-                <span className="sky-watch-high" style={styles.watchPrice}>
-                  {dayHigh > 0 ? formatMoney(dayHigh, currency) : '—'}
-                </span>
-
                 <strong
                   style={{
                     color: change >= 0 ? '#22c55e' : '#ef4444',
@@ -2149,28 +1999,73 @@ function WatchlistPanel({
                   {previousClose > 0 ? formatPercent(change) : '—'}
                 </strong>
 
-                <div
-                  className="sky-drag-button"
-                  title="Tut, sürükle ve istediğin yere bırak"
-                  style={{
-                    width: 68,
-                    height: 38,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1px solid rgba(212,175,55,0.42)',
-                    borderRadius: 9,
-                    background: '#151109',
-                    color: '#f8fafc',
-                    cursor: processing ? 'default' : 'grab',
-                    opacity: processing ? 0.45 : 1,
-                    userSelect: 'none',
-                    fontSize: 24,
-                    fontWeight: 900,
-                    letterSpacing: 2,
-                  }}
-                >
-                  ☰
+                <div className="sky-watch-actions">
+                  <button
+                    className="sky-alert-icon"
+                    type="button"
+                    onPointerDown={(event) =>
+                      event.stopPropagation()
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      configurePriceAlert(item);
+                    }}
+                    disabled={processing}
+                    title={
+                      activeAlert
+                        ? `${code} alarmını düzenle veya sil`
+                        : `${code} için alarm kur`
+                    }
+                    aria-label={`${code} fiyat alarmı`}
+                    style={{
+                      border: activeAlert
+                        ? '1px solid rgba(74,222,128,0.55)'
+                        : '1px solid rgba(212,175,55,0.42)',
+                      background: activeAlert
+                        ? 'rgba(34,197,94,0.14)'
+                        : 'rgba(212,175,55,0.10)',
+                      color: activeAlert
+                        ? '#86efac'
+                        : '#f0d675',
+                      cursor: processing
+                        ? 'default'
+                        : 'pointer',
+                      opacity: processing ? 0.5 : 1,
+                      fontSize: '13px',
+                    }}
+                  >
+                    🔔
+                  </button>
+
+                  <button
+                    className="sky-remove-button"
+                    type="button"
+                    onPointerDown={(event) =>
+                      event.stopPropagation()
+                    }
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      removeWatchItem(item);
+                    }}
+                    disabled={processing}
+                    title={`${code} takip listesinden çıkar`}
+                    aria-label={`${code} takip listesinden çıkar`}
+                    style={{
+                      border:
+                        '1px solid rgba(239,68,68,0.45)',
+                      background:
+                        'rgba(127,29,29,0.35)',
+                      color: '#fca5a5',
+                      cursor: processing
+                        ? 'default'
+                        : 'pointer',
+                      opacity: processing ? 0.45 : 1,
+                      fontSize: '16px',
+                      fontWeight: 900,
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
 
 
