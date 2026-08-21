@@ -335,14 +335,28 @@ async function fetchFiveMinuteRows(symbol) {
 }
 
 function analyzeCandidate(candidate, allRows, marketRegime) {
-  if (allRows.length < 45) return null;
+  /*
+    GitHub Actions tam 5 dakikalık mum açılırken
+    çalışabilir. Henüz tamamlanmamış son mumun
+    hacmi çok düşük olacağı için yalnızca kapanmış
+    5 dakikalık mumları analiz et.
+  */
+  const nowSeconds = Date.now() / 1000;
 
-  const latestDate = istanbulDateKey(allRows[allRows.length - 1].timestamp);
-  const sessionRows = allRows.filter(
+  const completedRows = allRows.filter(
+    (row) =>
+      Number(row.timestamp) + 300 <=
+      nowSeconds
+  );
+
+  if (completedRows.length < 45) return null;
+
+  const latestDate = istanbulDateKey(completedRows[completedRows.length - 1].timestamp);
+  const sessionRows = completedRows.filter(
     (row) => istanbulDateKey(row.timestamp) === latestDate
   );
 
-  const olderRows = allRows.filter(
+  const olderRows = completedRows.filter(
     (row) => istanbulDateKey(row.timestamp) !== latestDate
   );
   const previousDate = olderRows.length
@@ -356,22 +370,21 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
 
   if (sessionRows.length < 6) return null;
 
-  const nowSeconds = Date.now() / 1000;
-  const fifteenRows = aggregate15Minutes(allRows).filter(
+  const fifteenRows = aggregate15Minutes(completedRows).filter(
     (row) => row.timestamp + 900 <= nowSeconds
   );
   if (fifteenRows.length < 25) return null;
 
-  const fiveCloses = allRows.map((row) => row.close);
+  const fiveCloses = completedRows.map((row) => row.close);
   const fifteenCloses = fifteenRows.map((row) => row.close);
   const emaFiveFast = calculateEma(fiveCloses, 9);
   const emaFiveSlow = calculateEma(fiveCloses, 20);
   const emaFifteenFast = calculateEma(fifteenCloses, 9);
   const emaFifteenSlow = calculateEma(fifteenCloses, 20);
-  const lastFiveIndex = allRows.length - 1;
+  const lastFiveIndex = completedRows.length - 1;
   const lastFifteenIndex = fifteenRows.length - 1;
-  const last = allRows[lastFiveIndex];
-  const previous = allRows[lastFiveIndex - 1];
+  const last = completedRows[lastFiveIndex];
+  const previous = completedRows[lastFiveIndex - 1];
   const vwap = getVwap(sessionRows);
   const volumeRatio = getVolumeRatio(sessionRows);
   const atr15 = calculateAtr(fifteenRows);
@@ -407,13 +420,36 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
   if (candidate.dailyTrend === true) score += 5;
   if (marketRegime?.positive === true) score += 5;
 
-  const recentLow = Math.min(...sessionRows.slice(-6).map((row) => row.low));
-  const atrStop = last.close - atr15 * 0.75;
+  const recentLow = Math.min(
+    ...sessionRows
+      .slice(-6)
+      .map((row) => row.low)
+  );
+
+  const atrStop =
+    last.close - atr15 * 0.75;
+
+  /*
+    Günlük sanal işlemde anormal derecede uzak
+    stop oluşmasını engelle. Stop fiyatı girişin
+    en fazla yaklaşık %2 altında olabilir.
+  */
+  const minimumAllowedStop =
+    last.close * 0.98;
+
+  const rawStop = Math.max(
+    recentLow,
+    atrStop,
+    minimumAllowedStop
+  );
+
   const stop = Math.min(
     last.close * 0.995,
-    Math.max(recentLow, atrStop)
+    rawStop
   );
-  const riskPerShare = last.close - stop;
+
+  const riskPerShare =
+    last.close - stop;
 
   if (!Number.isFinite(riskPerShare) || riskPerShare <= 0) return null;
 
