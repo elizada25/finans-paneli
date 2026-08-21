@@ -15,6 +15,9 @@ import {
 } from 'firebase/firestore';
 import { firestoreDb } from '../../../lib-firebase';
 
+const COLUMNS =
+  'minmax(82px,1.2fr) minmax(94px,1fr) 66px 66px 72px 32px';
+
 function numberValue(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : null;
@@ -39,6 +42,16 @@ function percent(value) {
   return `${number > 0 ? '+' : ''}${number.toFixed(2)}%`;
 }
 
+const cellStyle = {
+  minWidth: 0,
+  overflow: 'hidden',
+  color: '#e2e8f0',
+  fontSize: '10px',
+  lineHeight: 1,
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
 export default function BistWatchlist({ userId }) {
   const [items, setItems] = useState([]);
   const [prices, setPrices] = useState({});
@@ -61,23 +74,29 @@ export default function BistWatchlist({ userId }) {
           ...item.data(),
         }));
 
-        next.sort((a, b) => {
-          const first = Number(a.order);
-          const second = Number(b.order);
+        next.sort((first, second) => {
+          const firstOrder = Number(first.order);
+          const secondOrder = Number(second.order);
 
           if (
-            Number.isFinite(first) &&
-            Number.isFinite(second)
+            Number.isFinite(firstOrder) &&
+            Number.isFinite(secondOrder)
           ) {
-            return first - second;
+            return firstOrder - secondOrder;
           }
 
-          return String(a.code || '').localeCompare(
-            String(b.code || '')
+          return String(first.code || '').localeCompare(
+            String(second.code || '')
           );
         });
 
         setItems(next);
+      },
+      (error) => {
+        console.error(
+          'BIST takip listesi okunamadı:',
+          error
+        );
       }
     );
   }, [userId]);
@@ -115,13 +134,15 @@ export default function BistWatchlist({ userId }) {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
         throw new Error(
+          data?.error ||
           `Fiyat servisi ${response.status}`
         );
       }
 
-      const data = await response.json();
       setPrices(data?.prices || {});
 
       setUpdatedAt(
@@ -181,20 +202,28 @@ export default function BistWatchlist({ userId }) {
       return;
     }
 
-    await addDoc(
-      collection(
-        firestoreDb,
-        'users',
-        userId,
-        'bistWatchlist'
-      ),
-      {
-        code,
-        market: 'bist',
-        order: items.length,
-        createdAt: new Date().toISOString(),
-      }
-    );
+    try {
+      await addDoc(
+        collection(
+          firestoreDb,
+          'users',
+          userId,
+          'bistWatchlist'
+        ),
+        {
+          code,
+          market: 'bist',
+          order: items.length,
+          createdAt: new Date().toISOString(),
+        }
+      );
+    } catch (error) {
+      window.alert(
+        `Hisse eklenemedi: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
+      );
+    }
   }
 
   async function removeSymbol(item) {
@@ -210,297 +239,238 @@ export default function BistWatchlist({ userId }) {
       return;
     }
 
-    await deleteDoc(
-      doc(
-        firestoreDb,
-        'users',
-        userId,
-        'bistWatchlist',
-        item.id
-      )
-    );
+    try {
+      await deleteDoc(
+        doc(
+          firestoreDb,
+          'users',
+          userId,
+          'bistWatchlist',
+          item.id
+        )
+      );
+    } catch (error) {
+      window.alert(
+        `Hisse silinemedi: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
+      );
+    }
   }
 
-  const half = Math.ceil(items.length / 2);
+  const paneCount =
+    items.length > 8 ? 2 : 1;
+
+  const half =
+    paneCount === 2
+      ? Math.ceil(items.length / 2)
+      : items.length;
 
   const panes =
-    items.length > 10
+    paneCount === 2
       ? [
           items.slice(0, half),
           items.slice(half),
         ]
       : [items];
 
-  function renderTable(list, paneIndex) {
+  function renderPane(list, paneIndex) {
     return (
       <div
-        className="tablePane"
         key={paneIndex}
+        style={{
+          minWidth: '520px',
+        }}
       >
-        <table>
-          <thead>
-            <tr>
-              <th>Hisse</th>
-              <th>Son</th>
-              <th>Düşük</th>
-              <th>Yüksek</th>
-              <th>% Değişim</th>
-              <th>İşlem</th>
-            </tr>
-          </thead>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: COLUMNS,
+            gap: '6px',
+            alignItems: 'center',
+            minHeight: '25px',
+            padding: '0 6px',
+            borderBottom:
+              '1px solid rgba(148,163,184,0.25)',
+            color: '#94a3b8',
+            fontSize: '9px',
+            fontWeight: 900,
+            boxSizing: 'border-box',
+          }}
+        >
+          <span>Hisse</span>
+          <span>Son</span>
+          <span>Düşük</span>
+          <span>Yüksek</span>
+          <span>% Değişim</span>
+          <span></span>
+        </div>
 
-          <tbody>
-            {list.map((item) => {
-              const code = String(item.code || '')
-                .trim()
-                .toUpperCase();
+        {list.map((item) => {
+          const code = String(item.code || '')
+            .trim()
+            .toUpperCase();
 
-              const quote = prices[code] || {};
-              const change = numberValue(
-                quote.changePercent
-              );
+          const quote = prices[code] || {};
+          const change = numberValue(
+            quote.changePercent
+          );
 
-              return (
-                <tr key={item.id}>
-                  <td className="symbol">
-                    ☆ {code}
-                  </td>
+          return (
+            <div
+              key={item.id}
+              className="bistMatrixRow"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: COLUMNS,
+                gap: '6px',
+                alignItems: 'center',
+                minHeight: '31px',
+                padding: '3px 6px',
+                borderBottom:
+                  '1px solid rgba(212,175,55,0.11)',
+                boxSizing: 'border-box',
+              }}
+            >
+              <strong
+                style={{
+                  ...cellStyle,
+                  color: '#f8fafc',
+                  fontSize: '12px',
+                  fontWeight: 900,
+                }}
+              >
+                ☆ {code}
+              </strong>
 
-                  <td>{money(quote.price)}</td>
-                  <td>{money(quote.dayLow)}</td>
-                  <td>{money(quote.dayHigh)}</td>
+              <span style={cellStyle}>
+                {money(quote.price)}
+              </span>
 
-                  <td
-                    className={
-                      change === null
-                        ? ''
-                        : change >= 0
-                          ? 'positive'
-                          : 'negative'
-                    }
-                  >
-                    {percent(change)}
-                  </td>
+              <span style={cellStyle}>
+                {money(quote.dayLow)}
+              </span>
 
-                  <td>
-                    <button
-                      type="button"
-                      className="remove"
-                      onClick={() =>
-                        removeSymbol(item)
-                      }
-                      title={`${code} listesinden çıkar`}
-                    >
-                      ×
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+              <span style={cellStyle}>
+                {money(quote.dayHigh)}
+              </span>
+
+              <strong
+                style={{
+                  ...cellStyle,
+                  color:
+                    change === null
+                      ? '#94a3b8'
+                      : change >= 0
+                        ? '#22c55e'
+                        : '#ef4444',
+                  fontWeight: 900,
+                }}
+              >
+                {percent(change)}
+              </strong>
+
+              <button
+                type="button"
+                onClick={() =>
+                  removeSymbol(item)
+                }
+                title={`${code} listesinden çıkar`}
+                style={{
+                  width: '22px',
+                  minWidth: '22px',
+                  height: '21px',
+                  minHeight: '21px',
+                  padding: 0,
+                  border:
+                    '1px solid rgba(239,68,68,0.55)',
+                  borderRadius: '4px',
+                  color: '#fca5a5',
+                  background:
+                    'rgba(127,29,29,0.35)',
+                  fontSize: '14px',
+                  fontWeight: 900,
+                  lineHeight: 1,
+                  cursor: 'pointer',
+                }}
+              >
+                ×
+              </button>
+            </div>
+          );
+        })}
       </div>
     );
   }
 
   return (
-    <section className="bistWatch">
-      <style jsx>{`
-        .bistWatch {
-          width: 100%;
-          max-width: 1600px;
-          margin: 0 0 28px;
-          padding: 11px;
-          border: 1px solid
-            rgba(212,175,55,0.22);
-          border-radius: 16px;
-          background: #17130c;
-          box-sizing: border-box;
-          overflow-x: auto;
-        }
-
-        .top {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 12px;
-          margin-bottom: 8px;
-        }
-
-        h2 {
-          margin: 0;
-          color: #f8fafc;
-          font-size: 18px;
-        }
-
-        .actions {
-          display: flex;
-          align-items: center;
-          gap: 7px;
-        }
-
-        .status {
-          color: #94a3b8;
-          font-size: 10px;
-        }
-
-        button {
-          min-height: 29px;
-          padding: 0 10px;
-          border: 1px solid
-            rgba(212,175,55,0.42);
-          border-radius: 7px;
-          color: #f0d675;
-          background: #151109;
-          font-weight: 850;
-          cursor: pointer;
-        }
-
-        .tables {
-          display: grid;
-          grid-template-columns:
-            repeat(2, minmax(510px, 1fr));
-          gap: 24px;
-          min-width: 1050px;
-        }
-
-        .tables.single {
-          grid-template-columns:
-            minmax(510px, 800px);
-          min-width: 510px;
-        }
-
-        table {
-          width: 100%;
-          table-layout: fixed;
-          border-collapse: collapse;
-        }
-
-        th {
-          padding: 5px 6px;
-          border-bottom: 1px solid
-            rgba(148,163,184,0.24);
-          color: #94a3b8;
-          font-size: 9px;
-          font-weight: 900;
-          text-align: left;
-          white-space: nowrap;
-        }
-
-        td {
-          height: 31px;
-          padding: 3px 6px;
-          border-bottom: 1px solid
-            rgba(212,175,55,0.10);
-          color: #e2e8f0;
-          font-size: 10px;
-          white-space: nowrap;
-          overflow: hidden;
-          text-overflow: ellipsis;
-        }
-
-        th:nth-child(1),
-        td:nth-child(1) {
-          width: 18%;
-        }
-
-        th:nth-child(2),
-        td:nth-child(2) {
-          width: 20%;
-        }
-
-        th:nth-child(3),
-        td:nth-child(3),
-        th:nth-child(4),
-        td:nth-child(4) {
-          width: 13%;
-        }
-
-        th:nth-child(5),
-        td:nth-child(5) {
-          width: 17%;
-        }
-
-        th:nth-child(6),
-        td:nth-child(6) {
-          width: 9%;
-          text-align: center;
-        }
-
-        tbody tr:hover {
+    <section
+      style={{
+        width: '100%',
+        maxWidth: '1600px',
+        minHeight: 0,
+        margin: '0 0 28px',
+        padding: '11px',
+        overflowX: 'auto',
+        border:
+          '1px solid rgba(212,175,55,0.22)',
+        borderRadius: '16px',
+        background: '#17130c',
+        boxSizing: 'border-box',
+      }}
+    >
+      <style jsx global>{`
+        .bistMatrixRow:hover {
           background:
             rgba(56,189,248,0.055);
         }
-
-        .symbol {
-          color: #f8fafc;
-          font-size: 12px;
-          font-weight: 900;
-        }
-
-        .positive {
-          color: #22c55e;
-          font-weight: 900;
-        }
-
-        .negative {
-          color: #ef4444;
-          font-weight: 900;
-        }
-
-        .remove {
-          width: 22px;
-          min-width: 22px;
-          height: 21px;
-          min-height: 21px;
-          padding: 0;
-          border-color:
-            rgba(239,68,68,0.55);
-          color: #fca5a5;
-          background:
-            rgba(127,29,29,0.35);
-          font-size: 14px;
-          line-height: 1;
-        }
-
-        .empty {
-          padding: 30px;
-          color: #94a3b8;
-          text-align: center;
-        }
-
-        @media (max-width: 700px) {
-          .tables {
-            grid-template-columns:
-              minmax(510px, 1fr);
-          }
-
-          .tablePane:nth-child(2):empty {
-            display: none;
-          }
-
-          h2 {
-            font-size: 16px;
-          }
-
-          .status {
-            display: none;
-          }
-        }
       `}</style>
 
-      <div className="top">
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          marginBottom: '8px',
+        }}
+      >
         <div>
-          <h2>BIST Takip</h2>
-          <span className="status">
+          <h2
+            style={{
+              margin: 0,
+              color: '#f8fafc',
+              fontSize: '18px',
+            }}
+          >
+            BIST Takip
+          </h2>
+
+          <span
+            style={{
+              color: '#94a3b8',
+              fontSize: '10px',
+            }}
+          >
             {updatedAt
               ? `Son güncelleme: ${updatedAt}`
               : 'Fiyatlar bekleniyor…'}
           </span>
         </div>
 
-        <div className="actions">
-          <span className="status">
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '7px',
+          }}
+        >
+          <span
+            style={{
+              color: '#94a3b8',
+              fontSize: '10px',
+            }}
+          >
             {items.length} hisse
           </span>
 
@@ -508,6 +478,16 @@ export default function BistWatchlist({ userId }) {
             type="button"
             onClick={refreshPrices}
             disabled={loading}
+            style={{
+              minWidth: '31px',
+              height: '29px',
+              border:
+                '1px solid rgba(212,175,55,0.42)',
+              borderRadius: '7px',
+              color: '#f0d675',
+              background: '#151109',
+              cursor: 'pointer',
+            }}
           >
             {loading ? '…' : '↻'}
           </button>
@@ -515,6 +495,17 @@ export default function BistWatchlist({ userId }) {
           <button
             type="button"
             onClick={addSymbol}
+            style={{
+              height: '29px',
+              padding: '0 10px',
+              border:
+                '1px solid rgba(212,175,55,0.42)',
+              borderRadius: '7px',
+              color: '#f0d675',
+              background: '#151109',
+              fontWeight: 850,
+              cursor: 'pointer',
+            }}
           >
             + Ekle
           </button>
@@ -523,16 +514,30 @@ export default function BistWatchlist({ userId }) {
 
       {items.length ? (
         <div
-          className={
-            panes.length === 1
-              ? 'tables single'
-              : 'tables'
-          }
+          style={{
+            display: 'grid',
+            gridTemplateColumns:
+              paneCount === 2
+                ? 'repeat(2,minmax(520px,1fr))'
+                : 'minmax(520px,820px)',
+            gap: '24px',
+            minWidth:
+              paneCount === 2
+                ? '1064px'
+                : '520px',
+          }}
         >
-          {panes.map(renderTable)}
+          {panes.map(renderPane)}
         </div>
       ) : (
-        <div className="empty">
+        <div
+          style={{
+            padding: '28px',
+            color: '#94a3b8',
+            fontSize: '11px',
+            textAlign: 'center',
+          }}
+        >
           “+ Ekle” ile BIST hissesi ekleyebilirsiniz.
         </div>
       )}

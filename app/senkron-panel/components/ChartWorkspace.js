@@ -9,6 +9,7 @@ import {
   CandlestickSeries,
   ColorType,
   createChart,
+  LineSeries,
 } from 'lightweight-charts';
 import {
   doc,
@@ -17,47 +18,199 @@ import {
 } from 'firebase/firestore';
 import { firestoreDb } from '../../../lib-firebase';
 
+const INDICATORS = [
+  ['ema5', 'EMA5', 'ema', 5, '#22d3ee'],
+  ['ema22', 'EMA22', 'ema', 22, '#38bdf8'],
+  ['ema50', 'EMA50', 'ema', 50, '#f59e0b'],
+  ['ema100', 'EMA100', 'ema', 100, '#fb7185'],
+  ['ema200', 'EMA200', 'ema', 200, '#a855f7'],
+  ['sma50', 'SMA50', 'sma', 50, '#22c55e'],
+  ['sma100', 'SMA100', 'sma', 100, '#f97316'],
+  ['sma200', 'SMA200', 'sma', 200, '#ec4899'],
+];
+
 const DEFAULT_CHARTS = [
   {
+    id: 'chart-garan',
     market: 'bist',
     symbol: 'GARAN',
     interval: '1d',
+    indicators: [],
+    drawings: [],
   },
   {
+    id: 'chart-thyao',
     market: 'bist',
     symbol: 'THYAO',
     interval: '1d',
+    indicators: [],
+    drawings: [],
   },
   {
+    id: 'chart-akbnk',
     market: 'bist',
     symbol: 'AKBNK',
     interval: '1d',
+    indicators: [],
+    drawings: [],
   },
   {
+    id: 'chart-nvda',
     market: 'us',
     symbol: 'NVDA',
     interval: '1d',
+    indicators: [],
+    drawings: [],
   },
 ];
 
+function normalizeChart(item, index) {
+  return {
+    id:
+      item?.id ||
+      `chart-saved-${index}`,
+    market:
+      item?.market === 'us'
+        ? 'us'
+        : 'bist',
+    symbol:
+      String(item?.symbol || 'GARAN')
+        .trim()
+        .toUpperCase(),
+    interval:
+      ['5m', '15m', '60m', '1d']
+        .includes(item?.interval)
+        ? item.interval
+        : '1d',
+    indicators:
+      Array.isArray(item?.indicators)
+        ? item.indicators.filter((key) =>
+            INDICATORS.some(
+              ([indicatorKey]) =>
+                indicatorKey === key
+            )
+          )
+        : [],
+    drawings:
+      Array.isArray(item?.drawings)
+        ? item.drawings
+        : [],
+  };
+}
+
+function calculateEma(rows, period) {
+  if (rows.length < period) return [];
+
+  const multiplier =
+    2 / (period + 1);
+
+  let current =
+    rows
+      .slice(0, period)
+      .reduce(
+        (total, row) =>
+          total + row.close,
+        0
+      ) / period;
+
+  const output = [
+    {
+      time: rows[period - 1].time,
+      value: current,
+    },
+  ];
+
+  for (
+    let index = period;
+    index < rows.length;
+    index += 1
+  ) {
+    current =
+      rows[index].close * multiplier +
+      current * (1 - multiplier);
+
+    output.push({
+      time: rows[index].time,
+      value: current,
+    });
+  }
+
+  return output;
+}
+
+function calculateSma(rows, period) {
+  if (rows.length < period) return [];
+
+  const output = [];
+  let total = 0;
+
+  rows.forEach((row, index) => {
+    total += row.close;
+
+    if (index >= period) {
+      total -=
+        rows[index - period].close;
+    }
+
+    if (index >= period - 1) {
+      output.push({
+        time: row.time,
+        value: total / period,
+      });
+    }
+  });
+
+  return output;
+}
+
+function sortedPoints(first, second) {
+  return [first, second].sort(
+    (a, b) =>
+      Number(a.time) - Number(b.time)
+  );
+}
+
 function ChartTile({
   config,
-  index,
   fullscreen,
   onFullscreen,
   onChange,
+  onRemove,
 }) {
   const hostRef = useRef(null);
+  const previewSeriesRef = useRef(null);
+  const pendingPointRef = useRef(null);
+  const drawingModeRef = useRef(false);
+
   const [draft, setDraft] =
     useState(config.symbol);
   const [loading, setLoading] =
     useState(false);
   const [error, setError] =
     useState('');
+  const [drawingMode, setDrawingMode] =
+    useState(false);
+  const [drawStatus, setDrawStatus] =
+    useState('');
+
+  drawingModeRef.current = drawingMode;
 
   useEffect(() => {
     setDraft(config.symbol);
+    pendingPointRef.current = null;
   }, [config.symbol]);
+
+  useEffect(() => {
+    if (drawingMode) {
+      setDrawStatus(
+        'Grafikte ilk noktayı seçin'
+      );
+    } else {
+      setDrawStatus('');
+      pendingPointRef.current = null;
+      previewSeriesRef.current?.setData([]);
+    }
+  }, [drawingMode]);
 
   useEffect(() => {
     const host = hostRef.current;
@@ -116,10 +269,165 @@ function ChartTile({
       }
     );
 
+    const previewSeries =
+      chart.addSeries(
+        LineSeries,
+        {
+          color: '#facc15',
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        }
+      );
+
+    previewSeriesRef.current =
+      previewSeries;
+
+    for (
+      const drawing of
+      config.drawings || []
+    ) {
+      const first = {
+        time: Number(drawing.time1),
+        value: Number(drawing.price1),
+      };
+
+      const second = {
+        time: Number(drawing.time2),
+        value: Number(drawing.price2),
+      };
+
+      if (
+        !Number.isFinite(first.time) ||
+        !Number.isFinite(first.value) ||
+        !Number.isFinite(second.time) ||
+        !Number.isFinite(second.value)
+      ) {
+        continue;
+      }
+
+      const trendSeries =
+        chart.addSeries(
+          LineSeries,
+          {
+            color: '#38bdf8',
+            lineWidth: 3,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          }
+        );
+
+      trendSeries.setData(
+        sortedPoints(first, second)
+      );
+    }
+
+    function chartPoint(parameter) {
+      if (
+        !parameter?.point ||
+        parameter.time === undefined
+      ) {
+        return null;
+      }
+
+      const price =
+        candles.coordinateToPrice(
+          parameter.point.y
+        );
+
+      const time =
+        Number(parameter.time);
+
+      if (
+        !Number.isFinite(price) ||
+        !Number.isFinite(time)
+      ) {
+        return null;
+      }
+
+      return {
+        time,
+        value: price,
+      };
+    }
+
+    function handleClick(parameter) {
+      if (!drawingModeRef.current) return;
+
+      const point =
+        chartPoint(parameter);
+
+      if (!point) return;
+
+      if (!pendingPointRef.current) {
+        pendingPointRef.current = point;
+
+        previewSeries.setData([
+          point,
+        ]);
+
+        setDrawStatus(
+          'Şimdi ikinci noktayı seçin'
+        );
+
+        return;
+      }
+
+      const first =
+        pendingPointRef.current;
+
+      pendingPointRef.current = null;
+      previewSeries.setData([]);
+
+      onChange(config.id, {
+        drawings: [
+          ...(config.drawings || []),
+          {
+            id: `trend-${Date.now()}`,
+            time1: first.time,
+            price1: first.value,
+            time2: point.time,
+            price2: point.value,
+          },
+        ],
+      });
+
+      setDrawingMode(false);
+      setDrawStatus('');
+    }
+
+    function handleMove(parameter) {
+      if (
+        !drawingModeRef.current ||
+        !pendingPointRef.current
+      ) {
+        return;
+      }
+
+      const point =
+        chartPoint(parameter);
+
+      if (!point) return;
+
+      previewSeries.setData(
+        sortedPoints(
+          pendingPointRef.current,
+          point
+        )
+      );
+    }
+
+    chart.subscribeClick(handleClick);
+    chart.subscribeCrosshairMove(handleMove);
+
     const observer =
       new ResizeObserver(() => {
-        if (!host.clientWidth ||
-            !host.clientHeight) {
+        if (
+          !host.clientWidth ||
+          !host.clientHeight
+        ) {
           return;
         }
 
@@ -162,7 +470,60 @@ function ChartTile({
 
         if (!active) return;
 
-        candles.setData(data.rows || []);
+        const rows = data.rows || [];
+
+        candles.setData(
+          rows.map((row) => ({
+            time: row.time,
+            open: row.open,
+            high: row.high,
+            low: row.low,
+            close: row.close,
+          }))
+        );
+
+        for (
+          const [
+            key,
+            title,
+            type,
+            period,
+            color,
+          ] of INDICATORS
+        ) {
+          if (
+            !config.indicators?.includes(key)
+          ) {
+            continue;
+          }
+
+          const indicatorSeries =
+            chart.addSeries(
+              LineSeries,
+              {
+                color,
+                lineWidth:
+                  period >= 200 ? 3 : 2,
+                title,
+                priceLineVisible: false,
+                lastValueVisible: true,
+                crosshairMarkerVisible: false,
+              }
+            );
+
+          indicatorSeries.setData(
+            type === 'ema'
+              ? calculateEma(
+                  rows,
+                  period
+                )
+              : calculateSma(
+                  rows,
+                  period
+                )
+          );
+        }
+
         chart.timeScale().fitContent();
       } catch (loadError) {
         if (
@@ -185,13 +546,27 @@ function ChartTile({
       active = false;
       controller.abort();
       observer.disconnect();
+
+      chart.unsubscribeClick(
+        handleClick
+      );
+
+      chart.unsubscribeCrosshairMove(
+        handleMove
+      );
+
+      previewSeriesRef.current = null;
       chart.remove();
     };
   }, [
+    config.id,
     config.market,
     config.symbol,
     config.interval,
+    config.indicators,
+    config.drawings,
     fullscreen,
+    onChange,
   ]);
 
   function applySymbol() {
@@ -206,8 +581,23 @@ function ChartTile({
       return;
     }
 
-    onChange(index, {
+    onChange(config.id, {
       symbol: clean,
+      drawings: [],
+    });
+  }
+
+  function toggleIndicator(key) {
+    const selected =
+      config.indicators || [];
+
+    onChange(config.id, {
+      indicators:
+        selected.includes(key)
+          ? selected.filter(
+              (item) => item !== key
+            )
+          : [...selected, key],
     });
   }
 
@@ -219,12 +609,11 @@ function ChartTile({
           : 'chartTile'
       }
     >
-      {/* SKY-CHART-TILE-DIRECT-FIX */}
       <style jsx>{`
         .chartTile {
           width: 100%;
           min-width: 0;
-          height: 390px;
+          height: 430px;
           display: flex;
           flex-direction: column;
           overflow: hidden;
@@ -243,44 +632,73 @@ function ChartTile({
           height: 100vh;
           border: 0;
           border-radius: 0;
-          background: #070d16;
         }
 
-        .tileToolbar {
+        .tileToolbar,
+        .indicatorBar {
           flex: 0 0 auto;
           display: flex;
           align-items: center;
           gap: 5px;
-          padding: 7px;
+          padding: 6px 7px;
+          overflow-x: auto;
           border-bottom: 1px solid
-            rgba(148,163,184,0.16);
+            rgba(148,163,184,0.15);
           background:
             rgba(15,23,42,0.98);
+        }
+
+        .indicatorBar {
+          padding: 4px 7px;
         }
 
         input,
         select,
         button {
+          flex: 0 0 auto;
           min-width: 0;
-          height: 29px;
+          height: 28px;
           padding: 0 7px;
           border: 1px solid
-            rgba(148,163,184,0.25);
+            rgba(148,163,184,0.24);
           border-radius: 6px;
           color: #e2e8f0;
           background: #111827;
           font-family: inherit;
-          font-size: 10px;
+          font-size: 9px;
           font-weight: 800;
         }
 
         input {
-          width: 85px;
+          width: 78px;
           text-transform: uppercase;
         }
 
         button {
           cursor: pointer;
+        }
+
+        button.active {
+          border-color:
+            rgba(56,189,248,0.7);
+          color: #7dd3fc;
+          background:
+            rgba(56,189,248,0.16);
+        }
+
+        button.drawing {
+          border-color:
+            rgba(250,204,21,0.8);
+          color: #fde047;
+          background:
+            rgba(250,204,21,0.14);
+        }
+
+        button.removeChart {
+          margin-left: auto;
+          border-color:
+            rgba(239,68,68,0.45);
+          color: #fca5a5;
         }
 
         .chartInfo {
@@ -290,11 +708,15 @@ function ChartTile({
           gap: 8px;
           padding: 0 8px;
           color: #64748b;
-          font-size: 10px;
+          font-size: 9px;
         }
 
         .chartInfo strong {
           color: #7dd3fc;
+        }
+
+        .drawStatus {
+          color: #fde047;
         }
 
         .error {
@@ -304,18 +726,20 @@ function ChartTile({
         .chartHost {
           width: 100%;
           flex: 1 1 auto;
-          min-height: 300px;
-          position: relative;
+          min-height: 280px;
+          cursor:
+            ${drawingMode
+              ? 'crosshair'
+              : 'default'};
         }
 
         .fullscreen .chartHost {
-          flex: 1 1 auto;
           min-height: 0;
         }
 
         @media (max-width: 850px) {
           .chartTile {
-            height: 360px;
+            height: 390px;
           }
 
           .tileToolbar {
@@ -328,8 +752,9 @@ function ChartTile({
         <select
           value={config.market}
           onChange={(event) =>
-            onChange(index, {
+            onChange(config.id, {
               market: event.target.value,
+              drawings: [],
             })
           }
         >
@@ -351,7 +776,6 @@ function ChartTile({
               applySymbol();
             }
           }}
-          aria-label="Grafik sembolü"
         />
 
         <button
@@ -364,35 +788,115 @@ function ChartTile({
         <select
           value={config.interval}
           onChange={(event) =>
-            onChange(index, {
+            onChange(config.id, {
               interval:
                 event.target.value,
             })
           }
         >
-          <option value="5m">
-            5 dk
-          </option>
-          <option value="15m">
-            15 dk
-          </option>
-          <option value="60m">
-            1 saat
-          </option>
-          <option value="1d">
-            Günlük
-          </option>
+          <option value="5m">5 dk</option>
+          <option value="15m">15 dk</option>
+          <option value="60m">1 saat</option>
+          <option value="1d">Günlük</option>
         </select>
 
         <button
           type="button"
+          className={
+            drawingMode
+              ? 'drawing'
+              : ''
+          }
           onClick={() =>
-            onFullscreen(index)
+            setDrawingMode(
+              (current) => !current
+            )
+          }
+        >
+          ╱ Trend
+        </button>
+
+        <button
+          type="button"
+          disabled={
+            !config.drawings?.length
+          }
+          onClick={() =>
+            onChange(config.id, {
+              drawings:
+                config.drawings.slice(
+                  0,
+                  -1
+                ),
+            })
+          }
+          title="Son trend çizgisini sil"
+        >
+          ↶ Çizgi
+        </button>
+
+        <button
+          type="button"
+          onClick={() =>
+            onFullscreen(config.id)
           }
         >
           {fullscreen
             ? '✕ Küçült'
             : '⛶ Tam ekran'}
+        </button>
+
+        <button
+          type="button"
+          className="removeChart"
+          onClick={() =>
+            onRemove(config.id)
+          }
+          title="Bu grafiği kaldır"
+        >
+          ×
+        </button>
+      </div>
+
+      <div className="indicatorBar">
+        {INDICATORS.map(
+          ([key, title]) => (
+            <button
+              key={key}
+              type="button"
+              className={
+                config.indicators?.includes(
+                  key
+                )
+                  ? 'active'
+                  : ''
+              }
+              onClick={() =>
+                toggleIndicator(key)
+              }
+            >
+              {config.indicators?.includes(
+                key
+              )
+                ? '✓ '
+                : ''}
+              {title}
+            </button>
+          )
+        )}
+
+        <button
+          type="button"
+          disabled={
+            !config.drawings?.length
+          }
+          onClick={() =>
+            onChange(config.id, {
+              drawings: [],
+            })
+          }
+        >
+          Çizgileri temizle
         </button>
       </div>
 
@@ -406,6 +910,12 @@ function ChartTile({
 
         {loading ? (
           <span>Yükleniyor…</span>
+        ) : null}
+
+        {drawStatus ? (
+          <span className="drawStatus">
+            {drawStatus}
+          </span>
         ) : null}
 
         {error ? (
@@ -430,7 +940,7 @@ export default function ChartWorkspace({
     useState(DEFAULT_CHARTS);
   const [ready, setReady] =
     useState(false);
-  const [fullscreenIndex, setFullscreenIndex] =
+  const [fullscreenId, setFullscreenId] =
     useState(null);
   const [saveStatus, setSaveStatus] =
     useState('Ayarlar yükleniyor…');
@@ -440,16 +950,15 @@ export default function ChartWorkspace({
 
     async function loadSettings() {
       try {
-        const reference = doc(
-          firestoreDb,
-          'users',
-          userId,
-          'settings',
-          'chart-workspace'
+        const snapshot = await getDoc(
+          doc(
+            firestoreDb,
+            'users',
+            userId,
+            'settings',
+            'chart-workspace'
+          )
         );
-
-        const snapshot =
-          await getDoc(reference);
 
         const saved =
           snapshot.exists()
@@ -459,9 +968,13 @@ export default function ChartWorkspace({
         if (
           active &&
           Array.isArray(saved.charts) &&
-          saved.charts.length === 4
+          saved.charts.length
         ) {
-          setCharts(saved.charts);
+          setCharts(
+            saved.charts
+              .slice(0, 8)
+              .map(normalizeChart)
+          );
         }
       } catch (error) {
         console.error(
@@ -525,7 +1038,7 @@ export default function ChartWorkspace({
           );
         }
       },
-      500
+      600
     );
 
     return () =>
@@ -533,7 +1046,7 @@ export default function ChartWorkspace({
   }, [charts, ready, userId]);
 
   useEffect(() => {
-    if (fullscreenIndex === null) {
+    if (fullscreenId === null) {
       return undefined;
     }
 
@@ -545,7 +1058,7 @@ export default function ChartWorkspace({
 
     function close(event) {
       if (event.key === 'Escape') {
-        setFullscreenIndex(null);
+        setFullscreenId(null);
       }
     }
 
@@ -563,12 +1076,12 @@ export default function ChartWorkspace({
         close
       );
     };
-  }, [fullscreenIndex]);
+  }, [fullscreenId]);
 
-  function updateChart(index, patch) {
+  function updateChart(id, patch) {
     setCharts((current) =>
-      current.map((item, itemIndex) =>
-        itemIndex === index
+      current.map((item) =>
+        item.id === id
           ? {
               ...item,
               ...patch,
@@ -576,6 +1089,46 @@ export default function ChartWorkspace({
           : item
       )
     );
+  }
+
+  function addChart() {
+    if (charts.length >= 8) {
+      window.alert(
+        'Aynı anda en fazla 8 grafik açabilirsiniz.'
+      );
+      return;
+    }
+
+    setCharts((current) => [
+      ...current,
+      {
+        id: `chart-${Date.now()}`,
+        market: 'bist',
+        symbol: 'ASELS',
+        interval: '1d',
+        indicators: [],
+        drawings: [],
+      },
+    ]);
+  }
+
+  function removeChart(id) {
+    if (charts.length <= 1) {
+      window.alert(
+        'En az bir grafik kalmalıdır.'
+      );
+      return;
+    }
+
+    setCharts((current) =>
+      current.filter(
+        (item) => item.id !== id
+      )
+    );
+
+    if (fullscreenId === id) {
+      setFullscreenId(null);
+    }
   }
 
   return (
@@ -595,7 +1148,7 @@ export default function ChartWorkspace({
           margin-bottom: 10px;
         }
 
-        h2 {
+        .title {
           margin: 0;
           color: #f8fafc;
           font-size: 18px;
@@ -606,6 +1159,21 @@ export default function ChartWorkspace({
           font-size: 10px;
         }
 
+        .addButton {
+          min-height: 34px;
+          padding: 0 12px;
+          border: 1px solid
+            rgba(212,175,55,0.50);
+          border-radius: 8px;
+          color: #f0d675;
+          background:
+            rgba(212,175,55,0.10);
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 900;
+          cursor: pointer;
+        }
+
         .chartGrid {
           display: grid;
           grid-template-columns:
@@ -613,134 +1181,50 @@ export default function ChartWorkspace({
           gap: 10px;
         }
 
-        .chartTile {
-          min-width: 0;
-          height: 390px;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-          border: 1px solid
-            rgba(56,189,248,0.22);
-          border-radius: 11px;
-          background: #070d16;
-        }
-
-        .chartTile.fullscreen {
-          position: fixed;
-          inset: 0;
-          z-index: 999999;
-          width: 100vw;
-          height: 100vh;
-          border: 0;
-          border-radius: 0;
-        }
-
-        .tileToolbar {
-          display: flex;
-          align-items: center;
-          gap: 5px;
-          padding: 7px;
-          border-bottom: 1px solid
-            rgba(148,163,184,0.15);
-          background:
-            rgba(15,23,42,0.96);
-        }
-
-        input,
-        select,
-        button {
-          min-width: 0;
-          height: 29px;
-          padding: 0 7px;
-          border: 1px solid
-            rgba(148,163,184,0.22);
-          border-radius: 6px;
-          color: #e2e8f0;
-          background: #111827;
-          font-family: inherit;
-          font-size: 9px;
-          font-weight: 800;
-        }
-
-        input {
-          width: 80px;
-          text-transform: uppercase;
-        }
-
-        button {
-          cursor: pointer;
-        }
-
-        .chartInfo {
-          min-height: 24px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          padding: 0 8px;
-          color: #64748b;
-          font-size: 9px;
-        }
-
-        .chartInfo strong {
-          color: #7dd3fc;
-        }
-
-        .error {
-          color: #fca5a5;
-        }
-
-        .chartHost {
-          width: 100%;
-          flex: 1 1 auto;
-          min-height: 0;
-        }
-
-        .chartTile.fullscreen .chartHost {
-          flex: 1 1 auto;
-          min-height: 0;
-        }
-
         @media (max-width: 850px) {
           .chartGrid {
             grid-template-columns: 1fr;
-          }
-
-          .chartTile {
-            height: 360px;
-          }
-
-          .tileToolbar {
-            flex-wrap: wrap;
           }
         }
       `}</style>
 
       <div className="workspaceHeader">
         <div>
-          <h2>Çoklu Grafik Ekranı</h2>
+          <h2 className="title">
+            Çoklu Grafik Ekranı
+          </h2>
+
           <span className="saveStatus">
             ● {saveStatus}
           </span>
         </div>
+
+        <button
+          type="button"
+          className="addButton"
+          onClick={addChart}
+        >
+          + Grafik Ekle
+        </button>
       </div>
 
       <div className="chartGrid">
-        {charts.map((config, index) => (
+        {charts.map((config) => (
           <ChartTile
-            key={index}
+            key={config.id}
             config={config}
-            index={index}
             fullscreen={
-              fullscreenIndex === index
+              fullscreenId === config.id
             }
-            onFullscreen={(selectedIndex) =>
-              setFullscreenIndex(
-                fullscreenIndex === selectedIndex
+            onFullscreen={(id) =>
+              setFullscreenId(
+                fullscreenId === id
                   ? null
-                  : selectedIndex
+                  : id
               )
             }
             onChange={updateChart}
+            onRemove={removeChart}
           />
         ))}
       </div>
@@ -752,16 +1236,8 @@ export default function ChartWorkspace({
           fontSize: '9px',
         }}
       >
-        Grafik çizimi:{' '}
-        <a
-          href="https://www.tradingview.com/"
-          target="_blank"
-          rel="noreferrer"
-          style={{ color: '#7dd3fc' }}
-        >
-          TradingView Lightweight Charts
-        </a>
-        {' '}• Widget kullanılmaz.
+        Grafik çizimi: TradingView Lightweight
+        Charts • Widget kullanılmaz.
       </p>
     </section>
   );
