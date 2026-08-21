@@ -19,14 +19,14 @@ import {
 import { firestoreDb } from '../../../lib-firebase';
 
 const INDICATORS = [
-  ['ema5', 'EMA5', 'ema', 5, '#22d3ee'],
-  ['ema22', 'EMA22', 'ema', 22, '#38bdf8'],
-  ['ema50', 'EMA50', 'ema', 50, '#f59e0b'],
-  ['ema100', 'EMA100', 'ema', 100, '#fb7185'],
+  ['ema5', 'EMA5', 'ema', 5, '#facc15'],
+  ['ema22', 'EMA22', 'ema', 22, '#00e5ff'],
+  ['ema50', 'EMA50', 'ema', 50, '#ff8a00'],
+  ['ema100', 'EMA100', 'ema', 100, '#ff3b30'],
   ['ema200', 'EMA200', 'ema', 200, '#a855f7'],
   ['sma50', 'SMA50', 'sma', 50, '#22c55e'],
-  ['sma100', 'SMA100', 'sma', 100, '#f97316'],
-  ['sma200', 'SMA200', 'sma', 200, '#ec4899'],
+  ['sma100', 'SMA100', 'sma', 100, '#f8fafc'],
+  ['sma200', 'SMA200', 'sma', 200, '#ff4fd8'],
 ];
 
 const DEFAULT_CHARTS = [
@@ -378,8 +378,44 @@ function ChartTile({
       const first =
         pendingPointRef.current;
 
+      if (first.time === point.time) {
+        setDrawStatus(
+          'İkinci noktayı farklı bir mum üzerinde seçin'
+        );
+        return;
+      }
+
+      // Fare hareketi devam etmeden çizim
+      // modunu eşzamanlı olarak kapat.
+      drawingModeRef.current = false;
       pendingPointRef.current = null;
       previewSeries.setData([]);
+
+      const completedPoints =
+        sortedPoints(first, point);
+
+      // Kaydı beklemeden bitmiş çizgiyi
+      // doğrudan grafikte sabitle.
+      const completedSeries =
+        chart.addSeries(
+          LineSeries,
+          {
+            color: '#38bdf8',
+            lineWidth: 3,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            crosshairMarkerVisible: false,
+          }
+        );
+
+      completedSeries.setData(
+        completedPoints
+      );
+
+      setDrawingMode(false);
+      setDrawStatus(
+        'Trend çizgisi kaydedildi'
+      );
 
       onChange(config.id, {
         drawings: [
@@ -393,9 +429,6 @@ function ChartTile({
           },
         ],
       });
-
-      setDrawingMode(false);
-      setDrawStatus('');
     }
 
     function handleMove(parameter) {
@@ -859,29 +892,54 @@ function ChartTile({
 
       <div className="indicatorBar">
         {INDICATORS.map(
-          ([key, title]) => (
-            <button
-              key={key}
-              type="button"
-              className={
-                config.indicators?.includes(
-                  key
-                )
-                  ? 'active'
-                  : ''
-              }
-              onClick={() =>
-                toggleIndicator(key)
-              }
-            >
-              {config.indicators?.includes(
+          ([
+            key,
+            title,
+            ,
+            ,
+            color,
+          ]) => {
+            const selected =
+              config.indicators?.includes(
                 key
-              )
-                ? '✓ '
-                : ''}
-              {title}
-            </button>
-          )
+              );
+
+            return (
+              <button
+                key={key}
+                type="button"
+                className={
+                  selected
+                    ? 'active'
+                    : ''
+                }
+                onClick={() =>
+                  toggleIndicator(key)
+                }
+                style={{
+                  color:
+                    selected
+                      ? color
+                      : '#cbd5e1',
+                  borderColor:
+                    selected
+                      ? color
+                      : 'rgba(148,163,184,0.24)',
+                  background:
+                    selected
+                      ? `${color}1f`
+                      : '#111827',
+                  boxShadow:
+                    selected
+                      ? `inset 0 0 0 1px ${color}30`
+                      : 'none',
+                }}
+              >
+                {selected ? '✓ ' : ''}
+                {title}
+              </button>
+            );
+          }
         )}
 
         <button
@@ -1130,6 +1188,45 @@ export default function ChartWorkspace({
     }
   }
 
+  async function saveNow() {
+    if (!userId) return;
+
+    try {
+      setSaveStatus(
+        'Grafikler kaydediliyor…'
+      );
+
+      await setDoc(
+        doc(
+          firestoreDb,
+          'users',
+          userId,
+          'settings',
+          'chart-workspace'
+        ),
+        {
+          charts,
+          updatedAt:
+            new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+      setSaveStatus(
+        'Grafikler ve çizgiler kaydedildi'
+      );
+    } catch (error) {
+      console.error(
+        'Grafikler kaydedilemedi:',
+        error
+      );
+
+      setSaveStatus(
+        'Grafikler kaydedilemedi'
+      );
+    }
+  }
+
   return (
     <section className="workspace">
       <style jsx>{`
@@ -1156,6 +1253,27 @@ export default function ChartWorkspace({
         .saveStatus {
           color: #86efac;
           font-size: 10px;
+        }
+
+        .headerActions {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+        }
+
+        .saveButton {
+          min-height: 34px;
+          padding: 0 12px;
+          border: 1px solid
+            rgba(34,197,94,0.50);
+          border-radius: 8px;
+          color: #86efac;
+          background:
+            rgba(34,197,94,0.10);
+          font-family: inherit;
+          font-size: 10px;
+          font-weight: 900;
+          cursor: pointer;
         }
 
         .addButton {
@@ -1198,13 +1316,23 @@ export default function ChartWorkspace({
           </span>
         </div>
 
-        <button
-          type="button"
-          className="addButton"
-          onClick={addChart}
-        >
-          + Grafik Ekle
-        </button>
+        <div className="headerActions">
+          <button
+            type="button"
+            className="saveButton"
+            onClick={saveNow}
+          >
+            ✓ Grafikleri Kaydet
+          </button>
+
+          <button
+            type="button"
+            className="addButton"
+            onClick={addChart}
+          >
+            + Grafik Ekle
+          </button>
+        </div>
       </div>
 
       <div className="chartGrid">
