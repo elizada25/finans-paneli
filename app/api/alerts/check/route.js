@@ -35,16 +35,17 @@ function getAdminApp() {
 
 function normalizeMarket(item) {
   const raw = String(
-    item.market ||
-      item.exchange ||
-      item.region ||
+    item?.market ||
+      item?.exchange ||
+      item?.region ||
       ''
   ).toUpperCase();
 
   if (
     raw.includes('NASDAQ') ||
     raw.includes('NYSE') ||
-    raw.includes('US') ||
+    raw.includes('AMEX') ||
+    raw === 'US' ||
     raw.includes('AMERICA')
   ) {
     return 'NASDAQ';
@@ -53,47 +54,33 @@ function normalizeMarket(item) {
   return 'BIST';
 }
 
-function getThresholds(market) {
+function normalizeStock(item, id = '') {
+  const code = String(
+    item?.code ||
+      item?.symbol ||
+      item?.ticker ||
+      id ||
+      ''
+  )
+    .trim()
+    .toUpperCase()
+    .replace(
+      /^(BIST|NASDAQ|NYSE|AMEX):/,
+      ''
+    );
+
   return {
-    up: 5,
-    down: -7,
+    ...item,
+    code,
+    market: normalizeMarket(item),
   };
 }
 
-function formatPrice(price, market) {
-  const value = Number(price);
-
-  if (!Number.isFinite(value)) {
-    return '-';
-  }
-
-  return market === 'NASDAQ'
-    ? `${value.toFixed(2)} USD`
-    : `${value.toFixed(2)} TL`;
-}
-
-function getAlertRule(changePercent, thresholds) {
-  const change = Number(changePercent);
-
-  if (!Number.isFinite(change)) {
-    return null;
-  }
-
-  if (change >= thresholds.up) {
-    return {
-      direction: 'up',
-      threshold: thresholds.up,
-    };
-  }
-
-  if (change <= thresholds.down) {
-    return {
-      direction: 'down',
-      threshold: thresholds.down,
-    };
-  }
-
-  return null;
+function numberValue(value) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed)
+    ? parsed
+    : null;
 }
 
 function getIstanbulDateKey() {
@@ -105,22 +92,42 @@ function getIstanbulDateKey() {
   }).format(new Date());
 }
 
-async function fetchPrices(baseUrl, market, codes) {
-  if (codes.length === 0) {
-    return {};
-  }
+function formatPrice(price, market) {
+  const value = Number(price);
+
+  if (!Number.isFinite(value)) return '-';
+
+  return market === 'NASDAQ'
+    ? `${value.toFixed(2)} USD`
+    : `${value.toFixed(2)} TL`;
+}
+
+async function fetchPrices(
+  baseUrl,
+  market,
+  codes
+) {
+  const unique = [
+    ...new Set(codes.filter(Boolean)),
+  ];
+
+  if (!unique.length) return {};
 
   const response = await fetch(
     `${baseUrl}/api/prices`,
     {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        'Content-Type':
+          'application/json',
       },
       cache: 'no-store',
       body: JSON.stringify({
-        market,
-        codes,
+        market:
+          market === 'BIST'
+            ? 'bist'
+            : 'us',
+        codes: unique,
       }),
     }
   );
@@ -132,12 +139,132 @@ async function fetchPrices(baseUrl, market, codes) {
   }
 
   const data = await response.json();
-
   return data?.prices || {};
 }
 
+async function sendAlert({
+  messaging,
+  tokens,
+  baseUrl,
+  title,
+  body,
+  stock,
+  quote,
+  type,
+}) {
+  return messaging.sendEachForMulticast({
+    tokens,
+    notification: {
+      title,
+      body,
+    },
+    data: {
+      url: '/senkron-panel',
+      symbol: stock.code,
+      market: stock.market,
+      type,
+      price:
+        String(quote?.price ?? ''),
+      changePercent:
+        String(
+          quote?.changePercent ?? ''
+        ),
+    },
+    webpush: {
+      fcmOptions: {
+        link:
+          `${baseUrl}/senkron-panel`,
+      },
+      notification: {
+        icon: '/icon-192.png',
+        badge: '/icon-192.png',
+      },
+    },
+  });
+}
+
+function customRules(alert, quote) {
+  const price = numberValue(quote?.price);
+  const change =
+    numberValue(quote?.changePercent);
+
+  const rules = [];
+
+  const priceAbove =
+    numberValue(alert.priceAbove);
+  const priceBelow =
+    numberValue(alert.priceBelow);
+  const percentUp =
+    numberValue(alert.percentUp);
+  const percentDown =
+    numberValue(alert.percentDown);
+
+  if (
+    priceAbove > 0 &&
+    price >= priceAbove
+  ) {
+    rules.push({
+      key: 'priceAbove',
+      label: 'üst fiyat',
+      target: priceAbove,
+      message:
+        `${alert.code} ${formatPrice(
+          priceAbove,
+          alert.market
+        )} seviyesinin üzerine çıktı.`,
+    });
+  }
+
+  if (
+    priceBelow > 0 &&
+    price <= priceBelow
+  ) {
+    rules.push({
+      key: 'priceBelow',
+      label: 'alt fiyat',
+      target: priceBelow,
+      message:
+        `${alert.code} ${formatPrice(
+          priceBelow,
+          alert.market
+        )} seviyesinin altına düştü.`,
+    });
+  }
+
+  if (
+    percentUp > 0 &&
+    change >= percentUp
+  ) {
+    rules.push({
+      key: 'percentUp',
+      label: 'yükseliş',
+      target: percentUp,
+      message:
+        `${alert.code} bugün +${change.toFixed(
+          2
+        )}% yükseldi.`,
+    });
+  }
+
+  if (
+    percentDown > 0 &&
+    change <= -Math.abs(percentDown)
+  ) {
+    rules.push({
+      key: 'percentDown',
+      label: 'düşüş',
+      target: percentDown,
+      message:
+        `${alert.code} bugün ${change.toFixed(
+          2
+        )}% düştü.`,
+    });
+  }
+
+  return rules;
+}
+
 async function processUser({
-  adminDb,
   messaging,
   baseUrl,
   userDoc,
@@ -145,60 +272,111 @@ async function processUser({
 }) {
   const userRef = userDoc.ref;
 
-  const [portfolioSnapshot, deviceSnapshot] =
-    await Promise.all([
-      userRef.collection('portfolio').get(),
-      userRef
-        .collection('notificationDevices')
-        .where('enabled', '==', true)
-        .get(),
-    ]);
+  const [
+    portfolioSnapshot,
+    watchlistSnapshot,
+    customAlertsSnapshot,
+    deviceSnapshot,
+  ] = await Promise.all([
+    userRef.collection('portfolio').get(),
+    userRef.collection('watchlist').get(),
+    userRef.collection('priceAlerts').get(),
+    userRef
+      .collection('notificationDevices')
+      .where('enabled', '==', true)
+      .get(),
+  ]);
 
-  const tokens = deviceSnapshot.docs
-    .map((doc) => doc.data()?.token)
-    .filter(Boolean);
+  const tokens = [
+    ...new Set(
+      deviceSnapshot.docs
+        .map(
+          (device) =>
+            device.data()?.token
+        )
+        .filter(Boolean)
+    ),
+  ];
 
-  if (
-    portfolioSnapshot.empty ||
-    tokens.length === 0
-  ) {
+  if (!tokens.length) {
     return {
       checked: 0,
+      customChecked: 0,
       sent: 0,
     };
   }
 
-  const stocks = portfolioSnapshot.docs
-    .map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    }))
-    .map((item) => ({
-      ...item,
-      code: String(
-        item.code ||
-          item.symbol ||
-          item.ticker ||
-          item.id ||
-          ''
+  const portfolio = portfolioSnapshot.docs
+    .map((document) =>
+      normalizeStock(
+        document.data(),
+        document.id
       )
-        .trim()
-        .toUpperCase(),
-      market: normalizeMarket(item),
-    }))
-    .filter((item) => item.code);
+    )
+    .filter((stock) => stock.code);
 
-  const bistCodes = stocks
-    .filter((item) => item.market === 'BIST')
-    .map((item) => item.code);
+  const watchlist = watchlistSnapshot.docs
+    .map((document) =>
+      normalizeStock(
+        document.data(),
+        document.id
+      )
+    )
+    .filter((stock) => stock.code);
 
-  const nasdaqCodes = stocks
-    .filter((item) => item.market === 'NASDAQ')
-    .map((item) => item.code);
+  const customAlerts =
+    customAlertsSnapshot.docs
+      .map((document) => ({
+        id: document.id,
+        ...normalizeStock(
+          document.data(),
+          document.id
+        ),
+      }))
+      .filter(
+        (alert) =>
+          alert.code &&
+          alert.enabled !== false
+      );
+
+  const stockMap = new Map();
+
+  for (const stock of [
+    ...portfolio,
+    ...watchlist,
+    ...customAlerts,
+  ]) {
+    stockMap.set(
+      `${stock.market}:${stock.code}`,
+      stock
+    );
+  }
+
+  const allStocks = [
+    ...stockMap.values(),
+  ];
+
+  const bistCodes = allStocks
+    .filter(
+      (stock) =>
+        stock.market === 'BIST'
+    )
+    .map((stock) => stock.code);
+
+  const nasdaqCodes = allStocks
+    .filter(
+      (stock) =>
+        stock.market === 'NASDAQ'
+    )
+    .map((stock) => stock.code);
 
   const [bistPrices, nasdaqPrices] =
     await Promise.all([
-      fetchPrices(baseUrl, 'BIST', bistCodes),
+      fetchPrices(
+        baseUrl,
+        'BIST',
+        bistCodes
+      ),
       fetchPrices(
         baseUrl,
         'NASDAQ',
@@ -206,119 +384,160 @@ async function processUser({
       ),
     ]);
 
+  function quoteFor(stock) {
+    return stock.market === 'NASDAQ'
+      ? nasdaqPrices?.[stock.code]
+      : bistPrices?.[stock.code];
+  }
+
   let sent = 0;
 
-  for (const stock of stocks) {
-    const prices =
-      stock.market === 'NASDAQ'
-        ? nasdaqPrices
-        : bistPrices;
+  // Mevcut portföy +5 / -7 alarmları
+  for (const stock of portfolio) {
+    const quote = quoteFor(stock);
+    const change =
+      numberValue(quote?.changePercent);
 
-    const quote = prices?.[stock.code];
+    if (change === null) continue;
 
-    if (!quote) {
-      continue;
-    }
+    const direction =
+      change >= 5
+        ? 'up'
+        : change <= -7
+          ? 'down'
+          : null;
 
-    const changePercent =
-      Number(quote.changePercent);
+    if (!direction) continue;
 
-    const thresholds =
-      getThresholds(stock.market);
+    const alertId =
+      `${dateKey}_${stock.code}_${direction}`;
 
-    const alertRule = getAlertRule(
-      changePercent,
-      thresholds
-    );
-
-    if (!alertRule) {
-      continue;
-    }
-
-    const alertId = [
-      dateKey,
-      stock.code,
-      alertRule.direction,
-      String(alertRule.threshold).replace(
-        '.',
-        '_'
-      ),
-    ].join('_');
-
-    const alertRef = userRef
+    const historyRef = userRef
       .collection('alertHistory')
       .doc(alertId);
 
-    const alreadySent = await alertRef.get();
-
-    if (alreadySent.exists) {
+    if ((await historyRef.get()).exists) {
       continue;
     }
 
-    const isUp =
-      alertRule.direction === 'up';
-
-    const title = isUp
-      ? `${stock.code} yükseliş alarmı`
-      : `${stock.code} düşüş alarmı`;
-
-    const formattedChange =
-      `${changePercent > 0 ? '+' : ''}` +
-      `${changePercent.toFixed(2)}%`;
-
-    const body =
-      `${stock.code} bugün ${formattedChange}. ` +
-      `Son fiyat: ${formatPrice(
-        quote.price,
-        stock.market
-      )}`;
-
-    const result =
-      await messaging.sendEachForMulticast({
-        tokens,
-        notification: {
-          title,
-          body,
-        },
-        data: {
-          url: '/senkron-panel',
-          symbol: stock.code,
-          market: stock.market,
-          changePercent:
-            String(changePercent),
-          price: String(quote.price ?? ''),
-        },
-        webpush: {
-          fcmOptions: {
-            link: `${baseUrl}/senkron-panel`,
-          },
-          notification: {
-            icon: '/icon-192.png',
-            badge: '/icon-192.png',
-          },
-        },
-      });
-
-    await alertRef.set({
-      symbol: stock.code,
-      market: stock.market,
-      direction: alertRule.direction,
-      threshold: alertRule.threshold,
-      changePercent,
-      price: Number(quote.price),
-      sentAt:
-        new Date().toISOString(),
-      successCount:
-        result.successCount,
-      failureCount:
-        result.failureCount,
+    const result = await sendAlert({
+      messaging,
+      tokens,
+      baseUrl,
+      stock,
+      quote,
+      type: 'portfolio-daily-move',
+      title:
+        direction === 'up'
+          ? `${stock.code} yükseliş alarmı`
+          : `${stock.code} düşüş alarmı`,
+      body:
+        `${stock.code} bugün ` +
+        `${change > 0 ? '+' : ''}` +
+        `${change.toFixed(2)}%. ` +
+        `Son fiyat: ${formatPrice(
+          quote.price,
+          stock.market
+        )}`,
     });
+
+    if (result.successCount > 0) {
+      await historyRef.set({
+        symbol: stock.code,
+        market: stock.market,
+        direction,
+        changePercent: change,
+        price:
+          numberValue(quote.price),
+        sentAt:
+          new Date().toISOString(),
+        successCount:
+          result.successCount,
+        failureCount:
+          result.failureCount,
+      });
+    }
 
     sent += result.successCount;
   }
 
+  // Kullanıcının takip listesinden kurduğu özel alarmlar
+  for (const alert of customAlerts) {
+    const quote = quoteFor(alert);
+
+    if (!quote) continue;
+
+    const rules =
+      customRules(alert, quote);
+
+    for (const rule of rules) {
+      const safeTarget =
+        String(rule.target)
+          .replace('.', '_');
+
+      const historyId = [
+        'custom',
+        dateKey,
+        alert.id,
+        rule.key,
+        safeTarget,
+      ].join('_');
+
+      const historyRef = userRef
+        .collection('alertHistory')
+        .doc(historyId);
+
+      if ((await historyRef.get()).exists) {
+        continue;
+      }
+
+      const result = await sendAlert({
+        messaging,
+        tokens,
+        baseUrl,
+        stock: alert,
+        quote,
+        type: `custom-${rule.key}`,
+        title:
+          `${alert.code} ${rule.label} alarmı`,
+        body:
+          `${rule.message} Son fiyat: ` +
+          `${formatPrice(
+            quote.price,
+            alert.market
+          )}`,
+      });
+
+      if (result.successCount > 0) {
+        await historyRef.set({
+          customAlertId: alert.id,
+          symbol: alert.code,
+          market: alert.market,
+          rule: rule.key,
+          target: rule.target,
+          price:
+            numberValue(quote.price),
+          changePercent:
+            numberValue(
+              quote.changePercent
+            ),
+          sentAt:
+            new Date().toISOString(),
+          successCount:
+            result.successCount,
+          failureCount:
+            result.failureCount,
+        });
+      }
+
+      sent += result.successCount;
+    }
+  }
+
   return {
-    checked: stocks.length,
+    checked: allStocks.length,
+    customChecked:
+      customAlerts.length,
     sent,
   };
 }
@@ -339,9 +558,7 @@ export async function GET(request) {
         {
           error: 'Yetkisiz erişim.',
         },
-        {
-          status: 401,
-        }
+        { status: 401 }
       );
     }
 
@@ -355,32 +572,42 @@ export async function GET(request) {
     const messaging = getMessaging();
 
     const usersSnapshot =
-      await adminDb.collection('users').get();
+      await adminDb
+        .collection('users')
+        .get();
 
     const dateKey =
       getIstanbulDateKey();
 
     let totalChecked = 0;
+    let totalCustomChecked = 0;
     let totalSent = 0;
 
-    for (const userDoc of usersSnapshot.docs) {
-      const result = await processUser({
-        adminDb,
-        messaging,
-        baseUrl,
-        userDoc,
-        dateKey,
-      });
+    for (
+      const userDoc of usersSnapshot.docs
+    ) {
+      const result =
+        await processUser({
+          messaging,
+          baseUrl,
+          userDoc,
+          dateKey,
+        });
 
       totalChecked += result.checked;
+      totalCustomChecked +=
+        result.customChecked;
       totalSent += result.sent;
     }
 
     return NextResponse.json({
       ok: true,
+      version: 'price-alerts-custom-v1',
       dateKey,
       users: usersSnapshot.size,
       checked: totalChecked,
+      customChecked:
+        totalCustomChecked,
       sent: totalSent,
     });
   } catch (error) {
@@ -394,11 +621,9 @@ export async function GET(request) {
         ok: false,
         error:
           error?.message ||
-          'Alarm kontrolü başarısız.',
+          'Fiyat alarmları kontrol edilemedi.',
       },
-      {
-        status: 500,
-      }
+      { status: 500 }
     );
   }
 }

@@ -3,15 +3,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { addDoc, collection, deleteDoc, doc, onSnapshot, updateDoc, writeBatch } from 'firebase/firestore';
+import { addDoc, collection, deleteDoc, doc, onSnapshot, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { firebaseAuth, firestoreDb } from '../../lib-firebase';
-import TradingViewChart from './TradingViewChart';
 import ScannerCenter from './components/ScannerCenter';
 import SkyAI from './components/SkyAI';
 import NotificationButton from './components/NotificationButton';
 import OptionsPressureModal from './components/OptionsPressureModal';
 import BistTradeCenter from './components/BistTradeCenter';
 import NasdaqSectorFlow from './components/NasdaqSectorFlow';
+import StickyNote from './components/StickyNote';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -24,7 +24,6 @@ export default function SenkronPanelPage() {
   const [usdTry, setUsdTry] = useState(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [selectedOptionsStock, setSelectedOptionsStock] = useState(null);
-  const [chartSymbol, setChartSymbol] = useState('NASDAQ:EOSE');
   const [istanbulClock, setIstanbulClock] = useState('');
 
   useEffect(() => {
@@ -675,35 +674,6 @@ export default function SenkronPanelPage() {
           items={watchlist}
           prices={prices}
           userId={user.uid}
-          onSelectChart={(item) => {
-            const selectedCode = String(
-              item?.code || ''
-            )
-              .trim()
-              .toUpperCase();
-
-            if (!selectedCode) return;
-
-            const prefix =
-              item.market === 'bist'
-                ? 'BIST'
-                : 'NASDAQ';
-
-            setChartSymbol(
-              `${prefix}:${selectedCode}`
-            );
-
-            window.setTimeout(() => {
-              document
-                .getElementById(
-                  'sky-live-chart'
-                )
-                ?.scrollIntoView({
-                  behavior: 'smooth',
-                  block: 'start',
-                });
-            }, 100);
-          }}
         />
         <ClosedPositionsPanel
           positions={closedPositions}
@@ -716,26 +686,15 @@ export default function SenkronPanelPage() {
       <ScannerCenter />
 
       <section
-        id="sky-live-chart"
-        style={styles.fullChartSection}
+        style={{
+          width: '100%',
+          maxWidth: '1600px',
+          margin: '0 auto 28px',
+          display: 'flex',
+          justifyContent: 'flex-start',
+        }}
       >
-        <div style={styles.sectionHeader}>
-          <h2 style={styles.sectionTitle}>
-            Gelişmiş Grafik
-          </h2>
-
-          <span style={styles.stockCount}>
-            {chartSymbol.split(':').pop()}
-          </span>
-        </div>
-
-        <div style={styles.fullChartWrapper}>
-          <TradingViewChart
-            symbol={chartSymbol}
-            userId={user.uid}
-            onRestoreSymbol={setChartSymbol}
-          />
-        </div>
+        <StickyNote userId={user.uid} />
       </section>
 
       {selectedOptionsStock && (
@@ -1330,11 +1289,194 @@ function WatchlistPanel({
   items,
   prices,
   userId,
-  onSelectChart,
 }) {
   const [processing, setProcessing] = useState(false);
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [watchlistOpen, setWatchlistOpen] = useState(false);
+  const [priceAlerts, setPriceAlerts] = useState([]);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    return onSnapshot(
+      collection(
+        firestoreDb,
+        'users',
+        userId,
+        'priceAlerts'
+      ),
+      (snapshot) => {
+        setPriceAlerts(
+          snapshot.docs.map((alertDoc) => ({
+            id: alertDoc.id,
+            ...alertDoc.data(),
+          }))
+        );
+      },
+      (error) => {
+        console.error(
+          'Fiyat alarmları okunamadı:',
+          error
+        );
+      }
+    );
+  }, [userId]);
+
+  async function configurePriceAlert(item) {
+    const code = String(item.code || '')
+      .trim()
+      .toUpperCase();
+
+    if (!code) return;
+
+    const market =
+      item.market === 'bist'
+        ? 'BIST'
+        : 'NASDAQ';
+
+    const alertId =
+      `${item.market}_${code}`
+        .replace(/[^a-zA-Z0-9_-]/g, '_');
+
+    const choice = window.prompt(
+      [
+        `${code} için alarm türünü seçin:`,
+        '',
+        '1 = Fiyat bunun ÜSTÜNE çıkınca',
+        '2 = Fiyat bunun ALTINA düşünce',
+        '3 = Günlük yükseliş yüzdesi',
+        '4 = Günlük düşüş yüzdesi',
+        '5 = Bu hissedeki TÜM alarmları sil',
+      ].join('\n'),
+      '1'
+    );
+
+    if (choice === null) return;
+
+    if (String(choice).trim() === '5') {
+      const confirmed = window.confirm(
+        `${code} için kurulan tüm alarmlar silinsin mi?`
+      );
+
+      if (!confirmed) return;
+
+      try {
+        await deleteDoc(
+          doc(
+            firestoreDb,
+            'users',
+            userId,
+            'priceAlerts',
+            alertId
+          )
+        );
+
+        window.alert(
+          `${code} alarmları silindi.`
+        );
+      } catch (error) {
+        window.alert(
+          `Alarm silinemedi: ${
+            error?.message || 'Bilinmeyen hata'
+          }`
+        );
+      }
+
+      return;
+    }
+
+    const rules = {
+      '1': {
+        field: 'priceAbove',
+        label: 'üst fiyat',
+      },
+      '2': {
+        field: 'priceBelow',
+        label: 'alt fiyat',
+      },
+      '3': {
+        field: 'percentUp',
+        label: 'yükseliş yüzdesi',
+      },
+      '4': {
+        field: 'percentDown',
+        label: 'düşüş yüzdesi',
+      },
+    };
+
+    const rule =
+      rules[String(choice).trim()];
+
+    if (!rule) {
+      window.alert(
+        '1, 2, 3, 4 veya 5 yazmalısınız.'
+      );
+      return;
+    }
+
+    const defaultValue =
+      rule.field === 'percentUp'
+        ? '5'
+        : rule.field === 'percentDown'
+          ? '7'
+          : '';
+
+    const targetInput = window.prompt(
+      `${code} için ${rule.label} değerini yazın:`,
+      defaultValue
+    );
+
+    if (targetInput === null) return;
+
+    const target = toNumber(targetInput);
+
+    if (target <= 0) {
+      window.alert(
+        'Alarm değeri sıfırdan büyük olmalıdır.'
+      );
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      await setDoc(
+        doc(
+          firestoreDb,
+          'users',
+          userId,
+          'priceAlerts',
+          alertId
+        ),
+        {
+          symbol: code,
+          market,
+          enabled: true,
+          [rule.field]: target,
+          updatedAt:
+            new Date().toISOString(),
+        },
+        { merge: true }
+      );
+
+      window.alert(
+        `${code} ${rule.label} alarmı kuruldu.`
+      );
+    } catch (error) {
+      console.error(
+        'Fiyat alarmı kaydetme hatası:',
+        error
+      );
+
+      window.alert(
+        `Alarm kurulamadı: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
 
   async function addWatchItem() {
     const codeInput = window.prompt(
@@ -1715,6 +1857,20 @@ function WatchlistPanel({
 
             const currency = item.market === 'bist' ? 'TRY' : 'USD';
 
+            const alertId =
+              `${item.market}_${code}`
+                .replace(
+                  /[^a-zA-Z0-9_-]/g,
+                  '_'
+                );
+
+            const activeAlert =
+              priceAlerts.find(
+                (alert) =>
+                  alert.id === alertId &&
+                  alert.enabled !== false
+              );
+
             return (
               <div
                 key={item.id}
@@ -1756,40 +1912,59 @@ function WatchlistPanel({
                       gap: '7px',
                     }}
                   >
-                    <button
-                    type="button"
-                    draggable={false}
-                    onPointerDown={(event) =>
-                      event.stopPropagation()
-                    }
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onSelectChart?.(item);
-                    }}
-                    title={`${code} grafiğini aç`}
-                    style={{
-                      padding: 0,
-                      border: 0,
-                      background: 'transparent',
-                      color: '#f8fafc',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      textAlign: 'left',
-                    }}
-                  >
                     <strong
                       style={{
                         ...styles.listPrimary,
-                        color: '#7dd3fc',
-                        textDecoration: 'underline',
-                        textDecorationColor:
-                          'rgba(125,211,252,0.35)',
-                        textUnderlineOffset: '3px',
+                        color: '#f8fafc',
                       }}
                     >
                       ☆ {code}
                     </strong>
-                  </button>
+
+                    <button
+                      type="button"
+                      onPointerDown={(event) =>
+                        event.stopPropagation()
+                      }
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        configurePriceAlert(item);
+                      }}
+                      disabled={processing}
+                      title={
+                        activeAlert
+                          ? `${code} alarmını düzenle veya sil`
+                          : `${code} için alarm kur`
+                      }
+                      style={{
+                        minHeight: '25px',
+                        padding: '0 7px',
+                        border:
+                          activeAlert
+                            ? '1px solid rgba(74,222,128,0.50)'
+                            : '1px solid rgba(212,175,55,0.42)',
+                        borderRadius: '7px',
+                        background:
+                          activeAlert
+                            ? 'rgba(34,197,94,0.13)'
+                            : 'rgba(212,175,55,0.10)',
+                        color:
+                          activeAlert
+                            ? '#86efac'
+                            : '#f0d675',
+                        cursor:
+                          processing
+                            ? 'default'
+                            : 'pointer',
+                        opacity:
+                          processing ? 0.55 : 1,
+                        fontSize: '9px',
+                        fontWeight: 900,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      🔔 {activeAlert ? 'Kurulu' : 'Alarm'}
+                    </button>
 
                     <button
                       type="button"
