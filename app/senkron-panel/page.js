@@ -1669,6 +1669,39 @@ function WatchlistPanel({
           padding: 0 !important;
         }
 
+        .sky-watch-symbol-actions {
+          align-content: flex-start;
+        }
+
+        .sky-alert-button {
+          height: 27px !important;
+          min-height: 27px !important;
+          padding: 0 7px !important;
+          font-size: 9px !important;
+          line-height: 1 !important;
+        }
+
+        @media (max-width: 1100px) and (min-width: 601px) {
+          .sky-watch-header,
+          .sky-watch-row {
+            grid-template-columns:
+              minmax(170px, 1.35fr)
+              minmax(115px, 0.9fr)
+              minmax(95px, 0.75fr)
+              52px !important;
+            gap: 11px !important;
+          }
+
+          .sky-watch-low,
+          .sky-watch-high {
+            display: none !important;
+          }
+
+          .sky-watch-row {
+            align-items: center !important;
+          }
+        }
+
         @media (max-width: 600px) {
           .sky-watch-card {
             padding: 14px !important;
@@ -1678,10 +1711,10 @@ function WatchlistPanel({
           .sky-watch-header,
           .sky-watch-row {
             grid-template-columns:
-              minmax(72px, 1.2fr)
-              minmax(68px, 0.9fr)
-              minmax(62px, 0.85fr)
-              38px !important;
+              minmax(120px, 1.3fr)
+              minmax(74px, 0.9fr)
+              minmax(64px, 0.75fr)
+              36px !important;
             gap: 7px !important;
           }
 
@@ -1702,10 +1735,22 @@ function WatchlistPanel({
             letter-spacing: 0 !important;
           }
 
+          .sky-alert-button {
+            height: 25px !important;
+            min-height: 25px !important;
+            padding: 0 5px !important;
+            font-size: 8px !important;
+          }
+
+          .sky-watch-symbol-actions {
+            gap: 4px !important;
+            row-gap: 5px !important;
+          }
+
           .sky-remove-button {
-            width: 30px !important;
-            min-width: 30px !important;
-            height: 30px !important;
+            width: 27px !important;
+            min-width: 27px !important;
+            height: 25px !important;
           }
         }
       `}</style>
@@ -1906,22 +1951,28 @@ function WatchlistPanel({
               >
                 <div>
                   <div
+                    className="sky-watch-symbol-actions"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '7px',
+                      gap: '6px',
+                      rowGap: '6px',
+                      flexWrap: 'wrap',
                     }}
                   >
                     <strong
                       style={{
                         ...styles.listPrimary,
                         color: '#f8fafc',
+                        flexBasis: '100%',
+                        width: '100%',
                       }}
                     >
                       ☆ {code}
                     </strong>
 
                     <button
+                      className="sky-alert-button"
                       type="button"
                       onPointerDown={(event) =>
                         event.stopPropagation()
