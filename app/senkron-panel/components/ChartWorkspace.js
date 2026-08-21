@@ -178,8 +178,8 @@ function ChartTile({
   onRemove,
 }) {
   const hostRef = useRef(null);
-  const previewSeriesRef = useRef(null);
-  const pendingPointRef = useRef(null);
+  const chartApiRef = useRef(null);
+  const candleSeriesRef = useRef(null);
   const drawingModeRef = useRef(false);
 
   const [draft, setDraft] =
@@ -192,12 +192,20 @@ function ChartTile({
     useState(false);
   const [drawStatus, setDrawStatus] =
     useState('');
+  const [anchorData, setAnchorData] =
+    useState(null);
+  const [anchorPixel, setAnchorPixel] =
+    useState(null);
+  const [previewPixel, setPreviewPixel] =
+    useState(null);
 
   drawingModeRef.current = drawingMode;
 
   useEffect(() => {
     setDraft(config.symbol);
-    pendingPointRef.current = null;
+    setAnchorData(null);
+    setAnchorPixel(null);
+    setPreviewPixel(null);
   }, [config.symbol]);
 
   useEffect(() => {
@@ -206,9 +214,9 @@ function ChartTile({
         'Grafikte ilk noktayı seçin'
       );
     } else {
-      setDrawStatus('');
-      pendingPointRef.current = null;
-      previewSeriesRef.current?.setData([]);
+      setAnchorData(null);
+      setAnchorPixel(null);
+      setPreviewPixel(null);
     }
   }, [drawingMode]);
 
@@ -269,20 +277,8 @@ function ChartTile({
       }
     );
 
-    const previewSeries =
-      chart.addSeries(
-        LineSeries,
-        {
-          color: '#facc15',
-          lineWidth: 2,
-          priceLineVisible: false,
-          lastValueVisible: false,
-          crosshairMarkerVisible: false,
-        }
-      );
-
-    previewSeriesRef.current =
-      previewSeries;
+    chartApiRef.current = chart;
+    candleSeriesRef.current = candles;
 
     for (
       const drawing of
@@ -323,137 +319,6 @@ function ChartTile({
         sortedPoints(first, second)
       );
     }
-
-    function chartPoint(parameter) {
-      if (
-        !parameter?.point ||
-        parameter.time === undefined
-      ) {
-        return null;
-      }
-
-      const price =
-        candles.coordinateToPrice(
-          parameter.point.y
-        );
-
-      const time =
-        Number(parameter.time);
-
-      if (
-        !Number.isFinite(price) ||
-        !Number.isFinite(time)
-      ) {
-        return null;
-      }
-
-      return {
-        time,
-        value: price,
-      };
-    }
-
-    function handleClick(parameter) {
-      if (!drawingModeRef.current) return;
-
-      const point =
-        chartPoint(parameter);
-
-      if (!point) return;
-
-      if (!pendingPointRef.current) {
-        pendingPointRef.current = point;
-
-        previewSeries.setData([
-          point,
-        ]);
-
-        setDrawStatus(
-          'Şimdi ikinci noktayı seçin'
-        );
-
-        return;
-      }
-
-      const first =
-        pendingPointRef.current;
-
-      if (first.time === point.time) {
-        setDrawStatus(
-          'İkinci noktayı farklı bir mum üzerinde seçin'
-        );
-        return;
-      }
-
-      // Fare hareketi devam etmeden çizim
-      // modunu eşzamanlı olarak kapat.
-      drawingModeRef.current = false;
-      pendingPointRef.current = null;
-      previewSeries.setData([]);
-
-      const completedPoints =
-        sortedPoints(first, point);
-
-      // Kaydı beklemeden bitmiş çizgiyi
-      // doğrudan grafikte sabitle.
-      const completedSeries =
-        chart.addSeries(
-          LineSeries,
-          {
-            color: '#38bdf8',
-            lineWidth: 3,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false,
-          }
-        );
-
-      completedSeries.setData(
-        completedPoints
-      );
-
-      setDrawingMode(false);
-      setDrawStatus(
-        'Trend çizgisi kaydedildi'
-      );
-
-      onChange(config.id, {
-        drawings: [
-          ...(config.drawings || []),
-          {
-            id: `trend-${Date.now()}`,
-            time1: first.time,
-            price1: first.value,
-            time2: point.time,
-            price2: point.value,
-          },
-        ],
-      });
-    }
-
-    function handleMove(parameter) {
-      if (
-        !drawingModeRef.current ||
-        !pendingPointRef.current
-      ) {
-        return;
-      }
-
-      const point =
-        chartPoint(parameter);
-
-      if (!point) return;
-
-      previewSeries.setData(
-        sortedPoints(
-          pendingPointRef.current,
-          point
-        )
-      );
-    }
-
-    chart.subscribeClick(handleClick);
-    chart.subscribeCrosshairMove(handleMove);
 
     const observer =
       new ResizeObserver(() => {
@@ -580,15 +445,8 @@ function ChartTile({
       controller.abort();
       observer.disconnect();
 
-      chart.unsubscribeClick(
-        handleClick
-      );
-
-      chart.unsubscribeCrosshairMove(
-        handleMove
-      );
-
-      previewSeriesRef.current = null;
+      chartApiRef.current = null;
+      candleSeriesRef.current = null;
       chart.remove();
     };
   }, [
@@ -600,6 +458,140 @@ function ChartTile({
     config.drawings,
     fullscreen,
   ]);
+
+  function getDrawingPoint(event) {
+    const chart = chartApiRef.current;
+    const candles =
+      candleSeriesRef.current;
+
+    if (!chart || !candles) {
+      return null;
+    }
+
+    const bounds =
+      event.currentTarget
+        .getBoundingClientRect();
+
+    const x =
+      event.clientX - bounds.left;
+
+    const y =
+      event.clientY - bounds.top;
+
+    const time =
+      chart.timeScale()
+        .coordinateToTime(x);
+
+    const price =
+      candles.coordinateToPrice(y);
+
+    const numericTime = Number(time);
+    const numericPrice = Number(price);
+
+    if (
+      !Number.isFinite(numericTime) ||
+      !Number.isFinite(numericPrice)
+    ) {
+      return null;
+    }
+
+    return {
+      data: {
+        time: numericTime,
+        value: numericPrice,
+      },
+      pixel: {
+        x,
+        y,
+      },
+    };
+  }
+
+  function handleDrawPointerDown(event) {
+    event.preventDefault();
+    event.stopPropagation();
+
+    if (!drawingModeRef.current) {
+      return;
+    }
+
+    const point =
+      getDrawingPoint(event);
+
+    if (!point) {
+      setDrawStatus(
+        'Mumların bulunduğu alan içinde bir nokta seçin'
+      );
+      return;
+    }
+
+    if (!anchorData) {
+      setAnchorData(point.data);
+      setAnchorPixel(point.pixel);
+      setPreviewPixel(point.pixel);
+
+      setDrawStatus(
+        'İkinci noktaya bir kez tıklayın'
+      );
+
+      return;
+    }
+
+    if (
+      anchorData.time ===
+      point.data.time
+    ) {
+      setDrawStatus(
+        'İkinci noktayı farklı bir mum üzerinde seçin'
+      );
+      return;
+    }
+
+    // İkinci tıklamada çizim modu
+    // anında kapanır.
+    drawingModeRef.current = false;
+
+    const newDrawing = {
+      id: `trend-${Date.now()}`,
+      time1: anchorData.time,
+      price1: anchorData.value,
+      time2: point.data.time,
+      price2: point.data.value,
+    };
+
+    setDrawingMode(false);
+    setAnchorData(null);
+    setAnchorPixel(null);
+    setPreviewPixel(null);
+    setDrawStatus('');
+
+    onChange(config.id, {
+      drawings: [
+        ...(config.drawings || []),
+        newDrawing,
+      ],
+    });
+  }
+
+  function handleDrawPointerMove(event) {
+    if (
+      !drawingModeRef.current ||
+      !anchorPixel
+    ) {
+      return;
+    }
+
+    const bounds =
+      event.currentTarget
+        .getBoundingClientRect();
+
+    setPreviewPixel({
+      x:
+        event.clientX - bounds.left,
+      y:
+        event.clientY - bounds.top,
+    });
+  }
 
   function applySymbol() {
     const clean = String(draft)
@@ -755,17 +747,34 @@ function ChartTile({
           color: #fca5a5;
         }
 
-        .chartHost {
+        .chartArea {
           width: 100%;
           flex: 1 1 auto;
           min-height: 280px;
-          cursor:
-            ${drawingMode
-              ? 'crosshair'
-              : 'default'};
+          position: relative;
+          overflow: hidden;
         }
 
-        .fullscreen .chartHost {
+        .chartHost {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .drawingOverlay {
+          position: absolute;
+          inset: 0;
+          z-index: 20;
+          width: 100%;
+          height: 100%;
+          display: block;
+          cursor: crosshair;
+          touch-action: none;
+          user-select: none;
+        }
+
+        .fullscreen .chartArea {
           min-height: 0;
         }
 
@@ -982,10 +991,51 @@ function ChartTile({
         ) : null}
       </div>
 
-      <div
-        ref={hostRef}
-        className="chartHost"
-      />
+      <div className="chartArea">
+        <div
+          ref={hostRef}
+          className="chartHost"
+        />
+
+        {drawingMode ? (
+          <svg
+            className="drawingOverlay"
+            onPointerDown={
+              handleDrawPointerDown
+            }
+            onPointerMove={
+              handleDrawPointerMove
+            }
+            onContextMenu={(event) =>
+              event.preventDefault()
+            }
+          >
+            {anchorPixel &&
+            previewPixel ? (
+              <>
+                <line
+                  x1={anchorPixel.x}
+                  y1={anchorPixel.y}
+                  x2={previewPixel.x}
+                  y2={previewPixel.y}
+                  stroke="#facc15"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                />
+
+                <circle
+                  cx={anchorPixel.x}
+                  cy={anchorPixel.y}
+                  r="4"
+                  fill="#facc15"
+                  stroke="#111827"
+                  strokeWidth="1.5"
+                />
+              </>
+            ) : null}
+          </svg>
+        ) : null}
+      </div>
     </article>
   );
 }
