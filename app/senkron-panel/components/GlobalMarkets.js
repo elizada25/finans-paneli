@@ -534,6 +534,115 @@ export default function GlobalMarkets() {
           }
         }
 
+
+        /* SKY-MARKETS-SAFE-TABLE-START */
+        .group {
+          margin-bottom: 13px !important;
+        }
+
+        .grid {
+          display: block !important;
+          gap: 0 !important;
+          overflow-x: auto !important;
+          border:
+            1px solid rgba(212,175,55,0.18) !important;
+          border-radius: 9px !important;
+          background: #17130c !important;
+        }
+
+        .card {
+          display: grid !important;
+          grid-template-columns:
+            minmax(170px, 1.3fr)
+            minmax(105px, 0.7fr)
+            minmax(85px, 0.55fr)
+            minmax(165px, 0.8fr) !important;
+          align-items: center !important;
+          gap: 11px !important;
+          min-width: 570px !important;
+          min-height: 36px !important;
+          padding: 5px 11px !important;
+          border: 0 !important;
+          border-bottom:
+            1px solid rgba(148,163,184,0.10) !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+          transform: none !important;
+          box-sizing: border-box !important;
+        }
+
+        .card:last-child {
+          border-bottom: 0 !important;
+        }
+
+        .card:hover {
+          background:
+            rgba(56,189,248,0.05) !important;
+        }
+
+        .cardTop,
+        .priceRow {
+          display: contents !important;
+        }
+
+        .cardTop > div {
+          grid-column: 1 !important;
+        }
+
+        .price {
+          grid-column: 2 !important;
+          font-size: 10px !important;
+        }
+
+        .change {
+          grid-column: 3 !important;
+          font-size: 9px !important;
+        }
+
+        .status {
+          display: none !important;
+        }
+
+        .details {
+          display: block !important;
+          grid-column: 4 !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          border: 0 !important;
+          text-align: right !important;
+        }
+
+        .details span {
+          display: none !important;
+        }
+
+        .details span:last-child {
+          display: block !important;
+          color: #cbd5e1 !important;
+          font-size: 8px !important;
+          font-weight: 750 !important;
+          white-space: nowrap !important;
+        }
+
+        .name {
+          font-size: 10px !important;
+        }
+
+        .country {
+          margin-top: 1px !important;
+          font-size: 8px !important;
+        }
+
+        .investing {
+          display: none !important;
+        }
+
+        .failed {
+          grid-column: 2 / 5 !important;
+          font-size: 8px !important;
+        }
+        /* SKY-MARKETS-SAFE-TABLE-END */
+
       `}</style>
 
       <div className="hero">
