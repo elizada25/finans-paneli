@@ -12,6 +12,7 @@ import OptionsPressureModal from './components/OptionsPressureModal';
 import BistTradeCenter from './components/BistTradeCenter';
 import NasdaqSectorFlow from './components/NasdaqSectorFlow';
 import StickyNote from './components/StickyNote';
+import GlobalMarkets from './components/GlobalMarkets';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -448,7 +449,8 @@ export default function SenkronPanelPage() {
         ['portfolio', '▣ Portföy'],
         ['ai', '✦ SKY AI'],
         ['trade', '↗ Trade Merkezi'],
-        ['market', '◉ NASDAQ'],
+        ['global', '◈ Piyasalar'],
+              ['market', '◉ NASDAQ'],
       ].map(([key, label]) => {
         const selected =
           activeSection === key;
@@ -870,6 +872,10 @@ export default function SenkronPanelPage() {
         <section style={styles.dashboardPanels}>
           <NewsPanel stocks={stocks} />
         </section>
+      ) : null}
+
+      {activeSection === 'global' ? (
+        <GlobalMarkets />
       ) : null}
 
       {activeSection === 'market' ? (
