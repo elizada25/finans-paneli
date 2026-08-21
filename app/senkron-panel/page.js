@@ -1973,200 +1973,145 @@ function WatchlistPanel({
           }
         }
 
-        /* SKY-WATCHLIST-KESIN-FIX-START */
-        @media (min-width: 701px) {
-          .sky-watch-card {
-            width: calc(100% - 24px) !important;
-            max-width: 820px !important;
-            min-height: 0 !important;
-            margin: 0 auto !important;
-            padding: 14px !important;
-            box-sizing: border-box !important;
-          }
-
-          .sky-watch-header,
-          .sky-watch-row {
-            grid-template-columns:
-              minmax(145px, 1.2fr)
-              minmax(135px, 0.9fr)
-              minmax(95px, 0.65fr)
-              78px !important;
-            gap: 12px !important;
-          }
-
-          .sky-watch-header {
-            padding: 7px 0 !important;
-            font-size: 9px !important;
-          }
-
-          .sky-watch-row {
-            min-height: 0 !important;
-            padding: 8px 0 !important;
-          }
-
-          .sky-watch-row strong {
-            font-size: 11px !important;
-          }
-
-          .sky-watch-row button {
-            width: 30px !important;
-            min-width: 30px !important;
-            height: 29px !important;
-            min-height: 29px !important;
-            padding: 0 !important;
-          }
-        }
-
-        @media (max-width: 700px) {
-          .sky-watch-card {
-            width: 100% !important;
-            max-width: 100% !important;
-            min-height: 0 !important;
-            margin: 0 !important;
-          }
-        }
-        /* SKY-WATCHLIST-KESIN-FIX-END */
 
 
-        /* SKY-WATCHLIST-YATAY-GRID-START */
+
+
+
+
+        /* SKY-WATCHLIST-MATRIKS-START */
         .sky-watch-card {
           width: 100% !important;
           max-width: none !important;
           min-height: 0 !important;
           margin: 0 !important;
-          padding: 14px !important;
+          padding: 13px !important;
+          overflow-x: auto !important;
           box-sizing: border-box !important;
         }
 
-        .sky-watch-header {
-          display: none !important;
-        }
-
-        .sky-watch-grid {
-          display: grid !important;
-          grid-template-columns:
-            repeat(
-              auto-fill,
-              minmax(300px, 1fr)
-            ) !important;
-          gap: 9px !important;
-          padding-top: 5px !important;
-        }
-
+        .sky-watch-header,
         .sky-watch-row {
           display: grid !important;
           grid-template-columns:
-            minmax(90px, 1fr)
-            minmax(80px, auto)
-            auto !important;
-          grid-template-rows:
-            auto auto !important;
+            minmax(130px, 1.25fr)
+            minmax(105px, 0.85fr)
+            minmax(90px, 0.7fr)
+            minmax(90px, 0.7fr)
+            minmax(90px, 0.65fr)
+            72px !important;
           align-items: center !important;
-          gap: 4px 9px !important;
-          min-width: 0 !important;
-          min-height: 68px !important;
-          padding: 9px 10px !important;
-          border:
-            1px solid rgba(212,175,55,0.16) !important;
-          border-radius: 10px !important;
-          background:
-            rgba(255,255,255,0.018) !important;
+          gap: 10px !important;
+          min-width: 720px !important;
+        }
+
+        .sky-watch-header {
+          padding: 6px 8px !important;
+          border-bottom:
+            1px solid rgba(148,163,184,0.18) !important;
+          color: #64748b !important;
+          font-size: 8px !important;
+          font-weight: 900 !important;
+        }
+
+        .sky-watch-grid {
+          display: block !important;
+          padding: 0 !important;
+        }
+
+        .sky-watch-row {
+          min-height: 38px !important;
+          padding: 5px 8px !important;
+          border: 0 !important;
+          border-bottom:
+            1px solid rgba(212,175,55,0.11) !important;
+          border-radius: 0 !important;
+          background: transparent !important;
           box-sizing: border-box !important;
         }
 
         .sky-watch-row:hover {
-          border-color:
-            rgba(56,189,248,0.34) !important;
           background:
             rgba(56,189,248,0.045) !important;
         }
 
+        .sky-watch-row > :nth-child(1),
+        .sky-watch-row > :nth-child(2),
+        .sky-watch-row > :nth-child(3),
+        .sky-watch-row > :nth-child(4),
+        .sky-watch-row > :nth-child(5),
+        .sky-watch-row > :nth-child(6) {
+          grid-row: 1 !important;
+          min-width: 0 !important;
+        }
+
         .sky-watch-row > :nth-child(1) {
-          grid-column: 1;
-          grid-row: 1 / 3;
-          min-width: 0;
+          grid-column: 1 !important;
         }
 
         .sky-watch-row > :nth-child(2) {
-          grid-column: 2;
-          grid-row: 1;
-          min-width: 0;
+          grid-column: 2 !important;
         }
 
         .sky-watch-row > :nth-child(3) {
-          grid-column: 2;
-          grid-row: 2;
-          font-size: 10px !important;
-          text-align: left;
+          grid-column: 3 !important;
         }
 
         .sky-watch-row > :nth-child(4) {
-          grid-column: 3;
-          grid-row: 1 / 3;
+          grid-column: 4 !important;
+        }
+
+        .sky-watch-row > :nth-child(5) {
+          grid-column: 5 !important;
+          text-align: left !important;
+        }
+
+        .sky-watch-row > :nth-child(6) {
+          grid-column: 6 !important;
           display: flex !important;
           align-items: center !important;
-          justify-content: flex-end !important;
-          gap: 5px !important;
+          justify-content: flex-start !important;
+          gap: 4px !important;
         }
 
         .sky-watch-row strong {
-          font-size: 11px !important;
+          font-size: 10px !important;
+          line-height: 1.15 !important;
         }
 
         .sky-watch-row span {
-          font-size: 9px;
+          font-size: 8px !important;
+          line-height: 1.15 !important;
         }
 
         .sky-watch-row button {
-          width: 28px !important;
-          min-width: 28px !important;
-          height: 28px !important;
-          min-height: 28px !important;
+          width: 25px !important;
+          min-width: 25px !important;
+          height: 24px !important;
+          min-height: 24px !important;
           padding: 0 !important;
-          font-size: 13px !important;
-        }
-
-        .sky-watch-row .sky-remove-button {
-          width: 28px !important;
-          min-width: 28px !important;
-          height: 28px !important;
+          font-size: 11px !important;
+          border-radius: 5px !important;
         }
 
         .sky-watch-row .sky-drag-button {
-          width: 30px !important;
-          min-width: 30px !important;
-          height: 28px !important;
-          font-size: 14px !important;
-        }
-
-        @media (max-width: 1050px) {
-          .sky-watch-grid {
-            grid-template-columns:
-              repeat(
-                auto-fill,
-                minmax(280px, 1fr)
-              ) !important;
-          }
+          width: 27px !important;
+          min-width: 27px !important;
+          height: 24px !important;
+          font-size: 12px !important;
         }
 
         @media (max-width: 700px) {
           .sky-watch-card {
-            width: 100% !important;
-            padding: 12px !important;
+            padding: 10px !important;
           }
 
-          .sky-watch-grid {
-            grid-template-columns:
-              1fr !important;
-            gap: 7px !important;
-          }
-
+          .sky-watch-header,
           .sky-watch-row {
-            min-height: 64px !important;
-            padding: 8px !important;
+            min-width: 700px !important;
           }
         }
-        /* SKY-WATCHLIST-YATAY-GRID-END */
+        /* SKY-WATCHLIST-MATRIKS-END */
 
       `}</style>
 
@@ -2245,6 +2190,8 @@ function WatchlistPanel({
       >
         <span>Hisse</span>
         <span>Son</span>
+        <span className="sky-watch-low">Düşük</span>
+        <span className="sky-watch-high">Yüksek</span>
         <span>% Değişim</span>
         <span>İşlem</span>
       </div>
@@ -2452,6 +2399,30 @@ function WatchlistPanel({
                     </span>
                   ) : null}
                 </div>
+
+                <span
+                  className="sky-watch-low"
+                  style={styles.watchPrice}
+                >
+                  {dayLow > 0
+                    ? formatMoney(
+                        dayLow,
+                        currency
+                      )
+                    : '—'}
+                </span>
+
+                <span
+                  className="sky-watch-high"
+                  style={styles.watchPrice}
+                >
+                  {dayHigh > 0
+                    ? formatMoney(
+                        dayHigh,
+                        currency
+                      )
+                    : '—'}
+                </span>
 
                 <strong
                   style={{
