@@ -446,10 +446,9 @@ export default function SenkronPanelPage() {
       {[
         ['overview', '⌂ Özet'],
         ['portfolio', '▣ Portföy'],
-        ['watchlist', '☆ Takip & Alarmlar'],
-        ['trade', '↗ Trade Merkezi'],
-        ['market', '◉ Piyasa Merkezi'],
         ['ai', '✦ SKY AI'],
+        ['trade', '↗ Trade Merkezi'],
+        ['market', '◉ NASDAQ'],
       ].map(([key, label]) => {
         const selected =
           activeSection === key;
@@ -511,6 +510,40 @@ export default function SenkronPanelPage() {
         }}
       >
         ◇ Şirket Analizi
+      </button>
+      <button
+        type="button"
+        onClick={() =>
+          setActiveSection('notes')
+        }
+        aria-pressed={
+          activeSection === 'notes'
+        }
+        style={{
+          minHeight: '38px',
+          padding: '0 13px',
+          flex: '0 0 auto',
+          border:
+            activeSection === 'notes'
+              ? '1px solid rgba(212,175,55,0.65)'
+              : '1px solid rgba(251,191,36,0.25)',
+          borderRadius: '9px',
+          color:
+            activeSection === 'notes'
+              ? '#111827'
+              : '#fde68a',
+          background:
+            activeSection === 'notes'
+              ? 'linear-gradient(135deg,#d4af37,#f0d675)'
+              : 'rgba(251,191,36,0.07)',
+          fontFamily: 'inherit',
+          fontSize: '11px',
+          fontWeight: 900,
+          whiteSpace: 'nowrap',
+          cursor: 'pointer',
+        }}
+      >
+        📌 Notlar
       </button>
     </nav>
 
@@ -774,15 +807,57 @@ export default function SenkronPanelPage() {
 
           <section style={styles.dashboardPanels}>
             <ClosedPositionsPanel
-              positions={closedPositions}
+              title="Kapanan BIST Pozisyonları"
+              positions={closedPositions.filter(
+                (position) => {
+                  const market = String(
+                    position.market ||
+                    position.exchange ||
+                    position.currency ||
+                    ''
+                  ).toLowerCase();
+
+                  return (
+                    market.includes('bist') ||
+                    market.includes('try')
+                  );
+                }
+              )}
+              userId={user.uid}
+            />
+
+            <ClosedPositionsPanel
+              title="Kapanan NASDAQ Pozisyonları"
+              positions={closedPositions.filter(
+                (position) => {
+                  const market = String(
+                    position.market ||
+                    position.exchange ||
+                    position.currency ||
+                    ''
+                  ).toLowerCase();
+
+                  return (
+                    market.includes('nasdaq') ||
+                    market === 'us' ||
+                    market.includes('usd')
+                  );
+                }
+              )}
               userId={user.uid}
             />
           </section>
         </>
       ) : null}
 
-      {activeSection === 'watchlist' ? (
-        <section style={styles.dashboardPanels}>
+      {activeSection === 'overview' ? (
+        <section
+          style={{
+            width: '100%',
+            maxWidth: '520px',
+            margin: '0 0 28px',
+          }}
+        >
           <WatchlistPanel
             items={watchlist}
             prices={prices}
@@ -808,7 +883,7 @@ export default function SenkronPanelPage() {
         </>
       ) : null}
 
-      {activeSection === 'overview' ? (
+      {activeSection === 'notes' ? (
         <section
           style={{
             width: '100%',
@@ -2228,7 +2303,11 @@ function WatchlistPanel({
   );
 }
 
-function ClosedPositionsPanel({ positions, userId }) {
+function ClosedPositionsPanel({
+  positions,
+  userId,
+  title = 'Kapanan Pozisyonlar',
+}) {
   const [processing, setProcessing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -2395,8 +2474,8 @@ function ClosedPositionsPanel({ positions, userId }) {
           }}
         >
           <h3 style={styles.panelTitle}>
-            Kapanan Pozisyonlar
-          </h3>
+          {title}
+        </h3>
 
           <span
             style={{
