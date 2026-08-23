@@ -474,9 +474,11 @@ export default function SenkronPanelPage() {
               padding: '0 13px',
               flex: '0 0 auto',
               order:
-                key === 'finance'
-                  ? 90
-                  : 0,
+                key === 'btc'
+                  ? 80
+                  : key === 'finance'
+                    ? 90
+                    : 0,
               border: selected
                 ? '1px solid rgba(212,175,55,0.65)'
                 : '1px solid rgba(148,163,184,0.15)',
