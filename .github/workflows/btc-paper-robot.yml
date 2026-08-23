@@ -1,0 +1,24 @@
+
+name: BTC Sanal Robot
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: sky-btc-paper-robot
+  cancel-in-progress: false
+
+jobs:
+  run-btc-paper-robot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: BTC sanal robotunu çalıştır
+        run: |
+          curl --fail-with-body \
+            --retry 2 \
+            --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.ALERT_CRON_SECRET }}" \
+            "https://finans-paneli-amber.vercel.app/api/alerts/btc-paper-robot"

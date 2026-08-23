@@ -16,6 +16,7 @@ import GlobalMarkets from './components/GlobalMarkets';
 import PersonalFinance from './components/PersonalFinance';
 import BistWatchlist from './components/BistWatchlist';
 import ChartWorkspace from './components/ChartWorkspace';
+import BtcCenter from './components/BtcCenter';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -455,6 +456,7 @@ export default function SenkronPanelPage() {
         ['ai', '✦ SKY AI'],
         ['trade', '↗ Trade Merkezi'],
         ['market', '◉ NASDAQ'],
+        ['btc', '₿ BTC Merkezi'],
       ].map(([key, label]) => {
         const selected =
           activeSection === key;
@@ -627,6 +629,10 @@ export default function SenkronPanelPage() {
         📌 Notlar
       </button>
     </nav>
+
+    {activeSection === 'btc' ? (
+      <BtcCenter userId={user.uid} />
+    ) : null}
 
     {activeSection === 'finance' ? (
       <PersonalFinance
