@@ -90,24 +90,24 @@ export async function POST(request) {
     const response = await messaging.sendEachForMulticast({
       tokens,
       notification: {
-        title: '🔔 SKY FİNANS TEST',
-        body: 'Gerçek test bildirimi başarıyla gönderildi.',
+        title: '📰 HABER BAĞLANTI TESTİ',
+        body: 'Bu bildirime dokununca haber kaynağı açılmalıdır.',
       },
       data: {
-        type: 'test',
-        url: '/senkron-panel',
+        type: 'news-test',
+        url: 'https://www.reuters.com/markets/',
         timestamp: String(Date.now()),
       },
       webpush: {
         notification: {
-          title: '🔔 SKY FİNANS TEST',
-          body: 'Gerçek test bildirimi başarıyla gönderildi.',
+          title: '📰 HABER BAĞLANTI TESTİ',
+          body: 'Bu bildirime dokununca haber kaynağı açılmalıdır.',
           icon: '/icon-192.png',
           badge: '/icon-192.png',
           requireInteraction: true,
         },
         fcmOptions: {
-          link: '/senkron-panel',
+          link: 'https://www.reuters.com/markets/',
         },
       },
     });
