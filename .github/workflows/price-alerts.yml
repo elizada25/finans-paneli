@@ -49,3 +49,15 @@ jobs:
           else
             echo "Hafta sonu: teknik ve portföy kontrolü atlandı."
           fi
+
+  test-news-link:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Haber bağlantısı testi gönder
+        run: |
+          curl --fail-with-body \
+            --retry 2 \
+            --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.ALERT_CRON_SECRET }}" \
+            "https://finans-paneli-amber.vercel.app/api/test-news-link"
