@@ -335,6 +335,105 @@ export default function BtcCenter({
         100
       : 0;
 
+  /* BTC-LIVE-PNL-START */
+  const currentBtcPrice =
+    Number(analysis?.price || 0);
+
+  function getLivePnl(trade) {
+    if (!trade) return null;
+
+    if (trade.status !== 'open') {
+      const closedPnl =
+        Number(trade.pnl);
+
+      return Number.isFinite(closedPnl)
+        ? closedPnl
+        : null;
+    }
+
+    const entry =
+      Number(trade.entry);
+
+    const quantity =
+      Number(
+        trade.quantity ||
+        trade.btcQuantity ||
+        trade.amountBtc ||
+        0
+      );
+
+    if (
+      !Number.isFinite(currentBtcPrice) ||
+      currentBtcPrice <= 0 ||
+      !Number.isFinite(entry) ||
+      entry <= 0
+    ) {
+      return null;
+    }
+
+    if (
+      Number.isFinite(quantity) &&
+      quantity > 0
+    ) {
+      return (
+        currentBtcPrice - entry
+      ) * quantity;
+    }
+
+    const riskAmount =
+      Number(trade.riskAmount || 0);
+
+    const stop =
+      Number(trade.stop || 0);
+
+    const stopDistance =
+      Math.abs(entry - stop);
+
+    if (
+      riskAmount > 0 &&
+      stopDistance > 0
+    ) {
+      const estimatedQuantity =
+        riskAmount / stopDistance;
+
+      return (
+        currentBtcPrice - entry
+      ) * estimatedQuantity;
+    }
+
+    return null;
+  }
+
+  function getLivePnlPercent(trade) {
+    const entry =
+      Number(trade?.entry);
+
+    if (
+      !trade ||
+      trade.status !== 'open' ||
+      !Number.isFinite(entry) ||
+      entry <= 0 ||
+      !Number.isFinite(currentBtcPrice) ||
+      currentBtcPrice <= 0
+    ) {
+      return null;
+    }
+
+    return (
+      (
+        currentBtcPrice - entry
+      ) /
+      entry
+    ) * 100;
+  }
+
+  const openLivePnl =
+    getLivePnl(openTrade);
+
+  const openLivePnlPercent =
+    getLivePnlPercent(openTrade);
+  /* BTC-LIVE-PNL-END */
+
   const signalColor =
     analysis?.signal === 'AL'
       ? '#22c55e'
@@ -804,6 +903,50 @@ export default function BtcCenter({
                 {' • '}
                 Hedef {money(openTrade.target2)}
               </div>
+
+              <div
+                style={{
+                  marginTop: '12px',
+                  paddingTop: '11px',
+                  borderTop:
+                    '1px solid rgba(148,163,184,0.15)',
+                }}
+              >
+                <span>
+                  Anlık fiyat{' '}
+                  {money(currentBtcPrice)}
+                </span>
+
+                <strong
+                  style={{
+                    display: 'block',
+                    marginTop: '4px',
+                    color:
+                      Number(openLivePnl) >= 0
+                        ? '#22c55e'
+                        : '#ef4444',
+                  }}
+                >
+                  Açık K/Z:{' '}
+                  {Number.isFinite(
+                    openLivePnl
+                  )
+                    ? money(openLivePnl)
+                    : '—'}
+
+                  {Number.isFinite(
+                    openLivePnlPercent
+                  )
+                    ? ` (${
+                        openLivePnlPercent >= 0
+                          ? '+'
+                          : ''
+                      }${openLivePnlPercent.toFixed(
+                        2
+                      )}%)`
+                    : ''}
+                </strong>
+              </div>
             </div>
           ) : (
             <div className="muted">
@@ -888,12 +1031,47 @@ export default function BtcCenter({
                     <td
                       style={{
                         color:
-                          Number(trade.pnl) >= 0
+                          Number(
+                            trade.status === 'open'
+                              ? getLivePnl(trade)
+                              : trade.pnl
+                          ) >= 0
                             ? '#22c55e'
                             : '#ef4444',
+                        fontWeight: 850,
+                        whiteSpace: 'nowrap',
                       }}
                     >
-                      {money(trade.pnl)}
+                      {trade.status === 'open'
+                        ? (
+                            Number.isFinite(
+                              getLivePnl(trade)
+                            )
+                              ? money(
+                                  getLivePnl(
+                                    trade
+                                  )
+                                )
+                              : '—'
+                          )
+                        : money(trade.pnl)}
+
+                      {trade.status === 'open' &&
+                      Number.isFinite(
+                        getLivePnlPercent(
+                          trade
+                        )
+                      )
+                        ? ` (${
+                            getLivePnlPercent(
+                              trade
+                            ) >= 0
+                              ? '+'
+                              : ''
+                          }${getLivePnlPercent(
+                            trade
+                          ).toFixed(2)}%)`
+                        : ''}
                     </td>
                   </tr>
                 )
