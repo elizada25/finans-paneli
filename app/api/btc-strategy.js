@@ -96,9 +96,9 @@ async function fetchRows(interval, limit = 500) {
   });
 
   const endpoints = [
-    `https://api.binance.com/api/v3/klines?${query}`,
-    `https://api1.binance.com/api/v3/klines?${query}`,
-    `https://api2.binance.com/api/v3/klines?${query}`,
+    `https://data-api.binance.vision/api/v3/klines?${query}`,
+    `https://data.binance.com/api/v3/klines?${query}`,
+    `https://data-api.binance.vision/api/v3/klines?${query}`,
   ];
 
   let lastError = null;
