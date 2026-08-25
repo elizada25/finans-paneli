@@ -15,6 +15,7 @@ import StickyNote from './components/StickyNote';
 import GlobalMarkets from './components/GlobalMarkets';
 import PersonalFinance from './components/PersonalFinance';
 import BistWatchlist from './components/BistWatchlist';
+import BistReversalCenter from './components/BistReversalCenter';
 import ChartWorkspace from './components/ChartWorkspace';
 import BtcCenter from './components/BtcCenter';
 import MobileLayoutStyles from './components/MobileLayoutStyles';
@@ -456,6 +457,7 @@ export default function SenkronPanelPage() {
         ['portfolio', '▣ Portföy'],
         ['finance', '₺ Bütçe'],
         ['bist-watch', '▤ BIST Takip'],
+        ['reversal', '↩ Dönüş Radarı'],
         ['ai', '✦ SKY AI'],
         ['trade', '↗ Trade Merkezi'],
         ['market', '◉ NASDAQ'],
@@ -644,6 +646,10 @@ export default function SenkronPanelPage() {
         userId={user.uid}
         liveUsdTry={usdTry}
       />
+    ) : null}
+
+    {activeSection === 'reversal' ? (
+      <BistReversalCenter />
     ) : null}
 
     {activeSection === 'ai' ? (
