@@ -212,8 +212,8 @@ export default function BistTradeCenter({ user }) {
         <Rule label="Piyasa" value="BIST 100 yönü olumlu" />
         <Rule label="15 dk" value="EMA 9 > EMA 20" />
         <Rule label="5 dk" value="Kapanış onayı" />
-        <Rule label="Hacim" value="En az 1,5 kat" />
-        <Rule label="Puan" value="En az 85/100" />
+        <Rule label="Hacim" value="En az 1,2 kat" />
+        <Rule label="Puan" value="En az 75/100" />
       </div>
 
       {summary?.marketRegime ? (

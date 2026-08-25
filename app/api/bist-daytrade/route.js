@@ -3,6 +3,12 @@ import { NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
+// Kontrollü esnetilmiş işlem koşulları.
+// Sermaye ve risk kurallarını değiştirmez.
+const SIGNAL_SCORE_MIN = 75;
+const STRONG_VOLUME_MIN = 1.2;
+const SUPPORTING_VOLUME_MIN = 1.0;
+
 const BIST_UNIVERSE = [
   'AEFES', 'AGHOL', 'AKBNK', 'AKSA', 'AKSEN', 'ALARK', 'ALFAS', 'ARCLK',
   'ASELS', 'ASTOR', 'BIMAS', 'BRSAN', 'BRYAT', 'BTCIM', 'CANTE', 'CCOLA',
@@ -413,8 +419,17 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
   if (fifteenTrend) score += 20;
   if (fiveTrend) score += 15;
   if (aboveVwap) score += 15;
-  if (Number.isFinite(volumeRatio) && volumeRatio >= 1.5) score += 15;
-  else if (Number.isFinite(volumeRatio) && volumeRatio >= 1.1) score += 7;
+  if (
+    Number.isFinite(volumeRatio) &&
+    volumeRatio >= STRONG_VOLUME_MIN
+  ) {
+    score += 15;
+  } else if (
+    Number.isFinite(volumeRatio) &&
+    volumeRatio >= SUPPORTING_VOLUME_MIN
+  ) {
+    score += 7;
+  }
   if (priceConfirmation) score += 15;
   if (crossBars !== null) score += 10;
   if (candidate.dailyTrend === true) score += 5;
@@ -461,19 +476,51 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
   const hasResistanceRoom =
     !Number.isFinite(nearestResistance) || nearestResistance >= target1;
   const strongVolume =
-    Number.isFinite(volumeRatio) && volumeRatio >= 1.5;
+    Number.isFinite(volumeRatio) &&
+    volumeRatio >= STRONG_VOLUME_MIN;
   const dailyTrendAcceptable = candidate.dailyTrend === true;
   const marketAcceptable = marketRegime?.positive === true;
 
+
+  const missingSignalConditions = [
+    score < SIGNAL_SCORE_MIN
+      ? `Puan ${score}/${SIGNAL_SCORE_MIN}`
+      : null,
+    !fifteenTrend
+      ? '15 dk trend olumsuz'
+      : null,
+    !fiveTrend
+      ? '5 dk trend olumsuz'
+      : null,
+    !aboveVwap
+      ? 'Fiyat VWAP altında'
+      : null,
+    !priceConfirmation
+      ? '5 dk fiyat teyidi yok'
+      : null,
+    !strongVolume
+      ? `Hacim ${round(volumeRatio)}x / ${STRONG_VOLUME_MIN}x`
+      : null,
+    !dailyTrendAcceptable &&
+    !marketAcceptable
+      ? 'Günlük trend ve BIST 100 yönü olumsuz'
+      : null,
+    !hasResistanceRoom
+      ? 'Yakın direnç alanı yetersiz'
+      : null,
+  ].filter(Boolean);
+
   const setup =
-    score >= 85 &&
+    score >= SIGNAL_SCORE_MIN &&
     fifteenTrend &&
     fiveTrend &&
     aboveVwap &&
     priceConfirmation &&
     strongVolume &&
-    dailyTrendAcceptable &&
-    marketAcceptable &&
+    (
+      dailyTrendAcceptable ||
+      marketAcceptable
+    ) &&
     hasResistanceRoom
       ? 'İŞLEM SİNYALİ'
       : score >= 70 && fifteenTrend && aboveVwap
@@ -503,6 +550,11 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
     previousHigh: round(previousHigh),
     nearestResistance: round(nearestResistance),
     hasResistanceRoom,
+    missingSignalConditions,
+    signalThresholds: {
+      minimumScore: SIGNAL_SCORE_MIN,
+      strongVolume: STRONG_VOLUME_MIN,
+    },
     crossBars,
     entry: round(last.close),
     stop: round(stop),
