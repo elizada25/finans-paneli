@@ -457,11 +457,11 @@ export default function SenkronPanelPage() {
         ['portfolio', '▣ Portföy'],
         ['finance', '₺ Bütçe'],
         ['bist-watch', '▤ BIST Takip'],
-        ['reversal', '↩ Dönüş Radarı'],
         ['ai', '✦ SKY AI'],
         ['trade', '↗ Trade Merkezi'],
         ['market', '◉ NASDAQ'],
         ['btc', '₿ BTC Merkezi'],
+        ['reversal', '↩ Dönüş Radarı'],
       ].map(([key, label]) => {
         const selected =
           activeSection === key;
