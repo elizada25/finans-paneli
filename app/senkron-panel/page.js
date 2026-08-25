@@ -17,6 +17,7 @@ import PersonalFinance from './components/PersonalFinance';
 import BistWatchlist from './components/BistWatchlist';
 import ChartWorkspace from './components/ChartWorkspace';
 import BtcCenter from './components/BtcCenter';
+import MobileLayoutStyles from './components/MobileLayoutStyles';
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -427,6 +428,8 @@ export default function SenkronPanelPage() {
         </button>
       </div>
     </header>
+
+    <MobileLayoutStyles />
 
     <nav
       aria-label="Panel bölümleri"
