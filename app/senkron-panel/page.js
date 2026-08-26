@@ -37,8 +37,8 @@ export default function SenkronPanelPage() {
 
   useEffect(() => {
     const hash = window.location.hash.slice(1);
-    if (hash === 'nasdaq-4h') {
-      setActiveSection('nasdaq-4h');
+    if (['nasdaq-4h', 'reversal'].includes(hash)) {
+      setActiveSection(hash);
     }
   }, []);
 
@@ -666,7 +666,7 @@ export default function SenkronPanelPage() {
     ) : null}
 
     {activeSection === 'reversal' ? (
-      <BistReversalCenter />
+      <BistReversalCenter userId={user.uid} />
     ) : null}
 
     {activeSection === 'ai' ? (

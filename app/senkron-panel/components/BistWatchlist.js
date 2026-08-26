@@ -14,6 +14,7 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { firestoreDb } from '../../../lib-firebase';
+import BistMarketMovers from './BistMarketMovers';
 
 const COLUMNS =
   'minmax(82px,1.2fr) minmax(94px,1fr) 66px 66px 72px 32px';
@@ -404,6 +405,7 @@ export default function BistWatchlist({ userId }) {
   }
 
   return (
+    <>
     <section
       style={{
         width: '100%',
@@ -542,5 +544,7 @@ export default function BistWatchlist({ userId }) {
         </div>
       )}
     </section>
+    <BistMarketMovers />
+    </>
   );
 }

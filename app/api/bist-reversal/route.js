@@ -649,9 +649,12 @@ async function mapWithConcurrency(
   return results;
 }
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const forceRefresh =
+      new URL(request.url).searchParams.get('refresh') === '1';
     if (
+      !forceRefresh &&
       memoryCache.payload &&
       memoryCache.expiresAt >
         Date.now()

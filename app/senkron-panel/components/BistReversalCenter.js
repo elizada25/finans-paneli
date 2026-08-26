@@ -6,6 +6,7 @@ import {
   useMemo,
   useState,
 } from 'react';
+import BistReversalPaperRobot from './BistReversalPaperRobot';
 
 function number(value) {
   const parsed = Number(value);
@@ -81,7 +82,7 @@ function statusColor(status) {
   return '#94a3b8';
 }
 
-export default function BistReversalCenter() {
+export default function BistReversalCenter({ userId }) {
   const [data, setData] =
     useState(null);
 
@@ -758,6 +759,11 @@ export default function BistReversalCenter() {
           </div>
         </div>
       ) : null}
+
+      <BistReversalPaperRobot
+        userId={userId}
+        marketItems={data?.items || []}
+      />
 
       <p
         className="muted"
