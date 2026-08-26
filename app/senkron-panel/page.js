@@ -18,6 +18,7 @@ import BistWatchlist from './components/BistWatchlist';
 import BistReversalCenter from './components/BistReversalCenter';
 import ChartWorkspace from './components/ChartWorkspace';
 import BtcCenter from './components/BtcCenter';
+import NasdaqFourHourRadar from './components/NasdaqFourHourRadar';
 import MobileLayoutStyles from './components/MobileLayoutStyles';
 export default function SenkronPanelPage() {
   const router = useRouter();
@@ -461,6 +462,7 @@ export default function SenkronPanelPage() {
         ['trade', '↗ Trade Merkezi'],
         ['market', '◉ NASDAQ'],
         ['btc', '₿ BTC Merkezi'],
+        ['nasdaq-4h', '◫ NASDAQ 4H'],
         ['reversal', '↩ Dönüş Radarı'],
       ].map(([key, label]) => {
         const selected =
@@ -481,9 +483,13 @@ export default function SenkronPanelPage() {
               order:
                 key === 'btc'
                   ? 80
-                  : key === 'finance'
-                    ? 90
-                    : 0,
+                  : key === 'nasdaq-4h'
+                    ? 81
+                    : key === 'reversal'
+                      ? 82
+                      : key === 'finance'
+                        ? 90
+                        : 0,
               border: selected
                 ? '1px solid rgba(212,175,55,0.65)'
                 : '1px solid rgba(148,163,184,0.15)',
@@ -639,6 +645,10 @@ export default function SenkronPanelPage() {
 
     {activeSection === 'btc' ? (
       <BtcCenter userId={user.uid} />
+    ) : null}
+
+    {activeSection === 'nasdaq-4h' ? (
+      <NasdaqFourHourRadar />
     ) : null}
 
     {activeSection === 'finance' ? (
