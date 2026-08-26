@@ -1,0 +1,22 @@
+name: NASDAQ 4H 30 Gunluk Sanal Robot
+
+on:
+  schedule:
+    - cron: '*/15 17-23 * * 1-5'
+  workflow_dispatch:
+
+concurrency:
+  group: sky-nasdaq-4h-paper-robot
+  cancel-in-progress: false
+
+jobs:
+  run-paper-robot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: NASDAQ 4H sanal robotu kontrol et
+        run: |
+          curl --fail-with-body \
+            --retry 2 \
+            --max-time 120 \
+            -H "Authorization: Bearer ${{ secrets.ALERT_CRON_SECRET }}" \
+            "https://finans-paneli-amber.vercel.app/api/alerts/nasdaq-paper-robot"

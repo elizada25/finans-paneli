@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import NasdaqPaperRobot from './NasdaqPaperRobot';
 
 const FILTERS = [
   ['45', '45+ puan'],
@@ -53,7 +54,7 @@ function setupColor(setup) {
   return '#94a3b8';
 }
 
-export default function NasdaqFourHourRadar() {
+export default function NasdaqFourHourRadar({ userId }) {
   const [payload, setPayload] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -470,8 +471,13 @@ export default function NasdaqFourHourRadar() {
         </div>
       ) : null}
 
+      <NasdaqPaperRobot
+        userId={userId}
+        marketItems={payload?.items || []}
+      />
+
       <p className="footnote">
-        Bu radar yatırım tavsiyesi değildir. İlk aşamada yalnızca tarama ve takip yapar; sanal veya gerçek emir oluşturmaz.
+        Bu ekran yatırım tavsiyesi değildir. Robot yalnızca sanal işlem yapar; gerçek emir oluşturmaz.
       </p>
     </section>
   );

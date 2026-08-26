@@ -36,6 +36,13 @@ export default function SenkronPanelPage() {
   const [istanbulClock, setIstanbulClock] = useState('');
 
   useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (hash === 'nasdaq-4h') {
+      setActiveSection('nasdaq-4h');
+    }
+  }, []);
+
+  useEffect(() => {
     function updateIstanbulClock() {
       setIstanbulClock(
         new Intl.DateTimeFormat('tr-TR', {
@@ -648,7 +655,7 @@ export default function SenkronPanelPage() {
     ) : null}
 
     {activeSection === 'nasdaq-4h' ? (
-      <NasdaqFourHourRadar />
+      <NasdaqFourHourRadar userId={user.uid} />
     ) : null}
 
     {activeSection === 'finance' ? (
