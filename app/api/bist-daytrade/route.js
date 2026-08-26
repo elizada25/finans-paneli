@@ -5,7 +5,7 @@ export const maxDuration = 60;
 
 // Kontrollü esnetilmiş işlem koşulları.
 // Sermaye ve risk kurallarını değiştirmez.
-const SIGNAL_SCORE_MIN = 75;
+const SIGNAL_SCORE_MIN = 65;
 const STRONG_VOLUME_MIN = 1.2;
 const SUPPORTING_VOLUME_MIN = 1.0;
 
@@ -478,10 +478,6 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
   const strongVolume =
     Number.isFinite(volumeRatio) &&
     volumeRatio >= STRONG_VOLUME_MIN;
-  const dailyTrendAcceptable = candidate.dailyTrend === true;
-  const marketAcceptable = marketRegime?.positive === true;
-
-
   const missingSignalConditions = [
     score < SIGNAL_SCORE_MIN
       ? `Puan ${score}/${SIGNAL_SCORE_MIN}`
@@ -495,15 +491,8 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
     !aboveVwap
       ? 'Fiyat VWAP altında'
       : null,
-    !priceConfirmation
-      ? '5 dk fiyat teyidi yok'
-      : null,
     !strongVolume
       ? `Hacim ${round(volumeRatio)}x / ${STRONG_VOLUME_MIN}x`
-      : null,
-    !dailyTrendAcceptable &&
-    !marketAcceptable
-      ? 'Günlük trend ve BIST 100 yönü olumsuz'
       : null,
     !hasResistanceRoom
       ? 'Yakın direnç alanı yetersiz'
@@ -515,15 +504,10 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
     fifteenTrend &&
     fiveTrend &&
     aboveVwap &&
-    priceConfirmation &&
     strongVolume &&
-    (
-      dailyTrendAcceptable ||
-      marketAcceptable
-    ) &&
     hasResistanceRoom
       ? 'İŞLEM SİNYALİ'
-      : score >= 70 && fifteenTrend && aboveVwap
+      : score >= 55 && fifteenTrend && aboveVwap
         ? 'ONAY BEKLİYOR'
         : 'İZLE';
 
@@ -554,6 +538,8 @@ function analyzeCandidate(candidate, allRows, marketRegime) {
     signalThresholds: {
       minimumScore: SIGNAL_SCORE_MIN,
       strongVolume: STRONG_VOLUME_MIN,
+      priceConfirmationRequired: false,
+      marketDirectionRequired: false,
     },
     crossBars,
     entry: round(last.close),

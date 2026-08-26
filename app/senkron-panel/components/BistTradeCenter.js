@@ -209,11 +209,11 @@ export default function BistTradeCenter({ user }) {
       </div>
 
       <div style={styles.ruleGrid}>
-        <Rule label="Piyasa" value="BIST 100 yönü olumlu" />
+        <Rule label="Piyasa" value="Ek puan, zorunlu değil" />
         <Rule label="15 dk" value="EMA 9 > EMA 20" />
-        <Rule label="5 dk" value="Kapanış onayı" />
+        <Rule label="5 dk" value="EMA 9 > EMA 20" />
         <Rule label="Hacim" value="En az 1,2 kat" />
-        <Rule label="Puan" value="En az 75/100" />
+        <Rule label="Puan" value="En az 65/100" />
       </div>
 
       {summary?.marketRegime ? (
@@ -280,7 +280,7 @@ function TradeCard({ item, riskAmount, tradeLocked, onRecordTrade }) {
     item.fifteenTrend ? '15 dk yön olumlu' : '15 dk yön bekliyor',
     item.priceConfirmation ? '5 dk kapanış onaylı' : '5 dk kapanış bekliyor',
     item.aboveVwap ? 'VWAP üzerinde' : 'VWAP altında',
-    item.strongVolume ? `Hacim ${formatRatio(item.volumeRatio)}` : 'Hacim 1,5 katın altında',
+    item.strongVolume ? `Hacim ${formatRatio(item.volumeRatio)}` : 'Hacim 1,2 katın altında',
     item.hasResistanceRoom ? 'Hedefe alan var' : 'Yakın direnç var',
   ];
 
