@@ -508,20 +508,20 @@ function SectorDetail({ sector }) {
       <style jsx>{`
         .detail { padding: 3px 18px 18px 80px; }
         .detailStats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
-        .thesis { margin: 16px 0; color: #cbd5e1; font-size: 12px; line-height: 1.65; }
+        .thesis { margin: 18px 0; color: #cbd5e1; font-size: 15px; line-height: 1.7; }
         .columns { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .columns > div,
         .newsList { padding: 13px; border: 1px solid rgba(148, 163, 184, 0.11); border-radius: 11px; background: rgba(2, 6, 12, 0.32); }
-        h4 { margin: 0 0 9px; color: #94a3b8; font-size: 9px; letter-spacing: 0.8px; text-transform: uppercase; }
-        ul { display: grid; gap: 7px; margin: 0; padding-left: 17px; color: #86efac; }
+        h4 { margin: 0 0 11px; color: #94a3b8; font-size: 12px; letter-spacing: 0.9px; text-transform: uppercase; }
+        ul { display: grid; gap: 9px; margin: 0; padding-left: 20px; color: #86efac; }
         ul.risks { color: #fda4af; }
-        li { padding-left: 2px; font-size: 10px; line-height: 1.45; }
+        li { padding-left: 3px; font-size: 13px; line-height: 1.55; }
         li::marker { color: currentColor; }
         .newsList { display: grid; gap: 1px; margin-top: 10px; }
-        .newsList a { display: grid; gap: 3px; padding: 9px 5px; border-bottom: 1px solid rgba(148, 163, 184, 0.08); text-decoration: none; }
+        .newsList a { display: grid; gap: 5px; padding: 12px 7px; border-bottom: 1px solid rgba(148, 163, 184, 0.08); text-decoration: none; }
         .newsList a:last-child { border-bottom: 0; }
-        .newsList span { color: #cbd5e1; font-size: 10px; line-height: 1.4; }
-        .newsList small { color: #64748b; font-size: 8px; }
+        .newsList span { color: #cbd5e1; font-size: 13px; line-height: 1.5; }
+        .newsList small { color: #718096; font-size: 10px; }
         .newsList a:hover span { color: #6ee7b7; }
         @media (max-width: 850px) {
           .detail { padding: 4px 10px 13px; }
@@ -540,8 +540,8 @@ function DetailStat({ label, value, valueType = '' }) {
       <strong className={valueType}>{value}</strong>
       <style jsx>{`
         .stat { display: grid; gap: 4px; padding: 10px; border-radius: 9px; background: rgba(148, 163, 184, 0.06); }
-        small { color: #64748b; font-size: 8px; }
-        strong { color: #cbd5e1; font-size: 11px; }
+        small { color: #718096; font-size: 10px; }
+        strong { color: #cbd5e1; font-size: 14px; }
         strong.positive { color: #4ade80; }
         strong.negative { color: #fb7185; }
       `}</style>
