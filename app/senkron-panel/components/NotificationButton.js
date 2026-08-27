@@ -32,8 +32,7 @@ export default function NotificationButton({ user }) {
     const previouslyActive = localStorage.getItem(STORAGE_KEY) === 'true';
 
     if (permission === 'granted' && previouslyActive) {
-      setStatus('ready');
-      setMessage('İzin açık. Tokenı yenileyip test edebilirsiniz.');
+      setStatus('hidden');
     } else if (permission === 'denied') {
       setStatus('blocked');
       setMessage('iPhone ayarlarında SKY FİNANS bildirim izni kapalı.');
@@ -170,6 +169,7 @@ export default function NotificationButton({ user }) {
       localStorage.setItem(STORAGE_KEY, 'true');
       setStatus('success');
       setMessage('Test gönderildi. Bildirim birkaç saniye içinde görünmelidir.');
+      window.setTimeout(() => setStatus('hidden'), 2500);
     } catch (error) {
       console.error('Sky bildirim yenileme hatası:', error);
       setStatus('error');
@@ -183,6 +183,10 @@ export default function NotificationButton({ user }) {
       : status === 'ready' || status === 'success'
         ? '🔄 Bildirimi Yenile ve Test Et'
         : '🔔 Bildirimleri Aç ve Test Et';
+
+  if (status === 'checking' || status === 'hidden') {
+    return null;
+  }
 
   return (
     <div className={`notificationPanel ${status}`}>
