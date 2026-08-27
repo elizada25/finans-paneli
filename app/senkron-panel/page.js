@@ -1628,6 +1628,8 @@ function WatchlistPanel({
   const [draggedIndex, setDraggedIndex] = useState(null);
   const [watchlistOpen, setWatchlistOpen] = useState(true);
   const [priceAlerts, setPriceAlerts] = useState([]);
+  const [savedGroups, setSavedGroups] = useState([]);
+  const [activeListId, setActiveListId] = useState('default');
 
   useEffect(() => {
     if (!userId) return undefined;
@@ -1655,6 +1657,84 @@ function WatchlistPanel({
       }
     );
   }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return undefined;
+
+    return onSnapshot(
+      collection(
+        firestoreDb,
+        'users',
+        userId,
+        'watchlistGroups'
+      ),
+      (snapshot) => {
+        const next = snapshot.docs
+          .map((groupDoc) => ({
+            id: groupDoc.id,
+            ...groupDoc.data(),
+          }))
+          .sort((first, second) => {
+            const firstOrder = Number(first.order);
+            const secondOrder = Number(second.order);
+
+            if (
+              Number.isFinite(firstOrder) &&
+              Number.isFinite(secondOrder) &&
+              firstOrder !== secondOrder
+            ) {
+              return firstOrder - secondOrder;
+            }
+
+            return String(first.name || '').localeCompare(
+              String(second.name || ''),
+              'tr'
+            );
+          });
+
+        setSavedGroups(next);
+      },
+      (error) => {
+        console.error(
+          'Takip listesi grupları okunamadı:',
+          error
+        );
+      }
+    );
+  }, [userId]);
+
+  const groups = useMemo(() => {
+    const savedDefault = savedGroups.find(
+      (group) => group.id === 'default'
+    );
+
+    return [
+      {
+        id: 'default',
+        name: String(savedDefault?.name || 'Ana Liste'),
+        order: -1,
+      },
+      ...savedGroups.filter((group) => group.id !== 'default'),
+    ];
+  }, [savedGroups]);
+
+  useEffect(() => {
+    if (!groups.some((group) => group.id === activeListId)) {
+      setActiveListId('default');
+    }
+  }, [groups, activeListId]);
+
+  const activeItems = useMemo(
+    () =>
+      items.filter(
+        (item) =>
+          String(item.listId || 'default') === activeListId
+      ),
+    [items, activeListId]
+  );
+
+  const activeGroup =
+    groups.find((group) => group.id === activeListId) || groups[0];
 
   async function configurePriceAlert(item) {
     const code = String(item.code || '')
@@ -1837,9 +1917,170 @@ function WatchlistPanel({
     }
   }
 
+  async function createWatchlist() {
+    const input = window.prompt(
+      'Yeni takip listesinin adını yazın:',
+      'Fonlarım'
+    );
+
+    if (input === null) return;
+
+    const name = String(input).trim().replace(/\s+/g, ' ');
+
+    if (name.length < 2 || name.length > 40) {
+      window.alert('Liste adı 2 ile 40 karakter arasında olmalıdır.');
+      return;
+    }
+
+    if (
+      groups.some(
+        (group) =>
+          String(group.name || '').toLocaleLowerCase('tr-TR') ===
+          name.toLocaleLowerCase('tr-TR')
+      )
+    ) {
+      window.alert('Bu isimde bir takip listesi zaten var.');
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      const groupRef = await addDoc(
+        collection(
+          firestoreDb,
+          'users',
+          userId,
+          'watchlistGroups'
+        ),
+        {
+          name,
+          order: groups.length,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+      );
+
+      setActiveListId(groupRef.id);
+      setWatchlistOpen(true);
+    } catch (error) {
+      console.error('Takip listesi oluşturma hatası:', error);
+      window.alert(
+        `Liste oluşturulamadı: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function renameWatchlist() {
+    const input = window.prompt(
+      'Takip listesinin yeni adını yazın:',
+      activeGroup?.name || 'Ana Liste'
+    );
+
+    if (input === null) return;
+
+    const name = String(input).trim().replace(/\s+/g, ' ');
+
+    if (name.length < 2 || name.length > 40) {
+      window.alert('Liste adı 2 ile 40 karakter arasında olmalıdır.');
+      return;
+    }
+
+    if (
+      groups.some(
+        (group) =>
+          group.id !== activeListId &&
+          String(group.name || '').toLocaleLowerCase('tr-TR') ===
+            name.toLocaleLowerCase('tr-TR')
+      )
+    ) {
+      window.alert('Bu isimde başka bir takip listesi var.');
+      return;
+    }
+
+    setProcessing(true);
+
+    try {
+      await setDoc(
+        doc(
+          firestoreDb,
+          'users',
+          userId,
+          'watchlistGroups',
+          activeListId
+        ),
+        {
+          name,
+          order: activeGroup?.order ?? groups.length,
+          updatedAt: new Date().toISOString(),
+        },
+        { merge: true }
+      );
+    } catch (error) {
+      console.error('Takip listesi adlandırma hatası:', error);
+      window.alert(
+        `Liste adı değiştirilemedi: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function deleteWatchlist() {
+    if (activeListId === 'default') {
+      window.alert('Ana liste silinemez; ismini değiştirebilirsiniz.');
+      return;
+    }
+
+    if (activeItems.length > 0) {
+      window.alert(
+        'Bu listede varlıklar var. Listeyi silmeden önce içindeki varlıkları kaldırın.'
+      );
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `“${activeGroup?.name || 'Takip listesi'}” silinsin mi?`
+    );
+
+    if (!confirmed) return;
+
+    setProcessing(true);
+
+    try {
+      await deleteDoc(
+        doc(
+          firestoreDb,
+          'users',
+          userId,
+          'watchlistGroups',
+          activeListId
+        )
+      );
+
+      setActiveListId('default');
+    } catch (error) {
+      console.error('Takip listesi silme hatası:', error);
+      window.alert(
+        `Liste silinemedi: ${
+          error?.message || 'Bilinmeyen hata'
+        }`
+      );
+    } finally {
+      setProcessing(false);
+    }
+  }
+
   async function addWatchItem() {
     const codeInput = window.prompt(
-      'Takip listesine eklenecek hisse kodunu yazın:'
+      `${activeGroup?.name || 'Takip listesi'} listesine eklenecek hisse, ETF veya fon kodunu yazın:`,
+      'BE'
     );
 
     if (codeInput === null) return;
@@ -1852,8 +2093,14 @@ function WatchlistPanel({
     }
 
     const marketInput = window.prompt(
-      'Piyasa yazın: BIST veya NASDAQ',
-      'BIST'
+      [
+        'Varlık türünü seçin:',
+        '',
+        '1 = BIST hissesi',
+        '2 = ABD hissesi',
+        '3 = ABD ETF/FON',
+      ].join('\n'),
+      '2'
     );
 
     if (marketInput === null) return;
@@ -1863,17 +2110,31 @@ function WatchlistPanel({
       .toUpperCase();
 
     const market =
+      normalizedMarket === '1' ||
       normalizedMarket === 'BIST' ? 'bist' :
+      normalizedMarket === '2' ||
+      normalizedMarket === '3' ||
       normalizedMarket === 'NASDAQ' ||
+      normalizedMarket === 'NYSE' ||
+      normalizedMarket === 'AMEX' ||
       normalizedMarket === 'ABD' ||
-      normalizedMarket === 'US' ? 'us' : '';
+      normalizedMarket === 'US' ||
+      normalizedMarket === 'ETF' ||
+      normalizedMarket === 'FON' ? 'us' : '';
 
     if (!market) {
-      window.alert('Piyasa olarak BIST veya NASDAQ yazmalısınız.');
+      window.alert('Varlık türü olarak 1, 2 veya 3 yazmalısınız.');
       return;
     }
 
-    const alreadyExists = items.some(
+    const assetType =
+      market === 'bist'
+        ? 'stock'
+        : ['3', 'ETF', 'FON'].includes(normalizedMarket)
+          ? 'fund'
+          : 'stock-or-fund';
+
+    const alreadyExists = activeItems.some(
       (item) =>
         String(item.code || '').trim().toUpperCase() === code &&
         item.market === market
@@ -1897,10 +2158,12 @@ function WatchlistPanel({
         {
           code,
           market,
+          assetType,
+          listId: activeListId,
           order:
-            items.length > 0
+            activeItems.length > 0
               ? Math.max(
-                  ...items.map((item, index) => {
+                  ...activeItems.map((item, index) => {
                     const savedOrder = Number(item.order);
                     return Number.isFinite(savedOrder)
                       ? savedOrder
@@ -1929,13 +2192,13 @@ function WatchlistPanel({
       fromIndex === toIndex ||
       fromIndex < 0 ||
       toIndex < 0 ||
-      fromIndex >= items.length ||
-      toIndex >= items.length
+      fromIndex >= activeItems.length ||
+      toIndex >= activeItems.length
     ) {
       return;
     }
 
-    const reorderedItems = [...items];
+    const reorderedItems = [...activeItems];
     const [movedItem] = reorderedItems.splice(fromIndex, 1);
     reorderedItems.splice(toIndex, 0, movedItem);
 
@@ -2283,7 +2546,7 @@ function WatchlistPanel({
           }}
         >
           <h3 style={styles.panelTitle}>
-            Takip Listesi
+            Takip Listeleri
           </h3>
 
           <span
@@ -2302,7 +2565,7 @@ function WatchlistPanel({
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={styles.panelBadge}>{items.length} hisse</span>
+          <span style={styles.panelBadge}>{activeItems.length} varlık</span>
 
           <button
             type="button"
@@ -2319,8 +2582,109 @@ function WatchlistPanel({
               fontWeight: 700,
             }}
           >
-            + Ekle
+            + Varlık Ekle
           </button>
+        </div>
+      </div>
+
+      <div
+        style={{
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '9px',
+          marginBottom: '9px',
+          overflowX: 'auto',
+          display: watchlistOpen ? 'flex' : 'none',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            minWidth: 0,
+          }}
+        >
+          {groups.map((group) => {
+            const selected = group.id === activeListId;
+            const count = items.filter(
+              (item) =>
+                String(item.listId || 'default') === group.id
+            ).length;
+
+            return (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => setActiveListId(group.id)}
+                disabled={processing}
+                aria-pressed={selected}
+                style={{
+                  minHeight: '31px',
+                  padding: '0 10px',
+                  flex: '0 0 auto',
+                  border: selected
+                    ? '1px solid rgba(212,175,55,0.65)'
+                    : '1px solid rgba(148,163,184,0.18)',
+                  borderRadius: '8px',
+                  background: selected
+                    ? 'rgba(212,175,55,0.16)'
+                    : 'rgba(255,255,255,0.025)',
+                  color: selected ? '#f0d675' : '#94a3b8',
+                  fontFamily: 'inherit',
+                  fontSize: '11px',
+                  fontWeight: 850,
+                  whiteSpace: 'nowrap',
+                  cursor: processing ? 'default' : 'pointer',
+                }}
+              >
+                {group.name} · {count}
+              </button>
+            );
+          })}
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '5px',
+            flex: '0 0 auto',
+          }}
+        >
+          <button
+            type="button"
+            onClick={createWatchlist}
+            disabled={processing}
+            title="Yeni takip listesi oluştur"
+            style={styles.watchlistManageButton}
+          >
+            + Liste
+          </button>
+          <button
+            type="button"
+            onClick={renameWatchlist}
+            disabled={processing}
+            title="Seçili listenin adını değiştir"
+            style={styles.watchlistManageButton}
+          >
+            ✎ Adlandır
+          </button>
+          {activeListId !== 'default' ? (
+            <button
+              type="button"
+              onClick={deleteWatchlist}
+              disabled={processing}
+              title="Boş takip listesini sil"
+              style={{
+                ...styles.watchlistManageButton,
+                color: '#fca5a5',
+                borderColor: 'rgba(248,113,113,0.30)',
+              }}
+            >
+              Sil
+            </button>
+          ) : null}
         </div>
       </div>
 
@@ -2333,7 +2697,7 @@ function WatchlistPanel({
             : 'none',
         }}
       >
-        <span>Hisse Kodu</span>
+        <span>Varlık Kodu</span>
         <span>Son / PRE-AFTER</span>
         <span>Düşük</span>
         <span>Yüksek</span>
@@ -2341,7 +2705,7 @@ function WatchlistPanel({
         <span>İşlem</span>
 
         <span className="sky-watch-header-copy">
-          Hisse Kodu
+          Varlık Kodu
         </span>
         <span className="sky-watch-header-copy">
           Son / PRE-AFTER
@@ -2367,7 +2731,7 @@ function WatchlistPanel({
           '--sky-watch-rows': String(
             Math.max(
               1,
-              Math.ceil(items.length / 2)
+              Math.ceil(activeItems.length / 2)
             )
           ),
           display: watchlistOpen
@@ -2375,12 +2739,12 @@ function WatchlistPanel({
             : 'none',
         }}
       >
-        {items.length === 0 ? (
+        {activeItems.length === 0 ? (
           <div style={styles.panelEmpty}>
-            Takip listesi boş. “+ Ekle” düğmesiyle hisse ekleyebilirsiniz.
+            “{activeGroup?.name || 'Takip listesi'}” boş. “+ Varlık Ekle” ile hisse veya fon ekleyebilirsiniz.
           </div>
         ) : (
-          items.map((item, index) => {
+          activeItems.map((item, index) => {
             const code = String(item.code || '').trim().toUpperCase();
             const data = prices[`${item.market}:${code}`] || {};
             const price = toNumber(data.price);
@@ -2489,7 +2853,11 @@ function WatchlistPanel({
                   </strong>
 
                   <span style={styles.listSecondary}>
-                    {item.market === 'bist' ? 'BIST' : 'NASDAQ'}
+                    {item.market === 'bist'
+                      ? 'BIST'
+                      : item.assetType === 'fund'
+                        ? `${data.exchange || 'ABD'} ETF/FON`
+                        : data.exchange || 'ABD'}
                   </span>
                 </div>
 
@@ -3607,6 +3975,19 @@ const styles = {
     padding: '5px 9px',
     fontSize: '11px',
     whiteSpace: 'nowrap',
+  },
+  watchlistManageButton: {
+    minHeight: '29px',
+    padding: '0 8px',
+    border: '1px solid rgba(148,163,184,0.22)',
+    borderRadius: '7px',
+    background: 'rgba(255,255,255,0.025)',
+    color: '#cbd5e1',
+    fontFamily: 'inherit',
+    fontSize: '10px',
+    fontWeight: 800,
+    whiteSpace: 'nowrap',
+    cursor: 'pointer',
   },
   panelDescription: {
     margin: '0 0 12px',

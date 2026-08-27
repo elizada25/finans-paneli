@@ -22,8 +22,22 @@ export async function POST(request) {
     const region =
       market === 'bist' ? 'turkey' : 'america';
 
-    const prefix =
-      market === 'bist' ? 'BIST:' : 'NASDAQ:';
+    const exchangePriority = {
+      NASDAQ: 1,
+      NYSE: 2,
+      AMEX: 3,
+      CBOE: 4,
+    };
+
+    const requestedTickers =
+      market === 'bist'
+        ? codes.map((code) => `BIST:${code}`)
+        : codes.flatMap((code) => [
+            `NASDAQ:${code}`,
+            `NYSE:${code}`,
+            `AMEX:${code}`,
+            `CBOE:${code}`,
+          ]);
 
     const tradingViewResponse = await fetch(
       `https://scanner.tradingview.com/${region}/scan`,
@@ -36,9 +50,7 @@ export async function POST(request) {
         cache: 'no-store',
         body: JSON.stringify({
           symbols: {
-            tickers: codes.map(
-              (code) => `${prefix}${code}`
-            ),
+            tickers: requestedTickers,
             query: {
               types: [],
             },
@@ -75,9 +87,9 @@ export async function POST(request) {
     const prices = {};
 
     for (const row of tradingViewData.data || []) {
-      const code = String(row.s || '')
-        .split(':')
-        .pop();
+      const [exchange = '', rawCode = ''] =
+        String(row.s || '').split(':');
+      const code = rawCode.trim().toUpperCase();
 
       const livePrice = Number(row.d?.[0]);
       const dailyChange = Number(row.d?.[1] || 0);
@@ -104,7 +116,20 @@ export async function POST(request) {
         code &&
         Number.isFinite(livePrice)
       ) {
+        const current = prices[code];
+        const currentPriority =
+          exchangePriority[current?.exchange] ?? 99;
+        const candidatePriority =
+          exchangePriority[exchange] ?? 99;
+
+        if (current && currentPriority <= candidatePriority) {
+          continue;
+        }
+
         prices[code] = {
+          code,
+          exchange,
+          assetType: market === 'us' ? 'stock-or-fund' : 'stock',
           price: livePrice,
           previousClose: livePrice - dailyChange,
           changePercent:
