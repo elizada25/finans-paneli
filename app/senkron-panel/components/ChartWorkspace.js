@@ -278,6 +278,67 @@ function ChartTile({
     candleSeriesRef.current = candles;
 
     let projectionFrame = null;
+    let loadedTimes = [];
+
+    function coordinateForPoint(
+      time,
+      savedLogical
+    ) {
+      const timeCoordinate = chart
+        .timeScale()
+        .timeToCoordinate(time);
+
+      if (Number.isFinite(timeCoordinate)) {
+        return timeCoordinate;
+      }
+
+      if (Number.isFinite(savedLogical)) {
+        return chart
+          .timeScale()
+          .logicalToCoordinate(savedLogical);
+      }
+
+      if (!loadedTimes.length) return null;
+
+      let rightIndex = loadedTimes.findIndex(
+        (itemTime) => itemTime >= time
+      );
+
+      if (rightIndex === -1) {
+        rightIndex = loadedTimes.length;
+      }
+
+      const leftIndex = rightIndex - 1;
+
+      if (leftIndex < 0) {
+        return chart
+          .timeScale()
+          .logicalToCoordinate(0);
+      }
+
+      const leftTime = loadedTimes[leftIndex];
+      const rightTime =
+        loadedTimes[rightIndex] ??
+        leftTime +
+          Math.max(
+            1,
+            leftTime -
+              (loadedTimes[leftIndex - 1] ??
+                leftTime - 86400)
+          );
+
+      const distance = rightTime - leftTime;
+      const fraction =
+        distance > 0
+          ? (time - leftTime) / distance
+          : 0;
+
+      return chart
+        .timeScale()
+        .logicalToCoordinate(
+          leftIndex + fraction
+        );
+    }
 
     function projectDrawings() {
       if (!active) return;
@@ -298,6 +359,16 @@ function ChartTile({
           const price2 = Number(
             drawing.price2
           );
+          const logical1 =
+            drawing.logical1 === undefined ||
+            drawing.logical1 === null
+              ? null
+              : Number(drawing.logical1);
+          const logical2 =
+            drawing.logical2 === undefined ||
+            drawing.logical2 === null
+              ? null
+              : Number(drawing.logical2);
 
           if (
             !Number.isFinite(time1) ||
@@ -308,16 +379,18 @@ function ChartTile({
             return null;
           }
 
-          const x1 = chart
-            .timeScale()
-            .timeToCoordinate(time1);
+          const x1 = coordinateForPoint(
+            time1,
+            logical1
+          );
           const y1 =
             candles.priceToCoordinate(
               price1
             );
-          const x2 = chart
-            .timeScale()
-            .timeToCoordinate(time2);
+          const x2 = coordinateForPoint(
+            time2,
+            logical2
+          );
           const y2 =
             candles.priceToCoordinate(
               price2
@@ -431,6 +504,10 @@ function ChartTile({
         if (!active) return;
 
         const rows = data.rows || [];
+
+        loadedTimes = rows
+          .map((row) => Number(row.time))
+          .filter(Number.isFinite);
 
         candles.setData(
           rows.map((row) => ({
@@ -566,14 +643,28 @@ function ChartTile({
       chart.timeScale()
         .coordinateToTime(x);
 
+    const logical =
+      chart.timeScale()
+        .coordinateToLogical(x);
+
     const price =
       candles.coordinateToPrice(y);
 
+    if (
+      time === null ||
+      logical === null ||
+      price === null
+    ) {
+      return null;
+    }
+
     const numericTime = Number(time);
+    const numericLogical = Number(logical);
     const numericPrice = Number(price);
 
     if (
       !Number.isFinite(numericTime) ||
+      !Number.isFinite(numericLogical) ||
       !Number.isFinite(numericPrice)
     ) {
       return null;
@@ -582,6 +673,7 @@ function ChartTile({
     return {
       data: {
         time: numericTime,
+        logical: numericLogical,
         value: numericPrice,
       },
       pixel: {
@@ -638,8 +730,10 @@ function ChartTile({
     const newDrawing = {
       id: `trend-${Date.now()}`,
       time1: anchorData.time,
+      logical1: anchorData.logical,
       price1: anchorData.value,
       time2: point.data.time,
+      logical2: point.data.logical,
       price2: point.data.value,
     };
 
