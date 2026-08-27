@@ -1,0 +1,78 @@
+name: Sky Finans Sifreli Veri Yedegi
+
+on:
+  schedule:
+    - cron: '35 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sky-finans-data-backup
+  cancel-in-progress: false
+
+jobs:
+  encrypted-firestore-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_URL: https://finans-paneli-amber.vercel.app
+      BACKUP_PASSWORD: ${{ secrets.ALERT_CRON_SECRET }}
+
+    steps:
+      - name: Guvenlik degiskenini kontrol et
+        run: |
+          if [ -z "$BACKUP_PASSWORD" ]; then
+            echo "ALERT_CRON_SECRET GitHub secret'i eksik."
+            exit 1
+          fi
+
+      - name: Firebase verilerini indir
+        run: |
+          curl \
+            --fail \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --max-time 180 \
+            -H "Authorization: Bearer $BACKUP_PASSWORD" \
+            "$APP_URL/api/backups/export" \
+            --output firestore-backup.json
+
+      - name: Yedegi dogrula
+        run: |
+          node -e '
+            const fs = require("fs");
+            const backup = JSON.parse(fs.readFileSync("firestore-backup.json", "utf8"));
+            if (!backup.ok || !Array.isArray(backup.documents)) {
+              throw new Error("Gecersiz yedek dosyasi");
+            }
+            if (backup.documentCount !== backup.documents.length) {
+              throw new Error("Belge sayisi uyusmuyor");
+            }
+            console.log(`Yedek dogrulandi: ${backup.userCount} kullanici, ${backup.documentCount} belge`);
+          '
+
+      - name: Yedegi AES-256 ile sifrele
+        run: |
+          openssl enc \
+            -aes-256-cbc \
+            -pbkdf2 \
+            -salt \
+            -in firestore-backup.json \
+            -out "finans-paneli-veri-yedegi-${GITHUB_RUN_ID}.json.enc" \
+            -pass env:BACKUP_PASSWORD
+
+          rm -f firestore-backup.json
+
+      - name: Sifreli yedegi 30 gun sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: finans-paneli-veri-yedegi-${{ github.run_id }}
+          path: finans-paneli-veri-yedegi-${{ github.run_id }}.json.enc
+          retention-days: 30
+          if-no-files-found: error
+          compression-level: 9
