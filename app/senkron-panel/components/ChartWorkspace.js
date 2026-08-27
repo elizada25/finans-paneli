@@ -163,13 +163,6 @@ function calculateSma(rows, period) {
   return output;
 }
 
-function sortedPoints(first, second) {
-  return [first, second].sort(
-    (a, b) =>
-      Number(a.time) - Number(b.time)
-  );
-}
-
 function ChartTile({
   config,
   fullscreen,
@@ -198,6 +191,10 @@ function ChartTile({
     useState(null);
   const [previewPixel, setPreviewPixel] =
     useState(null);
+  const [
+    savedDrawingPixels,
+    setSavedDrawingPixels,
+  ] = useState([]);
 
   drawingModeRef.current = drawingMode;
 
@@ -280,45 +277,108 @@ function ChartTile({
     chartApiRef.current = chart;
     candleSeriesRef.current = candles;
 
-    for (
-      const drawing of
-      config.drawings || []
-    ) {
-      const first = {
-        time: Number(drawing.time1),
-        value: Number(drawing.price1),
-      };
+    let projectionFrame = null;
 
-      const second = {
-        time: Number(drawing.time2),
-        value: Number(drawing.price2),
-      };
+    function projectDrawings() {
+      if (!active) return;
 
-      if (
-        !Number.isFinite(first.time) ||
-        !Number.isFinite(first.value) ||
-        !Number.isFinite(second.time) ||
-        !Number.isFinite(second.value)
-      ) {
-        continue;
+      const projected = (
+        config.drawings || []
+      )
+        .map((drawing) => {
+          const time1 = Number(
+            drawing.time1
+          );
+          const price1 = Number(
+            drawing.price1
+          );
+          const time2 = Number(
+            drawing.time2
+          );
+          const price2 = Number(
+            drawing.price2
+          );
+
+          if (
+            !Number.isFinite(time1) ||
+            !Number.isFinite(price1) ||
+            !Number.isFinite(time2) ||
+            !Number.isFinite(price2)
+          ) {
+            return null;
+          }
+
+          const x1 = chart
+            .timeScale()
+            .timeToCoordinate(time1);
+          const y1 =
+            candles.priceToCoordinate(
+              price1
+            );
+          const x2 = chart
+            .timeScale()
+            .timeToCoordinate(time2);
+          const y2 =
+            candles.priceToCoordinate(
+              price2
+            );
+
+          if (
+            !Number.isFinite(x1) ||
+            !Number.isFinite(y1) ||
+            !Number.isFinite(x2) ||
+            !Number.isFinite(y2)
+          ) {
+            return null;
+          }
+
+          return {
+            id:
+              drawing.id ||
+              `${time1}-${time2}`,
+            x1,
+            y1,
+            x2,
+            y2,
+          };
+        })
+        .filter(Boolean);
+
+      setSavedDrawingPixels(projected);
+    }
+
+    function requestProjection() {
+      if (projectionFrame !== null) {
+        window.cancelAnimationFrame(
+          projectionFrame
+        );
       }
 
-      const trendSeries =
-        chart.addSeries(
-          LineSeries,
-          {
-            color: '#38bdf8',
-            lineWidth: 3,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            crosshairMarkerVisible: false,
-          }
-        );
-
-      trendSeries.setData(
-        sortedPoints(first, second)
-      );
+      projectionFrame =
+        window.requestAnimationFrame(() => {
+          projectionFrame = null;
+          projectDrawings();
+        });
     }
+
+    setSavedDrawingPixels([]);
+
+    chart
+      .timeScale()
+      .subscribeVisibleLogicalRangeChange(
+        requestProjection
+      );
+
+    host.addEventListener(
+      'wheel',
+      requestProjection,
+      { passive: true }
+    );
+    host.addEventListener(
+      'pointermove',
+      requestProjection,
+      { passive: true }
+    );
 
     const observer =
       new ResizeObserver(() => {
@@ -333,6 +393,8 @@ function ChartTile({
           width: host.clientWidth,
           height: host.clientHeight,
         });
+
+        requestProjection();
       });
 
     observer.observe(host);
@@ -423,6 +485,7 @@ function ChartTile({
         }
 
         chart.timeScale().fitContent();
+        requestProjection();
       } catch (loadError) {
         if (
           loadError?.name !==
@@ -444,6 +507,27 @@ function ChartTile({
       active = false;
       controller.abort();
       observer.disconnect();
+
+      chart
+        .timeScale()
+        .unsubscribeVisibleLogicalRangeChange(
+          requestProjection
+        );
+
+      host.removeEventListener(
+        'wheel',
+        requestProjection
+      );
+      host.removeEventListener(
+        'pointermove',
+        requestProjection
+      );
+
+      if (projectionFrame !== null) {
+        window.cancelAnimationFrame(
+          projectionFrame
+        );
+      }
 
       chartApiRef.current = null;
       candleSeriesRef.current = null;
@@ -774,6 +858,17 @@ function ChartTile({
           user-select: none;
         }
 
+        .savedDrawingOverlay {
+          position: absolute;
+          inset: 0;
+          z-index: 12;
+          width: 100%;
+          height: 100%;
+          display: block;
+          pointer-events: none;
+          overflow: hidden;
+        }
+
         .fullscreen .chartArea {
           min-height: 0;
         }
@@ -996,6 +1091,45 @@ function ChartTile({
           ref={hostRef}
           className="chartHost"
         />
+
+        {savedDrawingPixels.length ? (
+          <svg
+            className="savedDrawingOverlay"
+            aria-hidden="true"
+          >
+            {savedDrawingPixels.map(
+              (drawing) => (
+                <g key={drawing.id}>
+                  <line
+                    x1={drawing.x1}
+                    y1={drawing.y1}
+                    x2={drawing.x2}
+                    y2={drawing.y2}
+                    stroke="#facc15"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  <circle
+                    cx={drawing.x1}
+                    cy={drawing.y1}
+                    r="3.5"
+                    fill="#facc15"
+                    stroke="#111827"
+                    strokeWidth="1.25"
+                  />
+                  <circle
+                    cx={drawing.x2}
+                    cy={drawing.y2}
+                    r="3.5"
+                    fill="#facc15"
+                    stroke="#111827"
+                    strokeWidth="1.25"
+                  />
+                </g>
+              )
+            )}
+          </svg>
+        ) : null}
 
         {drawingMode ? (
           <svg
