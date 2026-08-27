@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { firestoreDb } from '../../../lib-firebase';
 import BistMarketMovers from './BistMarketMovers';
+import BistSeasonality from './BistSeasonality';
 
 const COLUMNS =
   'minmax(82px,1.2fr) minmax(94px,1fr) 66px 66px 72px 32px';
@@ -545,6 +546,7 @@ export default function BistWatchlist({ userId }) {
       )}
     </section>
     <BistMarketMovers />
+    <BistSeasonality />
     </>
   );
 }
