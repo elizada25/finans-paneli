@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import FutureSectors from './FutureSectors';
 import {
   useCallback,
   useEffect,
@@ -234,6 +235,8 @@ export default function HaberMerkeziPage() {
             />
           </div>
         </header>
+
+        <FutureSectors />
 
         <section className="controls">
           <div className="searchBox">

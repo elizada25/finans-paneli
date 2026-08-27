@@ -1,0 +1,55 @@
+name: Gelecegin Sektorleri Aylik Rapor
+
+on:
+  schedule:
+    - cron: '15 6 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sky-finans-future-sectors-monthly
+  cancel-in-progress: false
+
+jobs:
+  generate-monthly-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_URL: https://finans-paneli-amber.vercel.app
+      CRON_SECRET: ${{ secrets.ALERT_CRON_SECRET }}
+
+    steps:
+      - name: Guvenlik degiskenini kontrol et
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "ALERT_CRON_SECRET GitHub secret'i eksik."
+            exit 1
+          fi
+
+      - name: Aylik sektor raporunu hazirla
+        run: |
+          curl \
+            --fail-with-body \
+            --silent \
+            --show-error \
+            --retry 3 \
+            --retry-all-errors \
+            --connect-timeout 20 \
+            --max-time 180 \
+            -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$APP_URL/api/future-sectors" \
+            --output future-sectors-report.json
+
+      - name: Raporu dogrula
+        run: |
+          node -e '
+            const fs = require("fs");
+            const report = JSON.parse(fs.readFileSync("future-sectors-report.json", "utf8"));
+            if (!report.ok || !Array.isArray(report.ranking) || report.ranking.length < 4) {
+              throw new Error(report.error || "Gecersiz aylik rapor");
+            }
+            console.log(`${report.monthLabel}: ${report.ranking.length} sektor tarandi.`);
+          '
