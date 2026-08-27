@@ -163,6 +163,62 @@ function calculateSma(rows, period) {
   return output;
 }
 
+function estimateTimeAtLogical(
+  times,
+  logical
+) {
+  if (
+    !Array.isArray(times) ||
+    !times.length ||
+    !Number.isFinite(logical)
+  ) {
+    return null;
+  }
+
+  if (times.length === 1) {
+    return times[0];
+  }
+
+  const lastIndex = times.length - 1;
+
+  if (logical <= 0) {
+    const step = Math.max(
+      1,
+      times[1] - times[0]
+    );
+
+    return times[0] + logical * step;
+  }
+
+  if (logical >= lastIndex) {
+    const step = Math.max(
+      1,
+      times[lastIndex] -
+        times[lastIndex - 1]
+    );
+
+    return (
+      times[lastIndex] +
+      (logical - lastIndex) * step
+    );
+  }
+
+  const leftIndex = Math.floor(logical);
+  const rightIndex = Math.ceil(logical);
+
+  if (leftIndex === rightIndex) {
+    return times[leftIndex];
+  }
+
+  const fraction = logical - leftIndex;
+
+  return (
+    times[leftIndex] +
+    (times[rightIndex] - times[leftIndex]) *
+      fraction
+  );
+}
+
 function ChartTile({
   config,
   fullscreen,
@@ -174,6 +230,9 @@ function ChartTile({
   const chartApiRef = useRef(null);
   const candleSeriesRef = useRef(null);
   const drawingModeRef = useRef(false);
+  const anchorDataRef = useRef(null);
+  const anchorPixelRef = useRef(null);
+  const loadedTimesRef = useRef([]);
 
   const [draft, setDraft] =
     useState(config.symbol);
@@ -185,8 +244,6 @@ function ChartTile({
     useState(false);
   const [drawStatus, setDrawStatus] =
     useState('');
-  const [anchorData, setAnchorData] =
-    useState(null);
   const [anchorPixel, setAnchorPixel] =
     useState(null);
   const [previewPixel, setPreviewPixel] =
@@ -200,9 +257,11 @@ function ChartTile({
 
   useEffect(() => {
     setDraft(config.symbol);
-    setAnchorData(null);
     setAnchorPixel(null);
     setPreviewPixel(null);
+    anchorDataRef.current = null;
+    anchorPixelRef.current = null;
+    loadedTimesRef.current = [];
   }, [config.symbol]);
 
   useEffect(() => {
@@ -211,7 +270,8 @@ function ChartTile({
         'Grafikte ilk noktayı seçin'
       );
     } else {
-      setAnchorData(null);
+      anchorDataRef.current = null;
+      anchorPixelRef.current = null;
       setAnchorPixel(null);
       setPreviewPixel(null);
     }
@@ -509,6 +569,8 @@ function ChartTile({
           .map((row) => Number(row.time))
           .filter(Number.isFinite);
 
+        loadedTimesRef.current = loadedTimes;
+
         candles.setData(
           rows.map((row) => ({
             time: row.time,
@@ -650,17 +712,19 @@ function ChartTile({
     const price =
       candles.coordinateToPrice(y);
 
-    if (
-      time === null ||
-      logical === null ||
-      price === null
-    ) {
+    if (logical === null || price === null) {
       return null;
     }
 
-    const numericTime = Number(time);
     const numericLogical = Number(logical);
     const numericPrice = Number(price);
+    const numericTime =
+      time === null
+        ? estimateTimeAtLogical(
+            loadedTimesRef.current,
+            numericLogical
+          )
+        : Number(time);
 
     if (
       !Number.isFinite(numericTime) ||
@@ -701,8 +765,12 @@ function ChartTile({
       return;
     }
 
-    if (!anchorData) {
-      setAnchorData(point.data);
+    const currentAnchor =
+      anchorDataRef.current;
+
+    if (!currentAnchor) {
+      anchorDataRef.current = point.data;
+      anchorPixelRef.current = point.pixel;
       setAnchorPixel(point.pixel);
       setPreviewPixel(point.pixel);
 
@@ -714,7 +782,7 @@ function ChartTile({
     }
 
     if (
-      anchorData.time ===
+      currentAnchor.time ===
       point.data.time
     ) {
       setDrawStatus(
@@ -729,16 +797,17 @@ function ChartTile({
 
     const newDrawing = {
       id: `trend-${Date.now()}`,
-      time1: anchorData.time,
-      logical1: anchorData.logical,
-      price1: anchorData.value,
+      time1: currentAnchor.time,
+      logical1: currentAnchor.logical,
+      price1: currentAnchor.value,
       time2: point.data.time,
       logical2: point.data.logical,
       price2: point.data.value,
     };
 
     setDrawingMode(false);
-    setAnchorData(null);
+    anchorDataRef.current = null;
+    anchorPixelRef.current = null;
     setAnchorPixel(null);
     setPreviewPixel(null);
     setDrawStatus('');
@@ -754,7 +823,7 @@ function ChartTile({
   function handleDrawPointerMove(event) {
     if (
       !drawingModeRef.current ||
-      !anchorPixel
+      !anchorPixelRef.current
     ) {
       return;
     }
