@@ -108,7 +108,7 @@ export default function StickyNote({
         flexDirection: 'column',
         padding: '20px',
         border:
-          '1px solid rgba(212,175,55,0.55)',
+          '1px solid rgba(52,211,153,0.55)',
         borderRadius: '18px',
         color: '#33270b',
         background:

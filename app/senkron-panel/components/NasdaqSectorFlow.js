@@ -487,7 +487,7 @@ function SectorCard({ item, rank, selected, onOpen }) {
       }}
       style={{
         ...styles.card,
-        borderColor: selected ? '#e6c65c' : tone.border,
+        borderColor: selected ? '#6ee7b7' : tone.border,
         background: tone.background,
       }}
     >
@@ -589,8 +589,8 @@ function getTone(flow) {
     };
   }
   return {
-    color: '#f0d98a',
-    border: 'rgba(212,175,55,0.30)',
+    color: '#a7f3d0',
+    border: 'rgba(52,211,153,0.30)',
     background: 'rgba(15,23,42,0.78)',
   };
 }
@@ -657,19 +657,19 @@ function formatDate(value) {
 }
 
 const styles = {
-  section: { width: '100%', maxWidth: '1600px', margin: '0 auto 28px', padding: '18px', borderRadius: '18px', background: 'linear-gradient(145deg, rgba(18,25,36,0.98), rgba(25,32,44,0.98))', border: '1px solid rgba(212,175,55,0.30)', boxShadow: '0 18px 50px rgba(0,0,0,0.24)', color: '#f8fafc', boxSizing: 'border-box' },
+  section: { width: '100%', maxWidth: '1600px', margin: '0 auto 28px', padding: '18px', borderRadius: '18px', background: 'linear-gradient(145deg, rgba(18,25,36,0.98), rgba(25,32,44,0.98))', border: '1px solid rgba(52,211,153,0.30)', boxShadow: '0 18px 50px rgba(0,0,0,0.24)', color: '#f8fafc', boxSizing: 'border-box' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap' },
-  eyebrow: { margin: '0 0 5px', color: '#d4af37', fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px' },
+  eyebrow: { margin: '0 0 5px', color: '#34d399', fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px' },
   title: { margin: 0, fontSize: '22px' },
   description: { margin: '7px 0 0', color: '#94a3b8', fontSize: '13px', lineHeight: 1.5 },
-  badge: { padding: '7px 11px', borderRadius: '999px', color: '#f0d98a', border: '1px solid rgba(212,175,55,0.28)', background: 'rgba(212,175,55,0.10)', fontSize: '12px', fontWeight: 800 },
+  badge: { padding: '7px 11px', borderRadius: '999px', color: '#a7f3d0', border: '1px solid rgba(52,211,153,0.28)', background: 'rgba(52,211,153,0.10)', fontSize: '12px', fontWeight: 800 },
   controls: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '10px', alignItems: 'end', marginTop: '15px', padding: '13px', borderRadius: '13px', background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(148,163,184,0.14)' },
   dateLabel: { display: 'flex', flexDirection: 'column', gap: '6px', color: '#cbd5e1', fontSize: '11px', fontWeight: 800 },
   dateInput: { minHeight: '42px', boxSizing: 'border-box', padding: '0 10px', borderRadius: '9px', border: '1px solid rgba(148,163,184,0.24)', background: '#0a101a', color: '#f8fafc', colorScheme: 'dark', fontSize: '13px' },
-  button: { minHeight: '43px', border: 0, borderRadius: '10px', background: 'linear-gradient(135deg, #d4af37, #f0d675)', color: '#111827', fontSize: '13px', fontWeight: 900, cursor: 'pointer' },
+  button: { minHeight: '43px', border: 0, borderRadius: '10px', background: 'linear-gradient(135deg, #34d399, #6ee7b7)', color: '#111827', fontSize: '13px', fontWeight: 900, cursor: 'pointer' },
   leaderBox: { width: '100%', display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '13px', padding: '13px', borderRadius: '12px', background: 'rgba(34,197,94,0.09)', border: '1px solid rgba(34,197,94,0.24)', color: '#cbd5e1', fontSize: '11px', fontFamily: 'inherit', textAlign: 'left', cursor: 'pointer' },
   leaderTop: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', width: '100%' },
-  expandIcon: { color: '#f0d675', fontSize: '10px', fontWeight: 900, whiteSpace: 'nowrap' },
+  expandIcon: { color: '#6ee7b7', fontSize: '10px', fontWeight: 900, whiteSpace: 'nowrap' },
   error: { marginTop: '12px', padding: '12px', borderRadius: '10px', color: '#fecaca', background: 'rgba(239,68,68,0.10)', border: '1px solid rgba(239,68,68,0.24)', fontSize: '12px' },
   grid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))', gap: '10px', marginTop: '13px' },
   card: { width: '100%', minWidth: 0, boxSizing: 'border-box', padding: '13px', borderRadius: '13px', border: '1px solid', color: '#f8fafc', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit' },
@@ -680,13 +680,13 @@ const styles = {
   symbol: { display: 'block', marginTop: '3px', color: '#94a3b8', fontSize: '9px' },
   metrics: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '7px', marginTop: '11px' },
   metric: { minWidth: 0, padding: '8px', borderRadius: '8px', background: 'rgba(255,255,255,0.035)', color: '#94a3b8', fontSize: '9px' },
-  openHint: { display: 'block', marginTop: '10px', color: '#e6c65c', fontSize: '9px', fontWeight: 800 },
-  stockPanel: { marginTop: '14px', scrollMarginTop: '90px', boxSizing: 'border-box', padding: '15px', borderRadius: '14px', background: 'rgba(8,13,22,0.68)', border: '1px solid rgba(212,175,55,0.28)' },
+  openHint: { display: 'block', marginTop: '10px', color: '#6ee7b7', fontSize: '9px', fontWeight: 800 },
+  stockPanel: { marginTop: '14px', scrollMarginTop: '90px', boxSizing: 'border-box', padding: '15px', borderRadius: '14px', background: 'rgba(8,13,22,0.68)', border: '1px solid rgba(52,211,153,0.28)' },
   stockPanelHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' },
-  stockPanelEyebrow: { color: '#d4af37', fontSize: '9px', fontWeight: 900, letterSpacing: '1px' },
+  stockPanelEyebrow: { color: '#34d399', fontSize: '9px', fontWeight: 900, letterSpacing: '1px' },
   stockPanelTitle: { margin: '4px 0 0', color: '#f8fafc', fontSize: '18px' },
   stockPanelDescription: { margin: '5px 0 0', color: '#94a3b8', fontSize: '10px' },
-  closeButton: { width: '34px', height: '34px', borderRadius: '9px', border: '1px solid rgba(212,175,55,0.30)', background: 'rgba(212,175,55,0.08)', color: '#f8fafc', cursor: 'pointer' },
+  closeButton: { width: '34px', height: '34px', borderRadius: '9px', border: '1px solid rgba(52,211,153,0.30)', background: 'rgba(52,211,153,0.08)', color: '#f8fafc', cursor: 'pointer' },
   stockStatus: { marginTop: '12px', padding: '12px', color: '#bfdbfe', fontSize: '11px' },
   stockList: { marginTop: '12px', overflowX: 'auto' },
   stockListHeader: { minWidth: '560px', display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 1fr', gap: '10px', padding: '8px 10px', color: '#64748b', borderBottom: '1px solid rgba(148,163,184,0.14)', fontSize: '9px' },

@@ -272,8 +272,8 @@ function TradeCard({ item, riskAmount, tradeLocked, onRecordTrade }) {
   const positionValue = lot * Number(item.entry || 0);
   const isSignal = item.setup === 'İŞLEM SİNYALİ';
   const isWaiting = item.setup === 'ONAY BEKLİYOR';
-  const color = isSignal ? '#86efac' : isWaiting ? '#f0d98a' : '#cbd5e1';
-  const borderColor = isSignal ? 'rgba(34,197,94,0.48)' : isWaiting ? 'rgba(212,175,55,0.34)' : 'rgba(148,163,184,0.22)';
+  const color = isSignal ? '#86efac' : isWaiting ? '#a7f3d0' : '#cbd5e1';
+  const borderColor = isSignal ? 'rgba(34,197,94,0.48)' : isWaiting ? 'rgba(52,211,153,0.34)' : 'rgba(148,163,184,0.22)';
   const reasons = [
     item.marketPositive ? 'BIST 100 olumlu' : 'BIST 100 onayı yok',
     item.dailyTrend ? 'Günlük trend olumlu' : 'Günlük trend onayı yok',
@@ -362,23 +362,23 @@ function formatRatio(value) {
 }
 
 const styles = {
-  section: { width: '100%', maxWidth: '1600px', margin: '0 auto 28px', padding: '18px', borderRadius: '18px', background: 'linear-gradient(145deg, rgba(18,25,36,0.98), rgba(25,32,44,0.98))', border: '1px solid rgba(212,175,55,0.30)', boxShadow: '0 18px 50px rgba(0,0,0,0.24)', color: '#f8fafc', boxSizing: 'border-box' },
+  section: { width: '100%', maxWidth: '1600px', margin: '0 auto 28px', padding: '18px', borderRadius: '18px', background: 'linear-gradient(145deg, rgba(18,25,36,0.98), rgba(25,32,44,0.98))', border: '1px solid rgba(52,211,153,0.30)', boxShadow: '0 18px 50px rgba(0,0,0,0.24)', color: '#f8fafc', boxSizing: 'border-box' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap', marginBottom: '16px' },
-  eyebrow: { margin: '0 0 5px', color: '#d4af37', fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px' },
+  eyebrow: { margin: '0 0 5px', color: '#34d399', fontSize: '11px', fontWeight: 900, letterSpacing: '1.5px' },
   title: { margin: 0, fontSize: '22px' },
   description: { margin: '7px 0 0', color: '#94a3b8', fontSize: '13px', lineHeight: 1.5 },
-  badge: { padding: '7px 11px', borderRadius: '999px', color: '#f0d98a', border: '1px solid rgba(212,175,55,0.28)', background: 'rgba(212,175,55,0.10)', fontSize: '12px', fontWeight: 800 },
+  badge: { padding: '7px 11px', borderRadius: '999px', color: '#a7f3d0', border: '1px solid rgba(52,211,153,0.28)', background: 'rgba(52,211,153,0.10)', fontSize: '12px', fontWeight: 800 },
   controls: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '12px', alignItems: 'end', padding: '14px', borderRadius: '14px', background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(148,163,184,0.14)' },
   riskLabel: { display: 'flex', flexDirection: 'column', gap: '7px', color: '#cbd5e1', fontSize: '12px', fontWeight: 800 },
   riskInputWrap: { height: '44px', display: 'flex', alignItems: 'center', padding: '0 12px', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.25)', background: '#0a101a' },
   riskInput: { flex: 1, minWidth: 0, border: 0, outline: 'none', background: 'transparent', color: '#f8fafc', fontSize: '16px', fontWeight: 800 },
   limitBox: { minHeight: '44px', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2px', color: '#94a3b8', fontSize: '10px' },
-  scanButton: { minHeight: '46px', border: 0, borderRadius: '11px', background: 'linear-gradient(135deg, #d4af37, #f0d675)', color: '#111827', fontSize: '14px', fontWeight: 900, cursor: 'pointer' },
+  scanButton: { minHeight: '46px', border: 0, borderRadius: '11px', background: 'linear-gradient(135deg, #34d399, #6ee7b7)', color: '#111827', fontSize: '14px', fontWeight: 900, cursor: 'pointer' },
   autoLine: { display: 'flex', gap: '10px 18px', flexWrap: 'wrap', alignItems: 'center', marginTop: '10px', color: '#94a3b8', fontSize: '11px' },
   autoButton: { border: 0, borderRadius: '999px', padding: '6px 9px', background: 'rgba(34,197,94,0.10)', color: '#86efac', fontSize: '10px', fontWeight: 800, cursor: 'pointer' },
   ruleGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '8px', marginTop: '12px' },
   ruleCard: { padding: '10px', borderRadius: '10px', border: '1px solid rgba(148,163,184,0.14)', background: 'rgba(255,255,255,0.035)' },
-  ruleLabel: { display: 'block', marginBottom: '3px', color: '#e6c65c', fontSize: '11px' },
+  ruleLabel: { display: 'block', marginBottom: '3px', color: '#6ee7b7', fontSize: '11px' },
   ruleValue: { color: '#cbd5e1', fontSize: '11px' },
   marketBox: { marginTop: '12px', padding: '11px', borderRadius: '10px', color: '#cbd5e1', background: 'rgba(255,255,255,0.03)', border: '1px solid', fontSize: '12px' },
   statusBox: { marginTop: '10px', padding: '12px', borderRadius: '10px', color: '#bfdbfe', background: 'rgba(59,130,246,0.10)', border: '1px solid rgba(59,130,246,0.22)', fontSize: '13px' },
@@ -387,7 +387,7 @@ const styles = {
   results: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(310px, 1fr))', gap: '12px', marginTop: '14px' },
   tradeCard: { padding: '15px', borderRadius: '14px', background: 'rgba(15,23,42,0.72)', border: '1px solid' },
   tradeHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' },
-  symbol: { display: 'block', color: '#e6c65c', fontSize: '21px', fontWeight: 900, textDecoration: 'none' },
+  symbol: { display: 'block', color: '#6ee7b7', fontSize: '21px', fontWeight: 900, textDecoration: 'none' },
   sessionDate: { display: 'block', marginTop: '3px', color: '#64748b', fontSize: '10px' },
   scoreArea: { display: 'flex', alignItems: 'center', gap: '7px' },
   setupBadge: { padding: '5px 7px', borderRadius: '999px', background: 'rgba(255,255,255,0.05)', fontSize: '10px', fontWeight: 900 },
@@ -398,10 +398,10 @@ const styles = {
   levelValue: { fontSize: '13px' },
   signalList: { display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '11px' },
   signalItem: { padding: '5px 7px', borderRadius: '999px', color: '#cbd5e1', background: 'rgba(148,163,184,0.09)', fontSize: '10px' },
-  riskBox: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '7px', marginTop: '12px', padding: '10px', borderRadius: '10px', background: 'rgba(212,175,55,0.07)', border: '1px solid rgba(212,175,55,0.15)' },
+  riskBox: { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '7px', marginTop: '12px', padding: '10px', borderRadius: '10px', background: 'rgba(52,211,153,0.07)', border: '1px solid rgba(52,211,153,0.15)' },
   riskBoxLabel: { display: 'block', marginBottom: '4px', color: '#94a3b8', fontSize: '9px' },
   riskBoxValue: { display: 'block', color: '#f8fafc', fontSize: '12px', wordBreak: 'break-word' },
-  recordButton: { width: '100%', minHeight: '38px', marginTop: '11px', border: 0, borderRadius: '9px', background: '#d4af37', color: '#111827', fontSize: '11px', fontWeight: 900 },
+  recordButton: { width: '100%', minHeight: '38px', marginTop: '11px', border: 0, borderRadius: '9px', background: '#34d399', color: '#111827', fontSize: '11px', fontWeight: 900 },
   cardNote: { margin: '9px 0 0', color: '#64748b', fontSize: '10px', lineHeight: 1.45 },
   disclaimer: { margin: '14px 2px 0', color: '#64748b', fontSize: '10px', lineHeight: 1.5 },
 };

@@ -101,7 +101,7 @@ function scoreColor(score) {
 
   if (number === null) return '#94a3b8';
   if (number >= 75) return '#4ade80';
-  if (number >= 55) return '#f0d675';
+  if (number >= 55) return '#6ee7b7';
 
   return '#fb7185';
 }
@@ -696,7 +696,7 @@ export default function CompanyAnalysisPage() {
             ),
             radial-gradient(
               circle at 92% 8%,
-              rgba(212, 175, 55, 0.12),
+              rgba(52,211,153, 0.12),
               transparent 31%
             ),
             #070d16;
@@ -740,7 +740,7 @@ export default function CompanyAnalysisPage() {
         }
 
         .topLinks a:hover {
-          color: #f0d675;
+          color: #6ee7b7;
         }
 
         .liveBadge,
@@ -762,7 +762,7 @@ export default function CompanyAnalysisPage() {
             minmax(260px, 0.45fr);
           gap: 26px;
           padding: 38px;
-          border: 1px solid rgba(212, 175, 55, 0.3);
+          border: 1px solid rgba(52,211,153, 0.3);
           border-radius: 25px;
           background:
             linear-gradient(
@@ -780,7 +780,7 @@ export default function CompanyAnalysisPage() {
 
         .eyebrow {
           margin: 0 0 8px;
-          color: #d4af37;
+          color: #34d399;
           font-size: 10px;
           font-weight: 950;
           letter-spacing: 1.4px;
@@ -842,8 +842,8 @@ export default function CompanyAnalysisPage() {
           background:
             linear-gradient(
               135deg,
-              #d4af37,
-              #f0d675
+              #34d399,
+              #6ee7b7
             );
           font-weight: 950;
           cursor: pointer;
@@ -894,7 +894,7 @@ export default function CompanyAnalysisPage() {
 
         .heroPanel strong {
           margin-top: 9px;
-          color: #f0d675;
+          color: #6ee7b7;
           font-size: 48px;
         }
 
@@ -952,7 +952,7 @@ export default function CompanyAnalysisPage() {
           height: 28px;
           margin: 0 auto;
           border: 3px solid rgba(255, 255, 255, 0.1);
-          border-top-color: #f0d675;
+          border-top-color: #6ee7b7;
           border-radius: 50%;
           animation: spin 700ms linear infinite;
         }
@@ -992,7 +992,7 @@ export default function CompanyAnalysisPage() {
         }
 
         .cardEyebrow {
-          color: #d4af37;
+          color: #34d399;
           font-size: 9px;
           font-weight: 950;
           letter-spacing: 1.1px;
@@ -1070,12 +1070,12 @@ export default function CompanyAnalysisPage() {
           place-items: center;
           border-radius: 10px;
           color: #111827;
-          background: #f0d675;
+          background: #6ee7b7;
           font-weight: 950;
         }
 
         .sectionTitle small {
-          color: #d4af37;
+          color: #34d399;
           font-size: 8px;
           font-weight: 950;
           letter-spacing: 1px;
@@ -1125,7 +1125,7 @@ export default function CompanyAnalysisPage() {
         }
 
         .externalLink {
-          color: #f0d675;
+          color: #6ee7b7;
           font-size: 11px;
           font-weight: 850;
           text-decoration: none;
@@ -1183,7 +1183,7 @@ export default function CompanyAnalysisPage() {
         }
 
         .checkCard summary b {
-          color: #f0d675;
+          color: #6ee7b7;
           font-size: 13px;
         }
 
@@ -1263,13 +1263,13 @@ export default function CompanyAnalysisPage() {
         .scenarioBox {
           margin-top: 14px;
           padding: 16px;
-          border: 1px solid rgba(212, 175, 55, 0.19);
+          border: 1px solid rgba(52,211,153, 0.19);
           border-radius: 13px;
-          background: rgba(212, 175, 55, 0.05);
+          background: rgba(52,211,153, 0.05);
         }
 
         .scenarioBox strong {
-          color: #f0d675;
+          color: #6ee7b7;
         }
 
         .scenarioBox p {
@@ -1291,7 +1291,7 @@ export default function CompanyAnalysisPage() {
           gap: 22px;
           margin-top: 13px;
           padding: 24px;
-          border: 1px solid rgba(212, 175, 55, 0.27);
+          border: 1px solid rgba(52,211,153, 0.27);
           border-radius: 18px;
           background:
             linear-gradient(
@@ -1321,8 +1321,8 @@ export default function CompanyAnalysisPage() {
           background:
             linear-gradient(
               135deg,
-              #d4af37,
-              #f0d675
+              #34d399,
+              #6ee7b7
             );
           font-size: 11px;
           font-weight: 950;

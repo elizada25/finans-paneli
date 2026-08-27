@@ -189,9 +189,9 @@ export default function BistReversalCenter({ userId }) {
         .tableWrap {
           border:
             1px solid
-            rgba(212,175,55,0.25);
+            rgba(52,211,153,0.25);
           border-radius: 15px;
-          background: #17130c;
+          background: #111821;
         }
 
         .hero {
@@ -234,7 +234,7 @@ export default function BistReversalCenter({ userId }) {
           padding: 0 12px;
           border:
             1px solid
-            rgba(212,175,55,0.35);
+            rgba(52,211,153,0.35);
           border-radius: 9px;
           color: #f8fafc;
           background: #111827;
@@ -258,9 +258,9 @@ export default function BistReversalCenter({ userId }) {
           padding: 14px;
           border:
             1px solid
-            rgba(212,175,55,0.22);
+            rgba(52,211,153,0.22);
           border-radius: 13px;
-          background: #17130c;
+          background: #111821;
         }
 
         .summaryCard span {

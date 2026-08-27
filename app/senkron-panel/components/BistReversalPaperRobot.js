@@ -64,7 +64,7 @@ export default function BistReversalPaperRobot({ userId, marketItems = [] }) {
         .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.top h2{margin:0;color:#7dd3fc;font-size:21px}.status{color:${robot?.active ? '#86efac' : '#94a3b8'};font-weight:900}
         .metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin:14px 0}.metric,.position{padding:12px;border:1px solid rgba(148,163,184,.16);border-radius:11px;background:rgba(15,23,42,.75)}
         .metric span,.muted{display:block;color:#94a3b8;font-size:11px}.metric strong{display:block;margin-top:6px;font-size:17px}
-        button{min-height:38px;padding:0 13px;border:1px solid rgba(212,175,55,.4);border-radius:9px;color:#f8fafc;background:#111827;font-weight:900;cursor:pointer}.start{color:#111827;background:linear-gradient(135deg,#d4af37,#f0d675)}
+        button{min-height:38px;padding:0 13px;border:1px solid rgba(52,211,153,.4);border-radius:9px;color:#f8fafc;background:#111827;font-weight:900;cursor:pointer}.start{color:#111827;background:linear-gradient(135deg,#34d399,#6ee7b7)}
         .rules{display:flex;gap:12px;flex-wrap:wrap;color:#94a3b8;font-size:12px;margin:10px 0 15px}.positionGrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:9px}.position strong{font-size:15px}
         .table{overflow-x:auto;margin-top:14px}table{width:100%;min-width:760px;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid rgba(148,163,184,.12);font-size:11px;text-align:left;white-space:nowrap}th{color:#94a3b8}
         @media(max-width:760px){.metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.paperRobot{padding:13px}.top h2{font-size:18px}}

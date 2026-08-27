@@ -592,9 +592,9 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
         }
 
         .primary {
-          border-color: rgba(212, 175, 55, 0.5);
-          color: #f0d675;
-          background: rgba(212, 175, 55, 0.1);
+          border-color: rgba(52,211,153, 0.5);
+          color: #6ee7b7;
+          background: rgba(52,211,153, 0.1);
         }
 
         .message {
@@ -612,8 +612,8 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
 
         .summaryCard,
         .card {
-          border: 1px solid rgba(212, 175, 55, 0.19);
-          background: #17130c;
+          border: 1px solid rgba(52,211,153, 0.19);
+          background: #111821;
           box-shadow: 0 12px 30px rgba(0, 0, 0, 0.22);
         }
 
@@ -653,42 +653,42 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
 
         .summaryCard:nth-child(1) {
           --accent: #facc15;
-          background: linear-gradient(145deg, rgba(250, 204, 21, 0.11), #17130c 62%);
+          background: linear-gradient(145deg, rgba(250, 204, 21, 0.11), #111821 62%);
         }
 
         .summaryCard:nth-child(2) {
           --accent: #38bdf8;
-          background: linear-gradient(145deg, rgba(56, 189, 248, 0.11), #17130c 62%);
+          background: linear-gradient(145deg, rgba(56, 189, 248, 0.11), #111821 62%);
         }
 
         .summaryCard:nth-child(3) {
           --accent: #c084fc;
-          background: linear-gradient(145deg, rgba(192, 132, 252, 0.11), #17130c 62%);
+          background: linear-gradient(145deg, rgba(192, 132, 252, 0.11), #111821 62%);
         }
 
         .summaryCard:nth-child(4) {
           --accent: #2dd4bf;
-          background: linear-gradient(145deg, rgba(45, 212, 191, 0.10), #17130c 62%);
+          background: linear-gradient(145deg, rgba(45, 212, 191, 0.10), #111821 62%);
         }
 
         .summaryCard:nth-child(5) {
           --accent: #60a5fa;
-          background: linear-gradient(145deg, rgba(96, 165, 250, 0.10), #17130c 62%);
+          background: linear-gradient(145deg, rgba(96, 165, 250, 0.10), #111821 62%);
         }
 
         .summaryCard:nth-child(6) {
           --accent: #fb923c;
-          background: linear-gradient(145deg, rgba(251, 146, 60, 0.10), #17130c 62%);
+          background: linear-gradient(145deg, rgba(251, 146, 60, 0.10), #111821 62%);
         }
 
         .summaryCard:nth-child(7) {
           --accent: #f472b6;
-          background: linear-gradient(145deg, rgba(244, 114, 182, 0.10), #17130c 62%);
+          background: linear-gradient(145deg, rgba(244, 114, 182, 0.10), #111821 62%);
         }
 
         .summaryCard:nth-child(8) {
           --accent: #a78bfa;
-          background: linear-gradient(145deg, rgba(167, 139, 250, 0.10), #17130c 62%);
+          background: linear-gradient(145deg, rgba(167, 139, 250, 0.10), #111821 62%);
         }
 
         .summaryCard:nth-child(1) strong { color: #fde047; }
@@ -702,13 +702,13 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
         .mainGrid > .card:first-child {
           background:
             radial-gradient(circle at 0 0, rgba(250, 204, 21, 0.10), transparent 34%),
-            #17130c;
+            #111821;
         }
 
         .mainGrid > .card:last-child {
           background:
             radial-gradient(circle at 100% 0, rgba(56, 189, 248, 0.09), transparent 34%),
-            #17130c;
+            #111821;
         }
 
         .mainGrid > .card:first-child h3 {

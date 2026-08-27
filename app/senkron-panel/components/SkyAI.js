@@ -630,7 +630,7 @@ export default function SkyAI({
               )}
 
               <div style={styles.futureNote}>
-                <strong style={{ color: "#d4af37" }}>
+                <strong style={{ color: "#34d399" }}>
                   Bilanço • FED • ABD Ekonomik Takvim
                 </strong>
 
@@ -696,7 +696,7 @@ export default function SkyAI({
               <div
                 style={{
                   ...styles.sectionTitle,
-                  color: "#d4af37",
+                  color: "#34d399",
                 }}
               >
                 Yaklaşan Bilançolar • Otomatik Portföy Takibi
@@ -783,7 +783,7 @@ export default function SkyAI({
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{
-                              color: "#d4af37",
+                              color: "#34d399",
                               fontSize: 12,
                               fontWeight: 800,
                             }}
@@ -796,11 +796,11 @@ export default function SkyAI({
                           type="button"
                           onClick={() => analyzeFinancials(item.symbol)}
                           style={{
-                            border: "1px solid rgba(212,175,55,0.35)",
+                            border: "1px solid rgba(52,211,153,0.35)",
                             borderRadius: 8,
                             padding: "5px 9px",
-                            background: "rgba(212,175,55,0.08)",
-                            color: "#e6c65c",
+                            background: "rgba(52,211,153,0.08)",
+                            color: "#6ee7b7",
                             fontSize: 12,
                             fontWeight: 800,
                             cursor: "pointer",
@@ -878,7 +878,7 @@ export default function SkyAI({
                         ? "rgba(34,197,94,.45)"
                         : financialModal.verdict === "RİSKLİ"
                           ? "rgba(239,68,68,.45)"
-                          : "rgba(212,175,55,.45)",
+                          : "rgba(52,211,153,.45)",
                   }}
                 >
                   <div style={styles.verdictLabel}>GENEL SONUÇ</div>
@@ -891,7 +891,7 @@ export default function SkyAI({
                           ? "#22c55e"
                           : financialModal.verdict === "RİSKLİ"
                             ? "#ef4444"
-                            : "#e6c65c",
+                            : "#6ee7b7",
                     }}
                   >
                     {financialModal.verdict || "NÖTR"}
@@ -1140,7 +1140,7 @@ function MacroEventRow({ event }) {
           target="_blank"
           rel="noopener noreferrer"
           style={{
-            color: "#d4af37",
+            color: "#34d399",
             fontWeight: 800,
             textDecoration: "underline",
             textUnderlineOffset: 3,
@@ -1450,8 +1450,8 @@ const styles = {
     overflowY: "auto",
     borderRadius: 20,
     padding: 20,
-    background: "linear-gradient(180deg,#151109 0%,#0d0b07 100%)",
-    border: "1px solid rgba(212,175,55,0.38)",
+    background: "linear-gradient(180deg,#101720 0%,#090e13 100%)",
+    border: "1px solid rgba(52,211,153,0.38)",
     boxShadow: "0 30px 80px rgba(0,0,0,.65)",
     color: "#f8fafc",
   },
@@ -1465,7 +1465,7 @@ const styles = {
   },
 
   modalEyebrow: {
-    color: "#d4af37",
+    color: "#34d399",
     fontSize: 11,
     fontWeight: 900,
     letterSpacing: 1.2,
@@ -1482,8 +1482,8 @@ const styles = {
     height: 38,
     flexShrink: 0,
     borderRadius: 10,
-    border: "1px solid rgba(212,175,55,.30)",
-    background: "rgba(212,175,55,.08)",
+    border: "1px solid rgba(52,211,153,.30)",
+    background: "rgba(52,211,153,.08)",
     color: "#f8fafc",
     fontSize: 25,
     cursor: "pointer",
@@ -1530,8 +1530,8 @@ const styles = {
     marginLeft: "auto",
     borderRadius: 999,
     padding: "5px 10px",
-    background: "rgba(212,175,55,.10)",
-    color: "#e6c65c",
+    background: "rgba(52,211,153,.10)",
+    color: "#6ee7b7",
     fontSize: 12,
     fontWeight: 800,
   },
@@ -1547,7 +1547,7 @@ const styles = {
     borderRadius: 13,
     padding: 12,
     background: "rgba(30,41,59,.45)",
-    border: "1px solid rgba(212,175,55,.12)",
+    border: "1px solid rgba(52,211,153,.12)",
     display: "flex",
     flexDirection: "column",
     gap: 7,
@@ -1570,14 +1570,14 @@ const styles = {
     marginTop: 14,
     borderRadius: 14,
     padding: 14,
-    border: "1px solid rgba(212,175,55,.18)",
-    background: "rgba(212,175,55,.045)",
+    border: "1px solid rgba(52,211,153,.18)",
+    background: "rgba(52,211,153,.045)",
   },
 
   aiCommentTitle: {
     fontSize: 14,
     fontWeight: 900,
-    color: "#e6c65c",
+    color: "#6ee7b7",
     marginBottom: 8,
   },
 
@@ -1596,7 +1596,7 @@ const styles = {
   },
 
   commentBullet: {
-    color: "#d4af37",
+    color: "#34d399",
     fontWeight: 900,
   },
 
@@ -1614,9 +1614,9 @@ const styles = {
     marginTop: 15,
     height: 42,
     borderRadius: 11,
-    border: "1px solid rgba(212,175,55,.40)",
-    background: "rgba(212,175,55,.10)",
-    color: "#e6c65c",
+    border: "1px solid rgba(52,211,153,.40)",
+    background: "rgba(52,211,153,.10)",
+    color: "#6ee7b7",
     fontWeight: 900,
     cursor: "pointer",
   },
@@ -1630,7 +1630,7 @@ const styles = {
   yoyMetric: {
     borderRadius: 12,
     padding: 11,
-    border: "1px solid rgba(212,175,55,.13)",
+    border: "1px solid rgba(52,211,153,.13)",
     background: "rgba(15,23,42,.42)",
   },
 

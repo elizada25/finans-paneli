@@ -480,9 +480,9 @@ export default function BtcCenter({
 
         .card,
         .panel {
-          border: 1px solid rgba(212,175,55,0.25);
+          border: 1px solid rgba(52,211,153,0.25);
           border-radius: 14px;
-          background: #17130c;
+          background: #111821;
         }
 
         .card {
@@ -561,10 +561,10 @@ export default function BtcCenter({
 
         .primary {
           border-color:
-            rgba(212,175,55,0.55);
+            rgba(52,211,153,0.55);
           color: #111827;
           background:
-            linear-gradient(135deg,#d4af37,#f0d675);
+            linear-gradient(135deg,#34d399,#6ee7b7);
         }
 
         .danger {

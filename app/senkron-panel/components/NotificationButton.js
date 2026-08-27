@@ -199,7 +199,7 @@ export default function NotificationButton({ user }) {
         marginBottom: '16px',
         borderRadius: '14px',
         background: 'rgba(255,255,255,0.06)',
-        border: '1px solid rgba(212,175,55,0.32)',
+        border: '1px solid rgba(52,211,153,0.32)',
       }}
     >
       <div
@@ -240,7 +240,7 @@ export default function NotificationButton({ user }) {
           background:
             status === 'loading'
               ? '#64748b'
-              : '#d4af37',
+              : '#34d399',
           color: '#111827',
         }}
       >

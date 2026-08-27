@@ -239,11 +239,11 @@ export default function GlobalMarkets() {
           min-height: 38px;
           padding: 0 14px;
           border: 1px solid
-            rgba(212, 175, 55, 0.42);
+            rgba(52,211,153, 0.42);
           border-radius: 10px;
-          color: #f0d675;
+          color: #6ee7b7;
           background:
-            rgba(212, 175, 55, 0.1);
+            rgba(52,211,153, 0.1);
           font-weight: 850;
           cursor: pointer;
         }
@@ -259,7 +259,7 @@ export default function GlobalMarkets() {
 
         .groupTitle {
           margin: 0 0 11px;
-          color: #f0d675;
+          color: #6ee7b7;
           font-size: 15px;
         }
 
@@ -278,11 +278,11 @@ export default function GlobalMarkets() {
           min-width: 0;
           padding: 16px;
           border: 1px solid
-            rgba(212, 175, 55, 0.18);
+            rgba(52,211,153, 0.18);
           border-radius: 14px;
           color: inherit;
           text-decoration: none;
-          background: #17130c;
+          background: #111821;
           transition:
             transform 150ms ease,
             border-color 150ms ease;
@@ -545,9 +545,9 @@ export default function GlobalMarkets() {
           gap: 0 !important;
           overflow-x: auto !important;
           border:
-            1px solid rgba(212,175,55,0.18) !important;
+            1px solid rgba(52,211,153,0.18) !important;
           border-radius: 9px !important;
-          background: #17130c !important;
+          background: #111821 !important;
         }
 
         .card {

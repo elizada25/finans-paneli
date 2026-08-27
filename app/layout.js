@@ -1,3 +1,5 @@
+import './sky-theme.css';
+
 export const metadata = {
   title: {
     default: 'SKY FİNANS',
@@ -36,7 +38,7 @@ export const metadata = {
 };
 
 export const viewport = {
-  themeColor: '#07111f',
+  themeColor: '#090e13',
   colorScheme: 'dark',
   width: 'device-width',
   initialScale: 1,
@@ -51,9 +53,10 @@ export default function RootLayout({
       <body
         style={{
           margin: 0,
-          background: '#080d18',
+          background: '#090e13',
+          color: '#edf1f6',
           fontFamily:
-            'Arial, Helvetica, sans-serif',
+            '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", sans-serif',
           WebkitFontSmoothing:
             'antialiased',
         }}

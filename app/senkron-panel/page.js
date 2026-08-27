@@ -20,6 +20,34 @@ import ChartWorkspace from './components/ChartWorkspace';
 import BtcCenter from './components/BtcCenter';
 import NasdaqFourHourRadar from './components/NasdaqFourHourRadar';
 import MobileLayoutStyles from './components/MobileLayoutStyles';
+
+function panelTabStyle(
+  tone,
+  selected = false,
+  extra = {}
+) {
+  return {
+    minHeight: '40px',
+    padding: '0 14px',
+    flex: '0 0 auto',
+    border: `1px solid ${tone}${selected ? 'a8' : '55'}`,
+    borderRadius: '10px',
+    color: selected ? '#f8fafc' : tone,
+    background: selected
+      ? `${tone}22`
+      : `${tone}0d`,
+    boxShadow: selected
+      ? `inset 0 0 0 1px ${tone}22`
+      : 'none',
+    fontFamily: 'inherit',
+    fontSize: '14px',
+    fontWeight: 800,
+    whiteSpace: 'nowrap',
+    cursor: 'pointer',
+    ...extra,
+  };
+}
+
 export default function SenkronPanelPage() {
   const router = useRouter();
   const [user, setUser] = useState(null);
@@ -344,8 +372,8 @@ export default function SenkronPanelPage() {
   }
 
  return (
-  <main style={styles.page}>
-    <header style={styles.header}>
+  <main className="sky-panel-page" style={styles.page}>
+    <header className="sky-panel-header" style={styles.header}>
       <div>
         <p style={styles.smallLabel}>SKY FİNANS</p>
 
@@ -410,9 +438,9 @@ export default function SenkronPanelPage() {
             minHeight: '42px',
             padding: '0 15px',
             borderRadius: '10px',
-            border: '1px solid rgba(212,175,55,0.35)',
-            background: 'rgba(212,175,55,0.10)',
-            color: '#f0d675',
+            border: '1px solid rgba(52,211,153,0.35)',
+            background: 'rgba(52,211,153,0.10)',
+            color: '#6ee7b7',
             fontSize: '12px',
             fontWeight: 900,
             cursor: 'pointer',
@@ -441,6 +469,7 @@ export default function SenkronPanelPage() {
     <MobileLayoutStyles />
 
     <nav
+      className="sky-section-tabs"
       aria-label="Panel bölümleri"
       style={{
         width: '100%',
@@ -455,23 +484,23 @@ export default function SenkronPanelPage() {
           '1px solid rgba(148,163,184,0.16)',
         borderRadius: '14px',
         background:
-          'rgba(15,23,42,0.92)',
+          'rgba(13,19,27,0.92)',
         boxSizing: 'border-box',
         scrollbarWidth: 'thin',
       }}
     >
       {[
-        ['overview', '⌂ Özet'],
-        ['portfolio', '▣ Portföy'],
-        ['finance', '₺ Bütçe'],
-        ['bist-watch', '▤ BIST Takip'],
-        ['ai', '✦ SKY AI'],
-        ['trade', '↗ Trade Merkezi'],
-        ['market', '◉ NASDAQ'],
-        ['btc', '₿ BTC Merkezi'],
-        ['nasdaq-4h', '◫ NASDAQ 4H'],
-        ['reversal', '↩ Dönüş Radarı'],
-      ].map(([key, label]) => {
+        ['overview', '⌂ Özet', '#60a5fa'],
+        ['portfolio', '▣ Portföy', '#34d399'],
+        ['finance', '₺ Bütçe', '#a78bfa'],
+        ['bist-watch', '▤ BIST Takip', '#f59e0b'],
+        ['ai', '✦ SKY AI', '#22d3ee'],
+        ['trade', '↗ Trade Merkezi', '#fb7185'],
+        ['market', '◉ NASDAQ', '#38bdf8'],
+        ['btc', '₿ BTC Merkezi', '#fbbf24'],
+        ['nasdaq-4h', '◫ NASDAQ 4H', '#818cf8'],
+        ['reversal', '↩ Dönüş Radarı', '#2dd4bf'],
+      ].map(([key, label, tone]) => {
         const selected =
           activeSection === key;
 
@@ -483,10 +512,10 @@ export default function SenkronPanelPage() {
               setActiveSection(key)
             }
             aria-pressed={selected}
-            style={{
-              minHeight: '38px',
-              padding: '0 13px',
-              flex: '0 0 auto',
+            style={panelTabStyle(
+              tone,
+              selected,
+              {
               order:
                 key === 'btc'
                   ? 80
@@ -497,22 +526,8 @@ export default function SenkronPanelPage() {
                       : key === 'finance'
                         ? 90
                         : 0,
-              border: selected
-                ? '1px solid rgba(212,175,55,0.65)'
-                : '1px solid rgba(148,163,184,0.15)',
-              borderRadius: '9px',
-              color: selected
-                ? '#111827'
-                : '#cbd5e1',
-              background: selected
-                ? 'linear-gradient(135deg,#d4af37,#f0d675)'
-                : 'rgba(255,255,255,0.035)',
-              fontFamily: 'inherit',
-              fontSize: '14px',
-              fontWeight: 900,
-              whiteSpace: 'nowrap',
-              cursor: 'pointer',
-            }}
+              }
+            )}
           >
             {label}
           </button>
@@ -524,22 +539,7 @@ export default function SenkronPanelPage() {
         onClick={() =>
           router.push('/sirket-analiz')
         }
-        style={{
-          minHeight: '38px',
-          padding: '0 13px',
-          flex: '0 0 auto',
-          border:
-            '1px solid rgba(56,189,248,0.28)',
-          borderRadius: '9px',
-          color: '#7dd3fc',
-          background:
-            'rgba(56,189,248,0.08)',
-          fontFamily: 'inherit',
-          fontSize: '14px',
-          fontWeight: 900,
-          whiteSpace: 'nowrap',
-          cursor: 'pointer',
-        }}
+        style={panelTabStyle('#34d399')}
       >
         ◇ Şirket Analizi
       </button>
@@ -551,29 +551,10 @@ export default function SenkronPanelPage() {
         aria-pressed={
           activeSection === 'global'
         }
-        style={{
-          minHeight: '38px',
-          padding: '0 13px',
-          flex: '0 0 auto',
-          border:
-            activeSection === 'global'
-              ? '1px solid rgba(212,175,55,0.65)'
-              : '1px solid rgba(56,189,248,0.28)',
-          borderRadius: '9px',
-          color:
-            activeSection === 'global'
-              ? '#111827'
-              : '#7dd3fc',
-          background:
-            activeSection === 'global'
-              ? 'linear-gradient(135deg,#d4af37,#f0d675)'
-              : 'rgba(56,189,248,0.07)',
-          fontFamily: 'inherit',
-          fontSize: '14px',
-          fontWeight: 900,
-          whiteSpace: 'nowrap',
-          cursor: 'pointer',
-        }}
+        style={panelTabStyle(
+          '#60a5fa',
+          activeSection === 'global'
+        )}
       >
         ◈ Piyasalar
       </button>
@@ -586,29 +567,10 @@ export default function SenkronPanelPage() {
         aria-pressed={
           activeSection === 'charts'
         }
-        style={{
-          minHeight: '38px',
-          padding: '0 13px',
-          flex: '0 0 auto',
-          border:
-            activeSection === 'charts'
-              ? '1px solid rgba(212,175,55,0.65)'
-              : '1px solid rgba(56,189,248,0.28)',
-          borderRadius: '9px',
-          color:
-            activeSection === 'charts'
-              ? '#111827'
-              : '#7dd3fc',
-          background:
-            activeSection === 'charts'
-              ? 'linear-gradient(135deg,#d4af37,#f0d675)'
-              : 'rgba(56,189,248,0.07)',
-          fontFamily: 'inherit',
-          fontSize: '14px',
-          fontWeight: 900,
-          whiteSpace: 'nowrap',
-          cursor: 'pointer',
-        }}
+        style={panelTabStyle(
+          '#a78bfa',
+          activeSection === 'charts'
+        )}
       >
         ▦ Grafikler
       </button>
@@ -621,30 +583,11 @@ export default function SenkronPanelPage() {
         aria-pressed={
           activeSection === 'notes'
         }
-        style={{
-          minHeight: '38px',
-          padding: '0 13px',
-          flex: '0 0 auto',
-          order: 100,
-          border:
-            activeSection === 'notes'
-              ? '1px solid rgba(212,175,55,0.65)'
-              : '1px solid rgba(251,191,36,0.25)',
-          borderRadius: '9px',
-          color:
-            activeSection === 'notes'
-              ? '#111827'
-              : '#fde68a',
-          background:
-            activeSection === 'notes'
-              ? 'linear-gradient(135deg,#d4af37,#f0d675)'
-              : 'rgba(251,191,36,0.07)',
-          fontFamily: 'inherit',
-          fontSize: '14px',
-          fontWeight: 900,
-          whiteSpace: 'nowrap',
-          cursor: 'pointer',
-        }}
+        style={panelTabStyle(
+          '#f59e0b',
+          activeSection === 'notes',
+          { order: 100 }
+        )}
       >
         📌 Notlar
       </button>
@@ -686,7 +629,7 @@ export default function SenkronPanelPage() {
     padding: 20,
     border: '1px solid #26364d',
     borderRadius: 20,
-    background: '#18140d',
+    background: '#111821',
   }}
 >
   <div
@@ -2412,7 +2355,7 @@ function WatchlistPanel({
           padding: 3px 6px !important;
           border: 0 !important;
           border-bottom:
-            1px solid rgba(212,175,55,0.10) !important;
+            1px solid rgba(52,211,153,0.10) !important;
           border-radius: 0 !important;
           background: transparent !important;
           box-sizing: border-box !important;
@@ -2551,7 +2494,7 @@ function WatchlistPanel({
 
           <span
             style={{
-              color: '#f0d675',
+              color: '#6ee7b7',
               fontSize: '13px',
               transition:
                 'transform 180ms ease',
@@ -2572,10 +2515,10 @@ function WatchlistPanel({
             onClick={addWatchItem}
             disabled={processing}
             style={{
-              border: '1px solid rgba(212,175,55,0.42)',
+              border: '1px solid rgba(52,211,153,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#151109',
+              background: '#101720',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -2624,13 +2567,13 @@ function WatchlistPanel({
                   padding: '0 10px',
                   flex: '0 0 auto',
                   border: selected
-                    ? '1px solid rgba(212,175,55,0.65)'
+                    ? '1px solid rgba(52,211,153,0.65)'
                     : '1px solid rgba(148,163,184,0.18)',
                   borderRadius: '8px',
                   background: selected
-                    ? 'rgba(212,175,55,0.16)'
+                    ? 'rgba(52,211,153,0.16)'
                     : 'rgba(255,255,255,0.025)',
-                  color: selected ? '#f0d675' : '#94a3b8',
+                  color: selected ? '#6ee7b7' : '#94a3b8',
                   fontFamily: 'inherit',
                   fontSize: '11px',
                   fontWeight: 850,
@@ -2991,13 +2934,13 @@ function WatchlistPanel({
                     style={{
                       border: activeAlert
                         ? '1px solid rgba(74,222,128,0.55)'
-                        : '1px solid rgba(212,175,55,0.42)',
+                        : '1px solid rgba(52,211,153,0.42)',
                       background: activeAlert
                         ? 'rgba(34,197,94,0.14)'
-                        : 'rgba(212,175,55,0.10)',
+                        : 'rgba(52,211,153,0.10)',
                       color: activeAlert
                         ? '#86efac'
-                        : '#f0d675',
+                        : '#6ee7b7',
                       cursor: processing
                         ? 'default'
                         : 'pointer',
@@ -3225,7 +3168,7 @@ function ClosedPositionsPanel({
 
           <span
             style={{
-              color: '#f0d675',
+              color: '#6ee7b7',
               fontSize: 12,
               fontWeight: 900,
             }}
@@ -3242,10 +3185,10 @@ function ClosedPositionsPanel({
             onClick={addClosedPosition}
             disabled={processing}
             style={{
-              border: '1px solid rgba(212,175,55,0.42)',
+              border: '1px solid rgba(52,211,153,0.42)',
               borderRadius: 8,
               padding: '6px 10px',
-              background: '#151109',
+              background: '#101720',
               color: '#f8fafc',
               cursor: processing ? 'default' : 'pointer',
               opacity: processing ? 0.55 : 1,
@@ -3359,9 +3302,9 @@ function ClosedPositionsPanel({
       <div
         style={{
           padding: 16,
-          border: '1px solid rgba(212,175,55,0.42)',
+          border: '1px solid rgba(52,211,153,0.42)',
           borderRadius: 14,
-          background: '#18140d',
+          background: '#111821',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -3381,9 +3324,9 @@ function ClosedPositionsPanel({
       <div
         style={{
           padding: 16,
-          border: '1px solid rgba(212,175,55,0.42)',
+          border: '1px solid rgba(52,211,153,0.42)',
           borderRadius: 14,
-          background: '#18140d',
+          background: '#111821',
         }}
       >
         <div style={{ color: '#94a3b8', marginBottom: 8 }}>
@@ -3683,25 +3626,25 @@ function formatPercent(value) {
 const styles = {
   page: {
     minHeight: '100vh',
-    background: 'radial-gradient(circle at top, #211a0d 0%, #100d08 42%, #080706 100%)',
+    background: 'radial-gradient(circle at top, #111821 0%, #0b1118 42%, #070b10 100%)',
     color: '#f8fafc',
     padding: '20px',
-    fontFamily: 'Arial, Helvetica, sans-serif',
+    fontFamily: 'inherit',
   },
   loadingPage: {
     minHeight: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    background: '#0d0b07',
+    background: '#090e13',
     padding: '20px',
-    fontFamily: 'Arial, Helvetica, sans-serif',
+    fontFamily: 'inherit',
   },
   loadingCard: {
     width: '100%',
     maxWidth: '420px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.25)',
+    background: '#111821',
+    border: '1px solid rgba(52,211,153,0.25)',
     borderRadius: '18px',
     padding: '28px',
     textAlign: 'center',
@@ -3729,7 +3672,7 @@ const styles = {
   },
   smallLabel: {
     margin: '0 0 5px',
-    color: '#d4af37',
+    color: '#34d399',
     fontSize: '12px',
     fontWeight: 700,
     letterSpacing: '1.5px',
@@ -3757,9 +3700,9 @@ const styles = {
     width: '100%',
     maxWidth: '1600px',
     margin: '0 auto 18px',
-    background: 'rgba(212,175,55,0.08)',
-    border: '1px solid rgba(212,175,55,0.26)',
-    color: '#f0d98a',
+    background: 'rgba(52,211,153,0.08)',
+    border: '1px solid rgba(52,211,153,0.26)',
+    color: '#a7f3d0',
     padding: '14px 16px',
     borderRadius: '12px',
   },
@@ -3772,14 +3715,14 @@ const styles = {
     gap: '14px',
   },
   summaryCard: {
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: '#111821',
+    border: '1px solid rgba(52,211,153,0.22)',
     borderRadius: '16px',
     padding: '18px',
     display: 'flex',
     flexDirection: 'column',
     gap: '8px',
-    boxShadow: '0 12px 30px rgba(0,0,0,0.28), 0 0 0 1px rgba(212,175,55,0.03)',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.28), 0 0 0 1px rgba(52,211,153,0.03)',
   },
   summaryTitle: {
     margin: 0,
@@ -3798,8 +3741,8 @@ const styles = {
     width: '100%',
     maxWidth: '1600px',
     margin: '0 auto 18px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: '#111821',
+    border: '1px solid rgba(52,211,153,0.22)',
     borderRadius: '14px',
     padding: '12px 14px',
     display: 'flex',
@@ -3811,11 +3754,11 @@ const styles = {
     fontSize: '13px',
   },
   refreshButton: {
-    border: '1px solid rgba(212,175,55,0.38)',
+    border: '1px solid rgba(52,211,153,0.38)',
     borderRadius: '10px',
     padding: '10px 14px',
-    background: 'rgba(212,175,55,0.10)',
-    color: '#e6c65c',
+    background: 'rgba(52,211,153,0.10)',
+    color: '#6ee7b7',
     fontWeight: 700,
     cursor: 'pointer',
   },
@@ -3843,7 +3786,7 @@ const styles = {
     fontSize: '12px',
   },
   emptyBox: {
-    background: '#17130c',
+    background: '#111821',
     border: '1px dashed rgba(148,163,184,0.3)',
     color: '#94a3b8',
     borderRadius: '14px',
@@ -3853,8 +3796,8 @@ const styles = {
   tableWrapper: {
     width: '100%',
     overflowX: 'auto',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: '#111821',
+    border: '1px solid rgba(52,211,153,0.22)',
     borderRadius: '16px',
   },
   tableHeader: {
@@ -3866,7 +3809,7 @@ const styles = {
     color: '#94a3b8',
     fontSize: '12px',
     fontWeight: 700,
-    borderBottom: '1px solid rgba(212,175,55,0.18)',
+    borderBottom: '1px solid rgba(52,211,153,0.18)',
   },
   stockRow: {
     minWidth: '1040px',
@@ -3875,7 +3818,7 @@ const styles = {
     gap: '14px',
     alignItems: 'center',
     padding: '15px 16px',
-    borderBottom: '1px solid rgba(212,175,55,0.10)',
+    borderBottom: '1px solid rgba(52,211,153,0.10)',
   },
   rowStockCode: {
     display: 'block',
@@ -3887,7 +3830,7 @@ const styles = {
     padding: 0,
     border: 0,
     background: 'transparent',
-    color: '#e6c65c',
+    color: '#6ee7b7',
     fontSize: '17px',
     fontWeight: 800,
     cursor: 'pointer',
@@ -3922,9 +3865,9 @@ const styles = {
   editButton: {
     padding: '8px 11px',
     borderRadius: '8px',
-    border: '1px solid #d4af37',
-    background: 'rgba(212,175,55,0.10)',
-    color: '#e6c65c',
+    border: '1px solid #34d399',
+    background: 'rgba(52,211,153,0.10)',
+    color: '#6ee7b7',
     cursor: 'pointer',
     fontWeight: 700,
   },
@@ -3950,11 +3893,11 @@ const styles = {
   panelCard: {
     minWidth: 0,
     minHeight: '310px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: '#111821',
+    border: '1px solid rgba(52,211,153,0.22)',
     borderRadius: '16px',
     padding: '18px',
-    boxShadow: '0 12px 30px rgba(0,0,0,0.26), 0 0 22px rgba(212,175,55,0.025)',
+    boxShadow: '0 12px 30px rgba(0,0,0,0.26), 0 0 22px rgba(52,211,153,0.025)',
   },
   panelHeader: {
     display: 'flex',
@@ -3968,9 +3911,9 @@ const styles = {
     fontSize: '19px',
   },
   panelBadge: {
-    border: '1px solid rgba(212,175,55,0.38)',
-    background: 'rgba(212,175,55,0.10)',
-    color: '#e6c65c',
+    border: '1px solid rgba(52,211,153,0.38)',
+    background: 'rgba(52,211,153,0.10)',
+    color: '#6ee7b7',
     borderRadius: '999px',
     padding: '5px 9px',
     fontSize: '11px',
@@ -4005,7 +3948,7 @@ const styles = {
     alignItems: 'center',
     gap: '12px',
     padding: '12px 0',
-    borderBottom: '1px solid rgba(212,175,55,0.10)',
+    borderBottom: '1px solid rgba(52,211,153,0.10)',
     color: '#f8fafc',
     textDecoration: 'none',
   },
@@ -4021,7 +3964,7 @@ const styles = {
     fontSize: '10px',
   },
   marketChip: {
-    color: '#e6c65c',
+    color: '#6ee7b7',
     fontSize: '10px',
     fontWeight: 700,
   },
@@ -4041,7 +3984,7 @@ const styles = {
     gap: '10px',
     alignItems: 'center',
     padding: '11px 0',
-    borderBottom: '1px solid rgba(212,175,55,0.10)',
+    borderBottom: '1px solid rgba(52,211,153,0.10)',
     fontSize: '12px',
   },
   watchPrice: {
@@ -4064,7 +4007,7 @@ const styles = {
     gap: '8px',
     alignItems: 'center',
     padding: '11px 0',
-    borderBottom: '1px solid rgba(212,175,55,0.10)',
+    borderBottom: '1px solid rgba(52,211,153,0.10)',
     color: '#e2e8f0',
     fontSize: '11px',
   },
@@ -4083,8 +4026,8 @@ const styles = {
   fullChartWrapper: {
     width: '100%',
     height: '560px',
-    background: '#17130c',
-    border: '1px solid rgba(212,175,55,0.22)',
+    background: '#111821',
+    border: '1px solid rgba(52,211,153,0.22)',
     borderRadius: '16px',
     overflow: 'hidden',
   },

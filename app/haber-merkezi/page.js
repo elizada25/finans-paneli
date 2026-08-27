@@ -474,7 +474,7 @@ export default function HaberMerkeziPage() {
             ),
             radial-gradient(
               circle at 90% 12%,
-              rgba(212, 175, 55, 0.11),
+              rgba(52,211,153, 0.11),
               transparent 28%
             ),
             #070d16;
@@ -502,7 +502,7 @@ export default function HaberMerkeziPage() {
         }
 
         .backLink:hover {
-          color: #f0d675;
+          color: #6ee7b7;
         }
 
         .topActions {
@@ -515,10 +515,10 @@ export default function HaberMerkeziPage() {
 
         .academyLink {
           padding: 8px 13px;
-          border: 1px solid rgba(212, 175, 55, 0.32);
+          border: 1px solid rgba(52,211,153, 0.32);
           border-radius: 999px;
-          color: #f0d675;
-          background: rgba(212, 175, 55, 0.08);
+          color: #6ee7b7;
+          background: rgba(52,211,153, 0.08);
           font-size: 11px;
           font-weight: 900;
           text-decoration: none;
@@ -531,7 +531,7 @@ export default function HaberMerkeziPage() {
 
         .academyLink:hover {
           border-color: rgba(240, 214, 117, 0.7);
-          background: rgba(212, 175, 55, 0.15);
+          background: rgba(52,211,153, 0.15);
           transform: translateY(-1px);
         }
 
@@ -563,7 +563,7 @@ export default function HaberMerkeziPage() {
           gap: 30px;
           overflow: hidden;
           padding: 36px;
-          border: 1px solid rgba(212, 175, 55, 0.28);
+          border: 1px solid rgba(52,211,153, 0.28);
           border-radius: 24px;
           background:
             linear-gradient(
@@ -581,7 +581,7 @@ export default function HaberMerkeziPage() {
           width: 360px;
           height: 360px;
           border-radius: 50%;
-          background: rgba(212, 175, 55, 0.09);
+          background: rgba(52,211,153, 0.09);
           filter: blur(14px);
         }
 
@@ -594,7 +594,7 @@ export default function HaberMerkeziPage() {
         .eyebrow,
         .sectionEyebrow {
           margin: 0 0 8px;
-          color: #d4af37;
+          color: #34d399;
           font-size: 11px;
           font-weight: 950;
           letter-spacing: 1.5px;
@@ -632,8 +632,8 @@ export default function HaberMerkeziPage() {
           color: #111827;
           background: linear-gradient(
             135deg,
-            #d4af37,
-            #f0d675
+            #34d399,
+            #6ee7b7
           );
           font-weight: 950;
           cursor: pointer;
@@ -676,7 +676,7 @@ export default function HaberMerkeziPage() {
         }
 
         .searchBox span {
-          color: #d4af37;
+          color: #34d399;
           font-size: 22px;
         }
 
@@ -725,9 +725,9 @@ export default function HaberMerkeziPage() {
         }
 
         .categoryButton.active {
-          border-color: rgba(212, 175, 55, 0.55);
+          border-color: rgba(52,211,153, 0.55);
           color: #f5dc7d;
-          background: rgba(212, 175, 55, 0.12);
+          background: rgba(52,211,153, 0.12);
         }
 
         .sectionHeading {
@@ -752,7 +752,7 @@ export default function HaberMerkeziPage() {
           display: grid;
           grid-template-columns: 120px minmax(0, 1fr);
           overflow: hidden;
-          border: 1px solid rgba(212, 175, 55, 0.28);
+          border: 1px solid rgba(52,211,153, 0.28);
           border-radius: 20px;
           background:
             linear-gradient(
@@ -765,11 +765,11 @@ export default function HaberMerkeziPage() {
         .featuredMark {
           display: grid;
           place-items: center;
-          color: #e6c65c;
+          color: #6ee7b7;
           background:
             linear-gradient(
               160deg,
-              rgba(212, 175, 55, 0.18),
+              rgba(52,211,153, 0.18),
               rgba(34, 197, 94, 0.07)
             );
           font-size: 45px;
@@ -809,16 +809,16 @@ export default function HaberMerkeziPage() {
           max-width: 800px;
           margin-top: 18px;
           padding: 13px 15px;
-          border-left: 3px solid #d4af37;
+          border-left: 3px solid #34d399;
           border-radius: 0 10px 10px 0;
           color: #aab8ca;
-          background: rgba(212, 175, 55, 0.06);
+          background: rgba(52,211,153, 0.06);
           font-size: 12px;
           line-height: 1.5;
         }
 
         .whyBox strong {
-          color: #f0d675;
+          color: #6ee7b7;
           font-size: 10px;
           text-transform: uppercase;
           letter-spacing: 0.7px;
@@ -832,7 +832,7 @@ export default function HaberMerkeziPage() {
           padding: 0 15px;
           border-radius: 10px;
           color: #111827;
-          background: #e6c65c;
+          background: #6ee7b7;
           font-size: 11px;
           font-weight: 950;
           text-decoration: none;
@@ -867,7 +867,7 @@ export default function HaberMerkeziPage() {
         .readingCard:hover,
         .newsCard:hover {
           transform: translateY(-3px);
-          border-color: rgba(212, 175, 55, 0.42);
+          border-color: rgba(52,211,153, 0.42);
         }
 
         .readingNumber {
@@ -1016,7 +1016,7 @@ function Stat({ value, label }) {
 
         strong {
           display: block;
-          color: #f0d675;
+          color: #6ee7b7;
           font-size: 25px;
         }
 
@@ -1043,10 +1043,10 @@ function CategoryBadge({ category }) {
           align-items: center;
           gap: 5px;
           padding: 5px 8px;
-          border: 1px solid rgba(212, 175, 55, 0.24);
+          border: 1px solid rgba(52,211,153, 0.24);
           border-radius: 999px;
-          color: #f0d675;
-          background: rgba(212, 175, 55, 0.09);
+          color: #6ee7b7;
+          background: rgba(52,211,153, 0.09);
           font-size: 9px;
           font-weight: 950;
         }
@@ -1154,7 +1154,7 @@ function NewsCard({ item }) {
         }
 
         .importance strong {
-          color: #d4af37;
+          color: #34d399;
           font-size: 8px;
           letter-spacing: 0.5px;
           text-transform: uppercase;
@@ -1175,7 +1175,7 @@ function NewsCard({ item }) {
         }
 
         a {
-          color: #f0d675;
+          color: #6ee7b7;
           font-size: 9px;
           font-weight: 900;
           text-decoration: none;
@@ -1221,8 +1221,8 @@ function LoadingState() {
         .spinner {
           width: 34px;
           height: 34px;
-          border: 3px solid rgba(212, 175, 55, 0.14);
-          border-top-color: #d4af37;
+          border: 3px solid rgba(52,211,153, 0.14);
+          border-top-color: #34d399;
           border-radius: 50%;
           animation: spin 0.8s linear infinite;
         }

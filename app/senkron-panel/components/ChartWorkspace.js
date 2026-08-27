@@ -1627,11 +1627,11 @@ export default function ChartWorkspace({
           min-height: 34px;
           padding: 0 12px;
           border: 1px solid
-            rgba(212,175,55,0.50);
+            rgba(52,211,153,0.50);
           border-radius: 8px;
-          color: #f0d675;
+          color: #6ee7b7;
           background:
-            rgba(212,175,55,0.10);
+            rgba(52,211,153,0.10);
           font-family: inherit;
           font-size: 10px;
           font-weight: 900;

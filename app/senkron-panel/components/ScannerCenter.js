@@ -167,8 +167,8 @@ export default function ScannerCenter() {
           marginBottom: '18px',
           padding: '12px 14px',
           borderRadius: '12px',
-          border: '1px solid rgba(212,175,55,0.32)',
-          background: 'rgba(212,175,55,0.07)',
+          border: '1px solid rgba(52,211,153,0.32)',
+          background: 'rgba(52,211,153,0.07)',
         }}
       >
         <strong style={{ color: '#facc15' }}>
@@ -409,7 +409,7 @@ const styles = {
     padding: '18px',
     borderRadius: '18px',
     background: 'linear-gradient(145deg, rgba(13,20,31,0.97), rgba(20,29,43,0.97))',
-    border: '1px solid rgba(212,175,55,0.28)',
+    border: '1px solid rgba(52,211,153,0.28)',
     boxShadow: '0 18px 50px rgba(0,0,0,0.24)',
     color: '#f8fafc',
   },
@@ -422,7 +422,7 @@ const styles = {
     marginBottom: '16px',
   },
   eyebrow: {
-    color: '#d4af37',
+    color: '#34d399',
     fontSize: '11px',
     fontWeight: 900,
     letterSpacing: '1.6px',
@@ -433,8 +433,8 @@ const styles = {
   badge: {
     padding: '7px 11px',
     borderRadius: '999px',
-    background: 'rgba(212,175,55,0.12)',
-    border: '1px solid rgba(212,175,55,0.25)',
+    background: 'rgba(52,211,153,0.12)',
+    border: '1px solid rgba(52,211,153,0.25)',
     color: '#f4d978',
     fontSize: '12px',
     fontWeight: 800,
@@ -491,7 +491,7 @@ const styles = {
     marginTop: '12px',
     border: 0,
     borderRadius: '11px',
-    background: 'linear-gradient(135deg, #d4af37, #f0d675)',
+    background: 'linear-gradient(135deg, #34d399, #6ee7b7)',
     color: '#111827',
     fontSize: '14px',
     fontWeight: 900,

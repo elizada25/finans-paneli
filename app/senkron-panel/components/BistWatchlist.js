@@ -330,7 +330,7 @@ export default function BistWatchlist({ userId }) {
                 minHeight: '31px',
                 padding: '3px 6px',
                 borderBottom:
-                  '1px solid rgba(212,175,55,0.11)',
+                  '1px solid rgba(52,211,153,0.11)',
                 boxSizing: 'border-box',
               }}
             >
@@ -416,9 +416,9 @@ export default function BistWatchlist({ userId }) {
         padding: '11px',
         overflowX: 'auto',
         border:
-          '1px solid rgba(212,175,55,0.22)',
+          '1px solid rgba(52,211,153,0.22)',
         borderRadius: '16px',
-        background: '#17130c',
+        background: '#111821',
         boxSizing: 'border-box',
       }}
     >
@@ -485,10 +485,10 @@ export default function BistWatchlist({ userId }) {
               minWidth: '31px',
               height: '29px',
               border:
-                '1px solid rgba(212,175,55,0.42)',
+                '1px solid rgba(52,211,153,0.42)',
               borderRadius: '7px',
-              color: '#f0d675',
-              background: '#151109',
+              color: '#6ee7b7',
+              background: '#101720',
               cursor: 'pointer',
             }}
           >
@@ -502,10 +502,10 @@ export default function BistWatchlist({ userId }) {
               height: '29px',
               padding: '0 10px',
               border:
-                '1px solid rgba(212,175,55,0.42)',
+                '1px solid rgba(52,211,153,0.42)',
               borderRadius: '7px',
-              color: '#f0d675',
-              background: '#151109',
+              color: '#6ee7b7',
+              background: '#101720',
               fontWeight: 850,
               cursor: 'pointer',
             }}

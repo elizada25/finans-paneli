@@ -1,0 +1,150 @@
+:root {
+  --sky-bg: #090e13;
+  --sky-bg-deep: #070b10;
+  --sky-surface: #111821;
+  --sky-surface-soft: #151d28;
+  --sky-border: rgba(126, 145, 170, 0.20);
+  --sky-border-strong: rgba(126, 145, 170, 0.32);
+  --sky-text: #edf1f6;
+  --sky-text-soft: #c4cbd5;
+  --sky-muted: #8993a3;
+  --sky-green: #34d399;
+  --sky-red: #fb7185;
+  --sky-blue: #60a5fa;
+  --sky-purple: #a78bfa;
+  --sky-cyan: #22d3ee;
+}
+
+html {
+  min-height: 100%;
+  background: var(--sky-bg-deep);
+  color-scheme: dark;
+}
+
+body {
+  min-height: 100%;
+  color: var(--sky-text);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "SF Pro Display",
+    "SF Pro Text",
+    "Segoe UI",
+    sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+  background:
+    radial-gradient(circle at 22% -8%, rgba(52, 211, 153, 0.055), transparent 31%),
+    radial-gradient(circle at 88% 4%, rgba(96, 165, 250, 0.055), transparent 26%),
+    var(--sky-bg);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+select,
+textarea {
+  color: var(--sky-text);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #707b8c;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--sky-text);
+  letter-spacing: -0.028em;
+  text-wrap: balance;
+}
+
+a {
+  color: var(--sky-green);
+}
+
+::selection {
+  color: #05130f;
+  background: #6ee7b7;
+}
+
+* {
+  scrollbar-color: #334155 transparent;
+  scrollbar-width: thin;
+}
+
+.sky-panel-page {
+  color: var(--sky-text);
+  background:
+    radial-gradient(circle at 20% -4%, rgba(52, 211, 153, 0.06), transparent 28%),
+    radial-gradient(circle at 90% 0%, rgba(96, 165, 250, 0.05), transparent 25%),
+    var(--sky-bg) !important;
+}
+
+.sky-panel-header {
+  padding: 10px 2px 2px;
+}
+
+.sky-panel-page > section,
+.sky-panel-page > article {
+  border-color: var(--sky-border) !important;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.22);
+}
+
+.sky-section-tabs {
+  border-color: var(--sky-border) !important;
+  background: rgba(13, 19, 27, 0.92) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.025),
+    0 15px 36px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+.sky-section-tabs button {
+  letter-spacing: -0.012em;
+  transition:
+    color 160ms ease,
+    border-color 160ms ease,
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.sky-section-tabs button:hover {
+  transform: translateY(-1px);
+}
+
+@media (max-width: 760px) {
+  body {
+    font-size: 14px;
+  }
+
+  .sky-panel-header {
+    padding-top: 5px;
+  }
+
+  .sky-section-tabs button:hover {
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sky-section-tabs button {
+    transition: none;
+  }
+}

@@ -610,7 +610,7 @@ const styles = {
     border: 0,
     color: '#f8fafc',
     background:
-      'linear-gradient(135deg, rgba(14,116,144,0.15), rgba(212,175,55,0.08))',
+      'linear-gradient(135deg, rgba(14,116,144,0.15), rgba(52,211,153,0.08))',
     textAlign: 'left',
     cursor: 'pointer',
   },
@@ -626,7 +626,7 @@ const styles = {
     fontSize: '11px',
   },
   openIcon: {
-    color: '#f0d675',
+    color: '#6ee7b7',
     fontSize: '12px',
   },
   robotBody: {
@@ -717,7 +717,7 @@ const styles = {
   },
   subheading: {
     margin: '16px 0 9px',
-    color: '#e6c65c',
+    color: '#6ee7b7',
     fontSize: '12px',
   },
   positionGrid: {

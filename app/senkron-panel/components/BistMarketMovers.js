@@ -70,14 +70,14 @@ export default function BistMarketMovers() {
   return (
     <section className="movers">
       <style jsx global>{`
-        .movers { width:100%; max-width:1600px; margin:0 0 28px; padding:12px; border:1px solid rgba(212,175,55,.22); border-radius:16px; background:#17130c; box-sizing:border-box; }
+        .movers { width:100%; max-width:1600px; margin:0 0 28px; padding:12px; border:1px solid rgba(52,211,153,.22); border-radius:16px; background:#111821; box-sizing:border-box; }
         .moverTop { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:8px; }
         h2,h3 { margin:0; } h2 { font-size:18px; } h3 { padding:5px 6px 8px; font-size:15px; }
         .muted { color:#94a3b8; font-size:12px; }
-        button { min-height:30px; padding:0 10px; border:1px solid rgba(212,175,55,.4); border-radius:7px; color:#f0d675; background:#151109; font-weight:850; }
+        button { min-height:30px; padding:0 10px; border:1px solid rgba(52,211,153,.4); border-radius:7px; color:#6ee7b7; background:#101720; font-weight:850; }
         .moverGrid { display:grid; grid-template-columns:repeat(2,minmax(360px,1fr)); gap:24px; overflow-x:auto; }
         .moverPane { min-width:360px; }
-        .moverRow { display:grid; grid-template-columns:minmax(100px,1.35fr) minmax(90px,1fr) 90px; gap:8px; align-items:center; min-height:34px; padding:3px 8px; border-bottom:1px solid rgba(212,175,55,.11); box-sizing:border-box; color:#e2e8f0; font-size:13px; line-height:1; white-space:nowrap; }
+        .moverRow { display:grid; grid-template-columns:minmax(100px,1.35fr) minmax(90px,1fr) 90px; gap:8px; align-items:center; min-height:34px; padding:3px 8px; border-bottom:1px solid rgba(52,211,153,.11); box-sizing:border-box; color:#e2e8f0; font-size:13px; line-height:1; white-space:nowrap; }
         .moverRow > :last-child { text-align:right; }
         .moverHeader { min-height:25px; color:#94a3b8; font-size:10px; font-weight:900; border-color:rgba(148,163,184,.25); }
         @media(max-width:760px){ .moverGrid{grid-template-columns:1fr;gap:18px}.moverPane{min-width:320px}.movers{overflow-x:auto}.moverRow{font-size:12px;grid-template-columns:minmax(100px,1.35fr) minmax(85px,1fr) 82px} }
