@@ -171,16 +171,16 @@ const INVESTING_SLUGS = {
   AVB: 'avalonbay-communities',
   EQR: 'equity-residential',
 
-  MRNA: 'moderna-inc',
-  VRTX: 'vertex-pharmaceuticals',
-  REGN: 'regeneron-pharmaceuticals',
-  BIIB: 'biogen-idec',
+  MRNA: 'moderna',
+  VRTX: 'vertex-pharm',
+  REGN: 'regeneron-phar.',
+  BIIB: 'biogen-idec-inc',
   ALNY: 'alnylam-pharmaceuticals',
-  BMRN: 'biomarin-pharmaceutical',
-  ILMN: 'illumina-inc',
+  BMRN: 'biomarin-pharmaceuticals',
+  ILMN: 'illumina%2C-inc.',
   INCY: 'incyte-corp',
-  UTHR: 'united-therapeutics',
-  EXEL: 'exelixis',
+  UTHR: 'united-therapeutics-corp',
+  EXEL: 'exelixis-inc',
   CRSP: 'crispr-therapeutics-ag',
 
   LIN: 'linde-plc',
@@ -221,6 +221,30 @@ function investingChartUrl(symbol) {
   }
 
   return `https://tr.investing.com/search/?q=${encodeURIComponent(cleanSymbol)}`;
+}
+
+function openInvestingChart(event, symbol) {
+  if (
+    event.button !== 0 ||
+    event.metaKey ||
+    event.ctrlKey ||
+    event.shiftKey ||
+    event.altKey
+  ) {
+    return;
+  }
+
+  event.preventDefault();
+
+  const url = investingChartUrl(symbol);
+  const openedWindow = window.open(url, '_blank');
+
+  if (openedWindow) {
+    openedWindow.opener = null;
+    return;
+  }
+
+  window.location.assign(url);
 }
 
 const initialRange = getInitialRange();
@@ -520,7 +544,10 @@ function SectorStocksPanel({ panelRef, sector, items, loading, error, onClose })
               key={stock.symbol}
               href={investingChartUrl(stock.symbol)}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
+              onClick={(event) => openInvestingChart(event, stock.symbol)}
+              title={`${stock.symbol} Investing.com grafiğini aç`}
+              aria-label={`${stock.symbol} Investing.com grafiğini aç`}
               style={styles.stockRow}
             >
               <strong>#{index + 1} {stock.symbol}</strong>
