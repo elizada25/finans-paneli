@@ -8,6 +8,7 @@ import { firebaseAuth, firestoreDb } from '../../lib-firebase';
 import ScannerCenter from './components/ScannerCenter';
 import SkyAI from './components/SkyAI';
 import NotificationButton from './components/NotificationButton';
+import NotificationCenter from './components/NotificationCenter';
 import OptionsPressureModal from './components/OptionsPressureModal';
 import BistTradeCenter from './components/BistTradeCenter';
 import NasdaqSectorFlow from './components/NasdaqSectorFlow';
@@ -451,6 +452,8 @@ export default function SenkronPanelPage() {
         </button>
 
         <NotificationButton user={user} />
+
+        <NotificationCenter user={user} />
 
         <button
           type="button"

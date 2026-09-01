@@ -4,7 +4,7 @@ import {
   getApps,
   initializeApp,
 } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 
 export const dynamic = 'force-dynamic';
@@ -152,6 +152,10 @@ async function sendAlert({
   quote,
   type,
 }) {
+  if (!tokens.length) {
+    return { successCount: 0, failureCount: 0, responses: [] };
+  }
+
   return messaging.sendEachForMulticast({
     tokens,
     notification: {
@@ -171,6 +175,10 @@ async function sendAlert({
         ),
     },
     webpush: {
+      headers: {
+        Urgency: 'high',
+        TTL: '3600',
+      },
       fcmOptions: {
         link:
           `${baseUrl}/senkron-panel`,
@@ -180,6 +188,17 @@ async function sendAlert({
         badge: '/icon-192.png',
       },
     },
+  });
+}
+
+async function saveInboxNotification(userRef, id, notification) {
+  const inboxRef = userRef.collection('notifications').doc(id);
+  if ((await inboxRef.get()).exists) return;
+
+  await inboxRef.set({
+    ...notification,
+    read: false,
+    createdAt: FieldValue.serverTimestamp(),
   });
 }
 
@@ -298,14 +317,6 @@ async function processUser({
     ),
   ];
 
-  if (!tokens.length) {
-    return {
-      checked: 0,
-      customChecked: 0,
-      sent: 0,
-    };
-  }
-
   const portfolio = portfolioSnapshot.docs
     .map((document) =>
       normalizeStock(
@@ -420,6 +431,16 @@ async function processUser({
       continue;
     }
 
+    const alertTitle =
+      direction === 'up'
+        ? `${stock.code} yükseliş alarmı`
+        : `${stock.code} düşüş alarmı`;
+    const alertBody =
+      `${stock.code} bugün ` +
+      `${change > 0 ? '+' : ''}` +
+      `${change.toFixed(2)}%. ` +
+      `Son fiyat: ${formatPrice(quote.price, stock.market)}`;
+
     const result = await sendAlert({
       messaging,
       tokens,
@@ -427,18 +448,19 @@ async function processUser({
       stock,
       quote,
       type: 'portfolio-daily-move',
-      title:
-        direction === 'up'
-          ? `${stock.code} yükseliş alarmı`
-          : `${stock.code} düşüş alarmı`,
-      body:
-        `${stock.code} bugün ` +
-        `${change > 0 ? '+' : ''}` +
-        `${change.toFixed(2)}%. ` +
-        `Son fiyat: ${formatPrice(
-          quote.price,
-          stock.market
-        )}`,
+      title: alertTitle,
+      body: alertBody,
+    });
+
+    await saveInboxNotification(userRef, `price_${alertId}`, {
+      title: alertTitle,
+      body: alertBody,
+      type: direction === 'up' ? 'price-up' : 'price-down',
+      url: '/senkron-panel',
+      symbol: stock.code,
+      market: stock.market,
+      changePercent: change,
+      price: numberValue(quote.price),
     });
 
     if (result.successCount > 0) {
@@ -491,6 +513,11 @@ async function processUser({
         continue;
       }
 
+      const alertTitle = `${alert.code} ${rule.label} alarmı`;
+      const alertBody =
+        `${rule.message} Son fiyat: ` +
+        `${formatPrice(quote.price, alert.market)}`;
+
       const result = await sendAlert({
         messaging,
         tokens,
@@ -498,14 +525,19 @@ async function processUser({
         stock: alert,
         quote,
         type: `custom-${rule.key}`,
-        title:
-          `${alert.code} ${rule.label} alarmı`,
-        body:
-          `${rule.message} Son fiyat: ` +
-          `${formatPrice(
-            quote.price,
-            alert.market
-          )}`,
+        title: alertTitle,
+        body: alertBody,
+      });
+
+      await saveInboxNotification(userRef, `custom_${historyId}`, {
+        title: alertTitle,
+        body: alertBody,
+        type: `custom-${rule.key}`,
+        url: '/senkron-panel',
+        symbol: alert.code,
+        market: alert.market,
+        changePercent: numberValue(quote.changePercent),
+        price: numberValue(quote.price),
       });
 
       if (result.successCount > 0) {

@@ -6,7 +6,7 @@ import {
   getApps,
   initializeApp,
 } from 'firebase-admin/app';
-import { getFirestore } from 'firebase-admin/firestore';
+import { FieldValue, getFirestore } from 'firebase-admin/firestore';
 import { getMessaging } from 'firebase-admin/messaging';
 
 export const dynamic = 'force-dynamic';
@@ -653,10 +653,7 @@ async function processUser({
     ),
   ];
 
-  if (
-    stocks.length === 0 ||
-    tokens.length === 0
-  ) {
+  if (stocks.length === 0) {
     return {
       matched: 0,
       sent: 0,
@@ -689,9 +686,10 @@ async function processUser({
   let matched = 0;
   let aiComments = 0;
   let translations = 0;
+  let processed = 0;
 
   for (const candidate of candidates) {
-    if (sent >= 3) {
+    if (processed >= 3) {
       break;
     }
 
@@ -753,8 +751,26 @@ async function processUser({
       article.link ||
       `${baseUrl}/senkron-panel`;
 
-    const result =
-      await messaging.sendEachForMulticast({
+    const inboxRef = userRef
+      .collection('notifications')
+      .doc(`news_${historyId}`);
+
+    if (!(await inboxRef.get()).exists) {
+      await inboxRef.set({
+        title,
+        body,
+        type: 'news-ai',
+        url: targetUrl,
+        symbol: stock.code,
+        source: article.source || null,
+        publishedAt: article.publishedAt || null,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
+    }
+
+    const result = tokens.length
+      ? await messaging.sendEachForMulticast({
         tokens,
         notification: {
           title,
@@ -770,6 +786,10 @@ async function processUser({
           aiComment: aiComment || '',
         },
         webpush: {
+          headers: {
+            Urgency: 'high',
+            TTL: '3600',
+          },
           fcmOptions: {
             link: targetUrl,
           },
@@ -779,7 +799,8 @@ async function processUser({
             tag: historyId,
           },
         },
-      });
+      })
+      : { successCount: 0, failureCount: 0 };
 
     if (result.successCount > 0) {
       await historyRef.set({
@@ -807,6 +828,7 @@ async function processUser({
     }
 
     sent += result.successCount;
+    processed += 1;
   }
 
   return {

@@ -243,6 +243,10 @@ async function sendNotification({
       ),
     },
     webpush: {
+      headers: {
+        Urgency: 'high',
+        TTL: '3600',
+      },
       fcmOptions: {
         link: `${baseUrl}/senkron-panel`,
       },
@@ -281,6 +285,22 @@ async function sendOncePerDay({
     baseUrl,
     data: details,
   });
+
+  const userRef = historyRef.parent.parent;
+  const inboxRef = userRef
+    .collection('notifications')
+    .doc(`smart_${historyRef.id}`);
+
+  if (!(await inboxRef.get()).exists) {
+    await inboxRef.set({
+      ...details,
+      title,
+      body,
+      url: '/senkron-panel',
+      read: false,
+      createdAt: FieldValue.serverTimestamp(),
+    });
+  }
 
   await historyRef.set({
     ...details,
@@ -448,7 +468,7 @@ async function processFuturesAlerts({
   dateKey,
   signal,
 }) {
-  if (!signal || tokens.length === 0) {
+  if (!signal) {
     return 0;
   }
 
@@ -596,10 +616,7 @@ async function processUser({
     signal: futuresSignal,
   });
 
-  if (
-    portfolioSnapshot.empty ||
-    tokens.length === 0
-  ) {
+  if (portfolioSnapshot.empty) {
     return {
       stocks: 0,
       sent: futuresSent,
