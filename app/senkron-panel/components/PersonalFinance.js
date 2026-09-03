@@ -106,6 +106,17 @@ function yearMonthId(year, month) {
   return `${year}-${String(month).padStart(2, '0')}`;
 }
 
+async function fetchMonthlyFx(year, month) {
+  const response = await fetch(`/api/fx?year=${year}&month=${month}`, {
+    cache: 'no-store',
+  });
+  const data = await response.json();
+  if (!response.ok || !Number.isFinite(Number(data?.rate)) || Number(data.rate) <= 0) {
+    throw new Error(data?.error || 'Ayın ilk iş günü kuru alınamadı.');
+  }
+  return data;
+}
+
 export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
   const now = new Date();
   const [expenses, setExpenses] = useState([]);
@@ -114,6 +125,8 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
   const [processing, setProcessing] = useState(false);
   const [message, setMessage] = useState('');
   const [imported, setImported] = useState(false);
+  const [monthlyFx, setMonthlyFx] = useState(null);
+  const [monthlyFxLoading, setMonthlyFxLoading] = useState(false);
   const [selectedYear, setSelectedYear] = useState(2026);
   const [selectedMonth, setSelectedMonth] = useState(
     now.getFullYear() === 2026 ? now.getMonth() + 1 : 8
@@ -126,7 +139,6 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
   });
   const [capitalForm, setCapitalForm] = useState({
     totalTry: '',
-    usdTry: '',
     note: '',
   });
 
@@ -269,12 +281,28 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
       : 0;
 
   useEffect(() => {
+    let active = true;
+    setMonthlyFx(null);
+    setMonthlyFxLoading(true);
+
+    fetchMonthlyFx(selectedYear, selectedMonth)
+      .then((data) => {
+        if (active) setMonthlyFx(data);
+      })
+      .catch((error) => {
+        if (active) setMonthlyFx({ error: error.message });
+      })
+      .finally(() => {
+        if (active) setMonthlyFxLoading(false);
+      });
+
+    return () => { active = false; };
+  }, [selectedYear, selectedMonth]);
+
+  useEffect(() => {
     setCapitalForm({
       totalTry: selectedCapital
         ? String(selectedCapital.totalTry ?? '')
-        : '',
-      usdTry: selectedCapital
-        ? String(selectedCapital.usdTry ?? '')
         : '',
       note: selectedCapital
         ? String(selectedCapital.note || '')
@@ -458,16 +486,16 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
     event.preventDefault();
 
     const totalTry = numeric(capitalForm.totalTry);
-    const usdTry = numeric(capitalForm.usdTry);
 
-    if (totalTry <= 0 || usdTry <= 0) {
-      setMessage('Sermaye ve dolar kuru sıfırdan büyük olmalıdır.');
+    if (totalTry <= 0) {
+      setMessage('Sermaye sıfırdan büyük olmalıdır.');
       return;
     }
 
     setProcessing(true);
 
     try {
+      const fx = await fetchMonthlyFx(selectedYear, selectedMonth);
       await setDoc(
         doc(
           firestoreDb,
@@ -480,18 +508,69 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
           year: Number(selectedYear),
           month: Number(selectedMonth),
           totalTry,
-          usdTry,
+          usdTry: Number(fx.rate),
+          usdTryDate: fx.rateDate,
+          usdTrySource: fx.source,
+          usdTryRateType: fx.rateType,
+          usdTryPolicy: fx.policy,
           note: capitalForm.note.trim(),
           updatedAt: new Date().toISOString(),
         },
         { merge: true }
       );
 
-      setCapitalForm({ totalTry: '', usdTry: '', note: '' });
-      setMessage(`${MONTHS[selectedMonth - 1]} sermayesi kaydedildi.`);
+      setMonthlyFx(fx);
+      setCapitalForm({ totalTry: '', note: '' });
+      setMessage(
+        `${MONTHS[selectedMonth - 1]} sermayesi, ${fx.rateDate} tarihli TCMB kuru ` +
+        `(${Number(fx.rate).toLocaleString('tr-TR', { minimumFractionDigits: 4 })}) ile kaydedildi.`
+      );
     } catch (error) {
       console.error('Sermaye kaydetme hatası:', error);
       setMessage(`Sermaye kaydedilemedi: ${error.message}`);
+    } finally {
+      setProcessing(false);
+    }
+  }
+
+  async function repairYearFxRates() {
+    if (!userId || processing) return;
+    const records = capital.filter(
+      (item) => Number(item.year) === Number(selectedYear) && numeric(item.totalTry) > 0
+    );
+    if (!records.length) {
+      setMessage(`${selectedYear} için düzeltilecek sermaye kaydı yok.`);
+      return;
+    }
+    if (!window.confirm(
+      `${selectedYear} yılındaki ${records.length} sermaye kaydının dolar kuru, ` +
+      `her ayın ilk TCMB iş günü kuruyla güncellensin mi? TL tutarları değişmeyecek.`
+    )) return;
+
+    setProcessing(true);
+    setMessage('Geçmiş ayların ilk iş günü kurları alınıyor…');
+    try {
+      const rates = [];
+      for (const item of records) {
+        rates.push({ item, fx: await fetchMonthlyFx(item.year, item.month) });
+      }
+      const batch = writeBatch(firestoreDb);
+      rates.forEach(({ item, fx }) => {
+        batch.set(
+          doc(firestoreDb, 'users', userId, 'personalFinanceCapital', yearMonthId(item.year, item.month)),
+          {
+            usdTry: Number(fx.rate), usdTryDate: fx.rateDate, usdTrySource: fx.source,
+            usdTryRateType: fx.rateType, usdTryPolicy: fx.policy,
+            usdTryCorrectedAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+      });
+      await batch.commit();
+      setMessage(`${rates.length} aylık kur TCMB ilk iş günü verileriyle düzeltildi.`);
+    } catch (error) {
+      console.error('Geçmiş kur düzeltme hatası:', error);
+      setMessage(`Geçmiş kurlar düzeltilemedi: ${error.message}`);
     } finally {
       setProcessing(false);
     }
@@ -795,6 +874,22 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
           min-height: 30px;
           margin-top: 4px;
           font-size: 9px;
+        }
+
+        .autoFxInfo {
+          padding: 10px;
+          border: 1px solid rgba(45, 212, 191, 0.28);
+          border-radius: 9px;
+          color: #99f6e4;
+          background: rgba(20, 184, 166, 0.08);
+          font-size: 12px;
+          line-height: 1.5;
+        }
+
+        .autoFxInfo strong {
+          display: block;
+          color: #f8fafc;
+          font-size: 15px;
         }
 
         .barChart {
@@ -1230,39 +1325,20 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
               />
             </label>
 
-            <label className="formLabel">
-              USD/TRY kuru
-              <input
-                inputMode="decimal"
-                value={capitalForm.usdTry}
-                onChange={(event) =>
-                  setCapitalForm((current) => ({
-                    ...current,
-                    usdTry: event.target.value,
-                  }))
-                }
-                placeholder="0,00"
-              />
-              <button
-                type="button"
-                className="useLiveRate"
-                disabled={numeric(liveUsdTry) <= 0}
-                onClick={() =>
-                  setCapitalForm((current) => ({
-                    ...current,
-                    usdTry: String(liveUsdTry),
-                  }))
-                }
-              >
-                Güncel kuru kullan
-                {numeric(liveUsdTry) > 0
-                  ? ` (${numeric(liveUsdTry).toLocaleString('tr-TR', {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 4,
-                    })})`
-                  : ''}
-              </button>
-            </label>
+            <div className="autoFxInfo">
+              Ayın ilk TCMB iş günü USD/TRY satış kuru
+              <strong>
+                {monthlyFxLoading
+                  ? 'Kur alınıyor…'
+                  : monthlyFx?.rate
+                    ? `${Number(monthlyFx.rate).toLocaleString('tr-TR', {
+                        minimumFractionDigits: 4,
+                        maximumFractionDigits: 4,
+                      })} • ${monthlyFx.rateDate}`
+                    : monthlyFx?.error || 'Kur bulunamadı'}
+              </strong>
+              Kur otomatik kaydedilir; elle giriş gerekmez.
+            </div>
 
             <label className="formLabel">
               Not
@@ -1280,6 +1356,15 @@ export default function PersonalFinance({ userId, liveUsdTry = 0 }) {
 
             <button className="primary" disabled={processing} type="submit">
               Sermayeyi kaydet / güncelle
+            </button>
+
+            <button
+              className="useLiveRate"
+              disabled={processing}
+              type="button"
+              onClick={repairYearFxRates}
+            >
+              {selectedYear} geçmiş kurlarını otomatik düzelt
             </button>
           </form>
         </div>
