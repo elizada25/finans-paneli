@@ -163,7 +163,7 @@ async function sendAlert({
       body,
     },
     data: {
-      url: '/senkron-panel',
+      url: '/senkron-panel#portfolio',
       symbol: stock.code,
       market: stock.market,
       type,
@@ -181,7 +181,7 @@ async function sendAlert({
       },
       fcmOptions: {
         link:
-          `${baseUrl}/senkron-panel`,
+          `${baseUrl}/senkron-panel#portfolio`,
       },
       notification: {
         icon: '/icon-192.png',
@@ -456,7 +456,7 @@ async function processUser({
       title: alertTitle,
       body: alertBody,
       type: direction === 'up' ? 'price-up' : 'price-down',
-      url: '/senkron-panel',
+      url: '/senkron-panel#portfolio',
       symbol: stock.code,
       market: stock.market,
       changePercent: change,
@@ -533,7 +533,7 @@ async function processUser({
         title: alertTitle,
         body: alertBody,
         type: `custom-${rule.key}`,
-        url: '/senkron-panel',
+        url: '/senkron-panel#portfolio',
         symbol: alert.code,
         market: alert.market,
         changePercent: numberValue(quote.changePercent),

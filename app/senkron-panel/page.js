@@ -65,10 +65,18 @@ export default function SenkronPanelPage() {
   const [istanbulClock, setIstanbulClock] = useState('');
 
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (['nasdaq-4h', 'reversal'].includes(hash)) {
-      setActiveSection(hash);
-    }
+    const allowedSections = new Set([
+      'overview', 'portfolio', 'finance', 'bist-watch', 'ai', 'trade',
+      'market', 'btc', 'nasdaq-4h', 'reversal', 'global', 'charts', 'notes',
+    ]);
+    const selectFromHash = () => {
+      const hash = window.location.hash.slice(1);
+      if (allowedSections.has(hash)) setActiveSection(hash);
+    };
+
+    selectFromHash();
+    window.addEventListener('hashchange', selectFromHash);
+    return () => window.removeEventListener('hashchange', selectFromHash);
   }, []);
 
   useEffect(() => {

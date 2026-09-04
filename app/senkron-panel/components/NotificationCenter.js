@@ -104,21 +104,20 @@ export default function NotificationCenter({ user }) {
     await batch.commit();
   }
 
-  async function openNotification(item) {
+  function openNotification(item) {
     if (item.read !== true) {
-      await updateDoc(
+      updateDoc(
         doc(firestoreDb, 'users', user.uid, 'notifications', item.id),
         { read: true, readAt: new Date().toISOString() }
       ).catch(() => null);
     }
 
-    const target = String(item.url || '/senkron-panel');
-    if (/^https?:\/\//i.test(target)) {
-      window.open(target, '_blank', 'noopener,noreferrer');
-    } else if (target !== '/senkron-panel') {
-      window.location.href = target;
-    }
+    const target = targetFor(item);
     setOpen(false);
+
+    // Yönlendirme kullanıcı dokunuşuyla aynı anda yapılır. Özellikle iOS/Safari,
+    // bir await sonrasında açılan bağlantıyı istenmeyen pencere sayıp engelleyebilir.
+    window.location.assign(target);
   }
 
   return (
@@ -338,6 +337,30 @@ function pushAllowed() {
   return typeof window !== 'undefined' &&
     'Notification' in window &&
     Notification.permission === 'granted';
+}
+
+function targetFor(item) {
+  const raw = String(item?.url || '').trim();
+  const type = String(item?.type || '').toLowerCase();
+
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  if (
+    type.includes('price') ||
+    type.includes('custom') ||
+    type.includes('volume') ||
+    type.includes('technical')
+  ) {
+    return '/senkron-panel#portfolio';
+  }
+
+  if (type.includes('news')) {
+    return raw.startsWith('/') ? raw : '/haber-merkezi';
+  }
+
+  if (type.includes('close')) return '/senkron-panel#overview';
+  if (raw.startsWith('/')) return raw;
+  return '/senkron-panel#overview';
 }
 
 function iconFor(type) {
